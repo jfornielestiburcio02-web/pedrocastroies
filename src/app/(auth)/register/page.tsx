@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { UserPlus, Mail, Lock, User, Loader2, ArrowRight } from 'lucide-react';
@@ -10,55 +10,55 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth, useFirestore, useUser } from '@/firebase';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { doc, serverTimestamp } from 'firebase/firestore';
-import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { useFirestore } from '@/firebase';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
-  const auth = useAuth();
   const db = useFirestore();
-  const { user: currentUser, isUserLoading } = useUser();
-
-  useEffect(() => {
-    if (!isUserLoading && currentUser) {
-      router.push('/dashboard');
-    }
-  }, [currentUser, isUserLoading, router]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsLoading(true);
 
     const formData = new FormData(event.currentTarget);
-    const name = formData.get('name') as string;
+    const usuario = formData.get('usuario') as string;
+    const nombre = formData.get('nombre') as string;
     const email = formData.get('email') as string;
-    const password = formData.get('password') as string;
+    const contrasena = formData.get('contrasena') as string;
+
+    if (!db) return;
 
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
+      // 1. Verificar si el usuario ya existe
+      const userRef = doc(db, 'usuarios', usuario);
+      const userSnap = await getDoc(userRef);
 
-      // Update basic profile
-      await updateProfile(user, { displayName: name });
+      if (userSnap.exists()) {
+        throw new Error("El nombre de usuario ya está en uso.");
+      }
 
-      // Create UserProfile in Firestore (Non-blocking as per guidelines)
-      const profileRef = doc(db, 'user_profiles', user.uid);
-      setDocumentNonBlocking(profileRef, {
-        id: user.uid,
-        firebaseUid: user.uid,
-        email: user.email,
-        displayName: name,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      }, { merge: true });
+      // 2. Guardar en Firestore directamente
+      await setDoc(userRef, {
+        usuario,
+        nombreCompleto: nombre,
+        email,
+        contrasena, // Almacenado como string segun requerimiento
+        createdAt: new Date().toISOString()
+      });
+
+      // 3. Crear sesión manual
+      localStorage.setItem('user_session', JSON.stringify({
+        usuario,
+        email,
+        displayName: nombre
+      }));
 
       toast({
         title: "Cuenta creada",
-        description: "Tu registro ha sido exitoso. Bienvenido a SecureEntry.",
+        description: "Bienvenido a SecureEntry. Tu usuario ha sido registrado.",
       });
       router.push('/dashboard');
     } catch (error: any) {
@@ -71,14 +71,6 @@ export default function RegisterPage() {
     }
   }
 
-  if (isUserLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
   return (
     <div className="flex min-h-screen items-center justify-center p-4 bg-background">
       <div className="w-full max-w-[400px] animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -87,23 +79,30 @@ export default function RegisterPage() {
             <UserPlus className="h-6 w-6" />
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground font-headline">Únete a SecureEntry</h1>
-          <p className="text-muted-foreground mt-2">La forma más segura de gestionar tu identidad</p>
+          <p className="text-muted-foreground mt-2">Crea tu usuario en Firestore</p>
         </div>
 
         <Card className="border-border shadow-xl bg-card">
           <CardHeader className="space-y-1">
             <CardTitle className="text-xl font-headline">Crear Cuenta</CardTitle>
             <CardDescription>
-              Completa los datos para empezar tu experiencia segura
+              Tus datos se guardarán en la colección 'usuarios'
             </CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit}>
             <CardContent className="grid gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="name">Nombre Completo</Label>
+                <Label htmlFor="usuario">Nombre de Usuario (ID)</Label>
                 <div className="relative">
                   <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input id="name" name="name" placeholder="Juan Pérez" className="pl-10 focus-visible:ring-accent" required />
+                  <Input id="usuario" name="usuario" placeholder="juan_perez" className="pl-10 focus-visible:ring-accent" required />
+                </div>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="nombre">Nombre Completo</Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input id="nombre" name="nombre" placeholder="Juan Pérez" className="pl-10 focus-visible:ring-accent" required />
                 </div>
               </div>
               <div className="grid gap-2">
@@ -114,10 +113,10 @@ export default function RegisterPage() {
                 </div>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="password">Contraseña</Label>
+                <Label htmlFor="contrasena">Contraseña (String)</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input id="password" name="password" type="password" className="pl-10 focus-visible:ring-accent" required />
+                  <Input id="contrasena" name="contrasena" type="password" className="pl-10 focus-visible:ring-accent" required />
                 </div>
               </div>
             </CardContent>

@@ -1,24 +1,22 @@
 
 "use client";
 
-import { useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 
 export default function Home() {
-  const { user, isUserLoading } = useUser();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isUserLoading) {
-      if (user) {
-        router.push('/dashboard');
-      } else {
-        router.push('/login');
-      }
+    // Redirección manual basada en localStorage
+    const session = localStorage.getItem('user_session');
+    if (session) {
+      router.push('/dashboard');
+    } else {
+      router.push('/login');
     }
-  }, [user, isUserLoading, router]);
+  }, [router]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">

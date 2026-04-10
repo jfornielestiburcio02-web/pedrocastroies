@@ -4,59 +4,72 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Lock, Mail, Loader2, ArrowRight } from 'lucide-react';
+import { Lock, User, Loader2, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth, useUser } from '@/firebase';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { useFirestore } from '@/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
-  const auth = useAuth();
-  const { user, isUserLoading } = useUser();
+  const db = useFirestore();
 
   useEffect(() => {
-    if (!isUserLoading && user) {
+    // Comprobar sesión manual en localStorage
+    const session = localStorage.getItem('user_session');
+    if (session) {
       router.push('/dashboard');
     }
-  }, [user, isUserLoading, router]);
+  }, [router]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsLoading(true);
 
     const formData = new FormData(event.currentTarget);
-    const email = formData.get('email') as string;
-    const password = formData.get('password') as string;
+    const usuario = formData.get('usuario') as string;
+    const contrasena = formData.get('contrasena') as string;
+
+    if (!db) return;
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      toast({
-        title: "Bienvenido de nuevo",
-        description: "Acceso concedido exitosamente.",
-      });
-      router.push('/dashboard');
+      const userRef = doc(db, 'usuarios', usuario);
+      const userSnap = await getDoc(userRef);
+
+      if (userSnap.exists()) {
+        const userData = userSnap.data();
+        if (userData.contrasena === contrasena) {
+          // Sesión exitosa
+          localStorage.setItem('user_session', JSON.stringify({
+            usuario: userData.usuario,
+            email: userData.email,
+            displayName: userData.nombreCompleto
+          }));
+
+          toast({
+            title: "Bienvenido de nuevo",
+            description: `Hola ${userData.nombreCompleto || usuario}, acceso concedido.`,
+          });
+          router.push('/dashboard');
+        } else {
+          throw new Error("Contraseña incorrecta");
+        }
+      } else {
+        throw new Error("El usuario no existe");
+      }
     } catch (error: any) {
       toast({
         variant: "destructive",
-        title: "Error de autenticación",
-        description: "Credenciales inválidas o problema de conexión.",
+        title: "Error de acceso",
+        description: error.message || "Credenciales inválidas.",
       });
       setIsLoading(false);
     }
-  }
-
-  if (isUserLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
   }
 
   return (
@@ -67,47 +80,39 @@ export default function LoginPage() {
             <Lock className="h-6 w-6" />
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground font-headline">SecureEntry</h1>
-          <p className="text-muted-foreground mt-2">Protegiendo tus accesos con elegancia</p>
+          <p className="text-muted-foreground mt-2">Acceso manual vía Firestore</p>
         </div>
 
         <Card className="border-border shadow-xl bg-card">
           <CardHeader className="space-y-1">
             <CardTitle className="text-xl font-headline">Iniciar Sesión</CardTitle>
             <CardDescription>
-              Ingresa tus credenciales para acceder a tu cuenta
+              Ingresa tu usuario y contraseña de la colección
             </CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit}>
             <CardContent className="grid gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="email">Correo Electrónico</Label>
+                <Label htmlFor="usuario">Usuario</Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input 
-                    id="email" 
-                    name="email" 
-                    type="email" 
-                    placeholder="ejemplo@correo.com" 
+                    id="usuario" 
+                    name="usuario" 
+                    type="text" 
+                    placeholder="nombre_usuario" 
                     className="pl-10 focus-visible:ring-accent" 
                     required 
                   />
                 </div>
               </div>
               <div className="grid gap-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Contraseña</Label>
-                  <Link 
-                    href="#" 
-                    className="text-xs font-medium text-primary hover:text-accent transition-colors"
-                  >
-                    ¿Olvidaste tu contraseña?
-                  </Link>
-                </div>
+                <Label htmlFor="contrasena">Contraseña</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input 
-                    id="password" 
-                    name="password" 
+                    id="contrasena" 
+                    name="contrasena" 
                     type="password" 
                     className="pl-10 focus-visible:ring-accent" 
                     required 
@@ -138,10 +143,6 @@ export default function LoginPage() {
             </CardFooter>
           </form>
         </Card>
-
-        <p className="mt-8 text-center text-xs text-muted-foreground">
-          &copy; 2024 SecureEntry Inc. Todos los derechos reservados.
-        </p>
       </div>
     </div>
   );

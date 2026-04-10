@@ -1,72 +1,62 @@
+
 {
   "entities": {
-    "UserProfile": {
+    "Usuario": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "UserProfile",
+      "title": "Usuario",
       "type": "object",
-      "description": "Stores application-specific profile information for a user, linked to an external authentication system like Firebase. This entity holds data beyond what the authentication provider manages directly.",
+      "description": "Entidad de usuario personalizada para autenticación manual vía Firestore.",
       "properties": {
-        "id": {
+        "usuario": {
           "type": "string",
-          "description": "Unique identifier for the UserProfile entity."
+          "description": "Nombre de usuario único (ID del documento)."
         },
-        "firebaseUid": {
+        "contrasena": {
           "type": "string",
-          "description": "Unique identifier provided by the external authentication system (e.g., Firebase Authentication User ID). (Relationship: FirebaseUser 1:1 UserProfile)"
+          "description": "Contraseña almacenada en texto plano (según requerimiento)."
         },
         "email": {
           "type": "string",
-          "description": "The user's primary email address, often used for communication and as a login identifier in the external authentication system.",
           "format": "email"
         },
-        "displayName": {
-          "type": "string",
-          "description": "A user-friendly name chosen by the user, displayed within the application."
+        "nombreCompleto": {
+          "type": "string"
         },
         "createdAt": {
           "type": "string",
-          "description": "Timestamp indicating when the user profile was initially created.",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "type": "string",
-          "description": "Timestamp indicating the last time the user profile was updated.",
           "format": "date-time"
         }
       },
       "required": [
-        "id",
-        "firebaseUid",
-        "email",
-        "createdAt"
+        "usuario",
+        "contrasena",
+        "email"
       ]
     }
   },
   "auth": {
     "providers": [
-      "password",
       "anonymous"
     ]
   },
   "firestore": {
     "structure": [
       {
-        "path": "/user_profiles/{userId}",
+        "path": "/usuarios/{usuarioId}",
         "definition": {
-          "entityName": "UserProfile",
+          "entityName": "Usuario",
           "schema": {
-            "$ref": "#/backend/entities/UserProfile"
+            "$ref": "#/backend/entities/Usuario"
           },
-          "description": "Stores individual user profile information. The document ID (`userId`) MUST match the `firebaseUid` field within the document and `request.auth.uid`. This structure ensures path-based ownership and authorization independence.",
+          "description": "Colección de usuarios para el sistema de login personalizado.",
           "params": [
             {
-              "name": "userId",
-              "description": "The unique Firebase User ID (UID) of the user, which also serves as the document ID for their profile."
+              "name": "usuarioId",
+              "description": "El identificador único del usuario (nombre de usuario)."
             }
           ]
         }
       }
-    ],
-    "reasoning": "The recommended Firestore structure for the SecureEntry application prioritizes security, scalability, and debuggability, adhering strictly to the provided design principles. The core entity, 'UserProfile', is stored in a top-level collection named `/user_profiles`. Each document in this collection will have its ID set to the `firebaseUid` of the user it represents. This design directly addresses **Authorization Independence** and **QAPs (Rules are not Filters)**.\n\n**Authorization Independence via Denormalization:** The `UserProfile` document itself includes a `firebaseUid` field. This `firebaseUid` is explicitly denormalized into the document's content and is identical to the document's ID (the `{userId}` wildcard in the path). This crucial redundancy ensures that Firestore security rules can determine ownership without relying on `get()` calls to other documents or parent collections. For example, a rule to allow a user to read/write their own profile would simply be `allow read, write: if request.auth.uid == userId;`. This makes rules atomic, performant, and easy to debug.\n\n**Structural Segregation (Homogeneous Security Posture):** The `/user_profiles` collection will only contain `UserProfile` documents. All documents within this collection share the same security posture: they are private to the user identified by the document's ID. This prevents mixing data with different access requirements, simplifying security rules immensely by moving complexity from rule logic to the data structure itself.\n\n**Access Modeling & QAPs:** By using path-based ownership (`/user_profiles/{userId}`), the structure inherently supports secure `list` operations (QAPs). A standard query for a user's own profile would be `db.collection('user_profiles').doc(firebaseUid).get()`, which is a direct read of a known document. A `list` operation on `/user_profiles` (e.g., `db.collection('user_profiles').get()`) for an unprivileged user would fail by default in security rules because they don't explicitly match the `userId` wildcard. If an admin user needed to list all profiles, specific admin role rules would be applied, leveraging DBAC by checking for admin roles in a dedicated collection like `/roles_admin/{request.auth.uid}`. The owner-specific path also means that rules are not used as filters; if a user tries to access `/user_profiles/someOtherUserUid`, the rule `request.auth.uid == userId` will immediately deny access, rather than letting the query return an empty result after filtering."
+    ]
   }
 }
