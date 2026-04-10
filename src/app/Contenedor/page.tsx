@@ -26,36 +26,50 @@ export default function ContenedorPage() {
       return;
     }
 
-    const sessionData = JSON.parse(savedSession);
-    setSession(sessionData);
-    setSelectedModule(module);
-
-    // Fetch user data from Firestore to check roles
-    async function fetchUserRoles() {
-      if (!db) return;
-      try {
-        const userRef = doc(db, 'usuarios', sessionData.usuario);
-        const userSnap = await getDoc(userRef);
-        
-        if (userSnap.exists()) {
-          const data = userSnap.data();
-          setUserData(data);
-          
-          const roles = data.rolesUsuario || [];
-          if (roles.includes('EsProfesor')) {
-            setActiveRole('Profesor');
-          } else if (roles.includes('EsAlumno')) {
-            setActiveRole('Alumno');
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching roles:", error);
-      } finally {
-        setIsLoading(false);
+    try {
+      const sessionData = JSON.parse(savedSession);
+      
+      // Validación crítica: Si no hay identificador de usuario, la sesión es inválida
+      if (!sessionData || !sessionData.usuario) {
+        console.warn("Sesión malformada, redirigiendo a login.");
+        router.push('/login');
+        return;
       }
-    }
 
-    fetchUserRoles();
+      setSession(sessionData);
+      setSelectedModule(module);
+
+      // Fetch user data from Firestore to check roles
+      const fetchUserRoles = async () => {
+        if (!db || !sessionData.usuario) return;
+        
+        try {
+          const userRef = doc(db, 'usuarios', sessionData.usuario);
+          const userSnap = await getDoc(userRef);
+          
+          if (userSnap.exists()) {
+            const data = userSnap.data();
+            setUserData(data);
+            
+            const roles = data.rolesUsuario || [];
+            if (roles.includes('EsProfesor')) {
+              setActiveRole('Profesor');
+            } else if (roles.includes('EsAlumno')) {
+              setActiveRole('Alumno');
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching roles:", error);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      fetchUserRoles();
+    } catch (e) {
+      console.error("Error al procesar la sesión:", e);
+      router.push('/login');
+    }
   }, [router, db]);
 
   const toggleRole = () => {
