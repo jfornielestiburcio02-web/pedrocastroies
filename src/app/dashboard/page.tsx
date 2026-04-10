@@ -12,24 +12,45 @@ import {
   Bell, 
   Key, 
   Activity,
-  ChevronRight,
   Database,
   Lock,
-  Loader2
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function DashboardPage() {
   const [session, setSession] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showConnError, setShowConnError] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
-    // Comprobar sesión manual
+    // 1. Comprobar si es un refresco de página
+    const navigationEntries = performance.getEntriesByType('navigation');
+    const isReload = navigationEntries.length > 0 && (navigationEntries[0] as PerformanceNavigationTiming).type === 'reload';
+
+    if (isReload) {
+      alert("Sesión Caducada");
+      localStorage.removeItem('user_session');
+      router.push('/login');
+      return;
+    }
+
+    // 2. Comprobar sesión manual
     const savedSession = localStorage.getItem('user_session');
     if (!savedSession) {
       router.push('/login');
@@ -42,6 +63,16 @@ export default function DashboardPage() {
   function handleLogout() {
     localStorage.removeItem('user_session');
     router.push('/login');
+  }
+
+  function triggerConnectionError() {
+    setShowConnError(true);
+  }
+
+  function handleAcceptError() {
+    const randomVal = Math.floor(Math.random() * 1000000);
+    localStorage.removeItem('user_session');
+    router.push(`/login?rndval=${randomVal}`);
   }
 
   if (isLoading || !session) {
@@ -126,18 +157,34 @@ export default function DashboardPage() {
           <div className="absolute inset-0 flex flex-col justify-center p-8 text-white">
             <h2 className="text-2xl font-bold sm:text-4xl font-headline">Tu usuario está en Firestore</h2>
             <p className="mt-2 max-w-md text-primary-foreground/90 sm:text-lg">
-              Estás autenticado sin el sistema estándar de Auth, usando una verificación directa de colección.
+              Estás autenticado sin el sistema estándar de Auth.
             </p>
           </div>
         </div>
 
-        {/* Stats Grid */}
+        {/* Action Grid */}
         <div className="mb-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <Card 
+            className="cursor-pointer overflow-hidden border-border transition-all hover:shadow-md hover:border-primary/50"
+            onClick={triggerConnectionError}
+          >
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Ir a otra página</p>
+                  <h3 className="text-xl font-bold mt-1">Configuración</h3>
+                </div>
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted text-primary">
+                  <Settings className="h-6 w-6" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {[
-            { label: 'Usuario Actual', value: session.usuario, icon: UserIcon, trend: 'Válido', color: 'text-accent' },
-            { label: 'Base de Datos', value: 'Firestore', icon: Database, trend: 'Conectado', color: 'text-primary' },
-            { label: 'Alertas', value: '0', icon: Bell, trend: 'Ninguna', color: 'text-green-500' },
-            { label: 'Estado', value: 'Online', icon: Activity, trend: 'Manual', color: 'text-primary' },
+            { label: 'Usuario Actual', value: session.usuario, icon: UserIcon, color: 'text-accent' },
+            { label: 'Base de Datos', value: 'Firestore', icon: Database, color: 'text-primary' },
+            { label: 'Estado', value: 'Online', icon: Activity, color: 'text-primary' },
           ].map((stat, i) => (
             <Card key={i} className="overflow-hidden border-border transition-all hover:shadow-md">
               <CardContent className="p-6">
@@ -154,6 +201,29 @@ export default function DashboardPage() {
             </Card>
           ))}
         </div>
+
+        {/* Custom Error Dialog */}
+        <AlertDialog open={showConnError} onOpenChange={setShowConnError}>
+          <AlertDialogContent className="max-w-[400px]">
+            <AlertDialogHeader>
+              <div className="flex items-center gap-2 text-destructive mb-2">
+                <AlertCircle className="h-5 w-5" />
+                <AlertDialogTitle className="text-foreground">Error del Sistema</AlertDialogTitle>
+              </div>
+              <AlertDialogDescription className="text-foreground text-base leading-relaxed">
+                Se produció el siguiente error al procesar con su solicitud; <br /><br /> <strong>Wrror de conexion 8</strong>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogAction 
+                onClick={handleAcceptError}
+                className="bg-primary hover:bg-primary/90 text-white w-full sm:w-auto"
+              >
+                Aceptar
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </main>
     </div>
   );
