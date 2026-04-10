@@ -32,28 +32,28 @@ export default function LoginPage() {
     setIsLoading(true);
 
     const formData = new FormData(event.currentTarget);
-    const usuario = formData.get('usuario') as string;
+    const usuarioInput = formData.get('usuario') as string;
     const contrasena = formData.get('contrasena') as string;
 
     if (!db) return;
 
     try {
-      const userRef = doc(db, 'usuarios', usuario);
+      const userRef = doc(db, 'usuarios', usuarioInput);
       const userSnap = await getDoc(userRef);
 
       if (userSnap.exists()) {
         const userData = userSnap.data();
         if (userData.contrasena === contrasena) {
-          // Sesión exitosa
+          // Sesión exitosa - Usamos el usuarioInput directamente para evitar undefined si no está en el body
           localStorage.setItem('user_session', JSON.stringify({
-            usuario: userData.usuario,
+            usuario: usuarioInput,
             email: userData.email,
-            displayName: userData.nombreCompleto
+            displayName: userData.nombreCompleto || usuarioInput
           }));
 
           toast({
             title: "Bienvenido de nuevo",
-            description: `Hola ${userData.nombreCompleto || usuario}, acceso concedido.`,
+            description: `Hola ${userData.nombreCompleto || usuarioInput}, acceso concedido.`,
           });
           router.push('/seleccionemoduloacceso');
         } else {

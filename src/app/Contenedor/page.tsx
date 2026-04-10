@@ -31,7 +31,7 @@ export default function ContenedorPage() {
       
       // Validación crítica: Si no hay identificador de usuario, la sesión es inválida
       if (!sessionData || !sessionData.usuario) {
-        console.warn("Sesión malformada, redirigiendo a login.");
+        console.warn("Sesión malformada o vacía, redirigiendo a login.");
         router.push('/login');
         return;
       }
@@ -41,7 +41,11 @@ export default function ContenedorPage() {
 
       // Fetch user data from Firestore to check roles
       const fetchUserRoles = async () => {
-        if (!db || !sessionData.usuario) return;
+        // Doble comprobación de seguridad para evitar errores de Firebase
+        if (!db || !sessionData.usuario) {
+          setIsLoading(false);
+          return;
+        }
         
         try {
           const userRef = doc(db, 'usuarios', sessionData.usuario);
@@ -59,7 +63,7 @@ export default function ContenedorPage() {
             }
           }
         } catch (error) {
-          console.error("Error fetching roles:", error);
+          console.error("Error fetching roles from Firestore:", error);
         } finally {
           setIsLoading(false);
         }
