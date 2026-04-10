@@ -22,6 +22,14 @@
         "nombreCompleto": {
           "type": "string"
         },
+        "rolesUsuario": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["EsProfesor", "EsAlumno"]
+          },
+          "description": "Lista de roles asignados al usuario."
+        },
         "createdAt": {
           "type": "string",
           "format": "date-time"
@@ -40,23 +48,11 @@
     ]
   },
   "firestore": {
-    "structure": [
-      {
-        "path": "/usuarios/{usuarioId}",
-        "definition": {
-          "entityName": "Usuario",
-          "schema": {
-            "$ref": "#/backend/entities/Usuario"
-          },
-          "description": "Colección de usuarios para el sistema de login personalizado.",
-          "params": [
-            {
-              "name": "usuarioId",
-              "description": "El identificador único del usuario (nombre de usuario)."
-            }
-          ]
-        }
-      }
-    ]
+    "/usuarios/{usuarioId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Usuario"
+      },
+      "description": "Colección de usuarios para el sistema de login personalizado."
+    }
   }
 }
