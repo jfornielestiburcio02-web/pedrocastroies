@@ -12,7 +12,7 @@ export default function Home() {
     // Redirección manual basada en localStorage
     const session = localStorage.getItem('user_session');
     if (session) {
-      router.push('/dashboard');
+      router.push('/seleccionemoduloacceso');
     } else {
       router.push('/login');
     }

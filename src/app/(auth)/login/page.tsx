@@ -23,7 +23,7 @@ export default function LoginPage() {
     // Comprobar sesión manual en localStorage
     const session = localStorage.getItem('user_session');
     if (session) {
-      router.push('/dashboard');
+      router.push('/seleccionemoduloacceso');
     }
   }, [router]);
 
@@ -55,7 +55,7 @@ export default function LoginPage() {
             title: "Bienvenido de nuevo",
             description: `Hola ${userData.nombreCompleto || usuario}, acceso concedido.`,
           });
-          router.push('/dashboard');
+          router.push('/seleccionemoduloacceso');
         } else {
           throw new Error("Contraseña incorrecta");
         }
@@ -73,19 +73,19 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4 bg-background">
+    <div className="flex min-h-screen items-center justify-center p-4 bg-background font-verdana">
       <div className="w-full max-w-[400px] animate-in fade-in zoom-in duration-500">
         <div className="mb-8 text-center">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg">
             <Lock className="h-6 w-6" />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground font-headline">SecureEntry</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">SecureEntry</h1>
           <p className="text-muted-foreground mt-2">Acceso manual vía Firestore</p>
         </div>
 
         <Card className="border-border shadow-xl bg-card">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-xl font-headline">Iniciar Sesión</CardTitle>
+            <CardTitle className="text-xl">Iniciar Sesión</CardTitle>
             <CardDescription>
               Ingresa tu usuario y contraseña de la colección
             </CardDescription>

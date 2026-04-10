@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore } from '@/firebase';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -60,7 +60,7 @@ export default function RegisterPage() {
         title: "Cuenta creada",
         description: "Bienvenido a SecureEntry. Tu usuario ha sido registrado.",
       });
-      router.push('/dashboard');
+      router.push('/seleccionemoduloacceso');
     } catch (error: any) {
       toast({
         variant: "destructive",
