@@ -1,0 +1,17 @@
+
+{
+  "placeholderImages": [
+    {
+      "id": "user-avatar",
+      "description": "User profile placeholder",
+      "imageUrl": "https://picsum.photos/seed/42/150/150",
+      "imageHint": "user profile"
+    },
+    {
+      "id": "security-banner",
+      "description": "Security concept illustration",
+      "imageUrl": "https://picsum.photos/seed/secure/1200/400",
+      "imageHint": "security network"
+    }
+  ]
+}
