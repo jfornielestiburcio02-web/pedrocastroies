@@ -21,8 +21,9 @@ export default function SeleccioneModuloAccesoPage() {
     }
   }, [router]);
 
-  const handleModuleClick = () => {
-    router.push('/Contenedir');
+  const handleModuleClick = (label: string) => {
+    localStorage.setItem('selected_module', label.toUpperCase());
+    router.push('/Contenedor');
   };
 
   if (isLoading || !session) {
@@ -61,9 +62,9 @@ export default function SeleccioneModuloAccesoPage() {
 
         {/* Modules Bar */}
         <div className="bg-[#7d7d7d] py-12 px-8 flex justify-center gap-8 md:gap-16">
-          <ModuleBox label="Gestión" onClick={handleModuleClick} borderColor="border-purple-300/40" />
-          <ModuleBox label="Secretaría Virtual" onClick={handleModuleClick} borderColor="border-orange-200/40" />
-          <ModuleBox label="Seguimiento" onClick={handleModuleClick} borderColor="border-green-200/40" />
+          <ModuleBox label="Gestión" onClick={() => handleModuleClick("GESTIÓN")} borderColor="border-purple-300/40" />
+          <ModuleBox label="Secretaría Virtual" onClick={() => handleModuleClick("SECRETARÍA VIRTUAL")} borderColor="border-orange-200/40" />
+          <ModuleBox label="Seguimiento" onClick={() => handleModuleClick("SEGUIMIENTO")} borderColor="border-green-200/40" />
         </div>
 
         {/* Info Text */}
