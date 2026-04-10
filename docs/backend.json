@@ -5,7 +5,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Usuario",
       "type": "object",
-      "description": "Entidad de usuario con identificador de sesión manual.",
+      "description": "Entidad de usuario con identificador de sesión manual y perfiles educativos.",
       "properties": {
         "usuario": {
           "type": "string",
@@ -22,11 +22,15 @@
         "nombreCompleto": {
           "type": "string"
         },
+        "imagenPerfil": {
+          "type": "string",
+          "description": "URL de la imagen de perfil."
+        },
         "rolesUsuario": {
           "type": "array",
           "items": {
             "type": "string",
-            "enum": ["EsProfesor", "EsAlumno"]
+            "enum": ["EsProfesor", "EsAlumno", "EsDireccion", "EsCau"]
           }
         },
         "sesion": {

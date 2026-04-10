@@ -3,22 +3,31 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { 
   Loader2, 
   SwitchCamera, 
   ArrowLeft,
-  LogOut
+  LogOut,
+  Home,
+  X,
+  Clock,
+  BookOpen,
+  MessageSquare,
+  ChevronRight,
+  Monitor
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useFirestore } from '@/firebase';
 import { doc, getDoc } from 'firebase/firestore';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function SeleccioneModuloAccesoPage() {
   const [session, setSession] = useState<any>(null);
   const [userData, setUserData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedModule, setSelectedModule] = useState<string | null>(null);
-  const [activeRole, setActiveRole] = useState<'Profesor' | 'Alumno' | null>(null);
+  const [activeRole, setActiveRole] = useState<string | null>(null);
   const router = useRouter();
   const db = useFirestore();
 
@@ -38,7 +47,7 @@ export default function SeleccioneModuloAccesoPage() {
       }
       setSession(sessionData);
 
-      const fetchUserRoles = async () => {
+      const fetchUserData = async () => {
         if (!db) return;
         try {
           const userRef = doc(db, 'usuarios', sessionData.usuario);
@@ -48,20 +57,20 @@ export default function SeleccioneModuloAccesoPage() {
             setUserData(data);
             
             const roles = data.rolesUsuario || [];
-            if (roles.includes('EsProfesor')) {
-              setActiveRole('Profesor');
-            } else if (roles.includes('EsAlumno')) {
-              setActiveRole('Alumno');
-            }
+            // Prioridad de rol inicial
+            if (roles.includes('EsDireccion')) setActiveRole('Dirección');
+            else if (roles.includes('EsCau')) setActiveRole('CAU');
+            else if (roles.includes('EsProfesor')) setActiveRole('Profesor');
+            else if (roles.includes('EsAlumno')) setActiveRole('Alumno');
           }
         } catch (error) {
-          console.error("Error validando sesión manual:", error);
+          console.error("Error validando sesión:", error);
         } finally {
           setIsLoading(false);
         }
       };
 
-      fetchUserRoles();
+      fetchUserData();
     } catch (e) {
       router.push('/login');
     }
@@ -71,13 +80,27 @@ export default function SeleccioneModuloAccesoPage() {
     setSelectedModule(label.toUpperCase());
   };
 
-  const toggleRole = () => {
-    setActiveRole(prev => prev === 'Profesor' ? 'Alumno' : 'Profesor');
-  };
-
   const handleLogout = () => {
     localStorage.removeItem('user_session');
     router.push('/login');
+  };
+
+  const getAvailableRoles = () => {
+    if (!userData?.rolesUsuario) return [];
+    return userData.rolesUsuario.map((r: string) => {
+      if (r === 'EsDireccion') return 'Dirección';
+      if (r === 'EsCau') return 'CAU';
+      if (r === 'EsProfesor') return 'Profesor';
+      if (r === 'EsAlumno') return 'Alumno';
+      return r;
+    });
+  };
+
+  const cycleRole = () => {
+    const roles = getAvailableRoles();
+    const currentIndex = roles.indexOf(activeRole!);
+    const nextIndex = (currentIndex + 1) % roles.length;
+    setActiveRole(roles[nextIndex]);
   };
 
   if (isLoading || !session) {
@@ -88,42 +111,138 @@ export default function SeleccioneModuloAccesoPage() {
     );
   }
 
-  const hasBothRoles = userData?.rolesUsuario?.includes('EsProfesor') && userData?.rolesUsuario?.includes('EsAlumno');
+  const availableRoles = getAvailableRoles();
+  const hasMultipleRoles = availableRoles.length > 1;
 
   return (
-    <div className="min-h-screen bg-white font-verdana flex flex-col">
-      {/* Header Rayuela Full Width */}
-      <div className="w-full p-4 md:p-6 flex items-center justify-between border-b border-gray-200 bg-white">
-        <div className="flex items-center gap-4">
-          <div className="flex items-baseline font-bold scale-90 md:scale-110 origin-left">
-            <span className="text-4xl" style={{ color: '#9c4d96' }}>r</span>
-            <span className="text-4xl" style={{ color: '#e63946' }}>A</span>
-            <span className="text-4xl" style={{ color: '#ffb703' }}>Y</span>
-            <span className="text-4xl" style={{ color: '#8ecae6' }}>U</span>
-            <span className="text-4xl" style={{ color: '#fb8500' }}>E</span>
-            <span className="text-4xl" style={{ color: '#2a9d8f' }}>L</span>
-            <span className="text-4xl" style={{ color: '#0077b6' }}>A</span>
+    <div className="min-h-screen bg-white font-verdana flex flex-col w-full overflow-x-hidden">
+      {/* Header Estilo Rayuela (Imagen superior) */}
+      <div className="w-full bg-[#e9e9e9] border-b border-gray-300 p-2 flex flex-col md:flex-row items-center justify-between shadow-sm">
+        <div className="flex items-center gap-4 w-full md:w-auto">
+          {/* Perfil */}
+          <div className="relative">
+            <Avatar className="h-16 w-16 border-2 border-white shadow-sm bg-gray-200">
+              <AvatarImage src={userData?.imagenPerfil || `https://picsum.photos/seed/${session.usuario}/150/150`} />
+              <AvatarFallback>{session.usuario?.substring(0, 2).toUpperCase()}</AvatarFallback>
+            </Avatar>
+            <div className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold h-5 w-5 rounded-full flex items-center justify-center border-2 border-[#e9e9e9]">
+              70
+            </div>
           </div>
-          <div className="hidden md:block h-10 w-[2px] bg-gray-300 mx-2"></div>
+
           <div className="flex flex-col">
-            <span className="text-base md:text-xl font-bold uppercase tracking-widest text-black leading-tight">Plataforma</span>
-            <span className="text-base md:text-xl font-bold uppercase tracking-widest text-black leading-tight">EDUCATIVA</span>
+            <div className="flex items-baseline gap-2">
+              <span className="font-bold text-[13px] text-black">
+                {userData?.nombreCompleto || session.usuario} ({activeRole})
+              </span>
+            </div>
+            <span className="text-[11px] text-gray-600">
+              06007031 - I.E.S. - Eugenio Hermoso (Fregenal de la Sierra)
+            </span>
+            <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-[11px] text-gray-500 font-medium">
+              <span className="hover:underline cursor-pointer">Documentos solicitados</span>
+              <span className="hover:underline cursor-pointer">Configuración</span>
+              <span className="hover:underline cursor-pointer">Manuales</span>
+              <span className="hover:underline cursor-pointer">Nuevo mensaje</span>
+              <span className="hover:underline cursor-pointer">Mis mensajes</span>
+            </div>
+            <div className="flex gap-4 mt-2">
+              <Clock className="h-4 w-4 text-gray-400 cursor-pointer hover:text-gray-600" />
+              <BookOpen className="h-4 w-4 text-gray-400 cursor-pointer hover:text-gray-600" />
+              <Home className="h-4 w-4 text-gray-400 cursor-pointer hover:text-gray-600" onClick={() => setSelectedModule(null)} />
+              <MessageSquare className="h-4 w-4 text-[#fb8500] cursor-pointer" />
+            </div>
           </div>
         </div>
-        
-        <div className="flex flex-col items-end gap-1">
-           <span className="text-[10px] text-gray-400 font-bold uppercase">SESION={session.sesion}</span>
-           <Button variant="ghost" onClick={handleLogout} className="text-gray-500 hover:text-destructive gap-2 text-xs uppercase font-bold tracking-tighter h-auto p-0 transition-colors">
-             <LogOut className="h-3 w-3" /> Salir
-           </Button>
+
+        {/* Sección Central (Cofinanciado) */}
+        <div className="hidden lg:flex flex-col items-center text-center max-w-[300px]">
+          <p className="text-[9px] text-gray-500 uppercase leading-tight">Proyecto cofinanciado por</p>
+          <p className="text-[10px] font-bold text-gray-600 leading-tight">Fondo Europeo de Desarrollo Regional.</p>
+          <p className="text-[10px] text-gray-500 leading-tight italic">Una manera de hacer Europa</p>
+        </div>
+
+        {/* Lado Derecho (Banderas, Botones, Rol Switch) */}
+        <div className="flex items-center gap-6 mt-4 md:mt-0">
+          <div className="flex items-center gap-2">
+             <div className="flex flex-col items-center">
+                <div className="w-12 h-8 border border-gray-300 relative overflow-hidden">
+                   <div className="absolute top-0 w-full h-1/3 bg-green-700"></div>
+                   <div className="absolute top-1/3 w-full h-1/3 bg-white"></div>
+                   <div className="absolute bottom-0 w-full h-1/3 bg-black"></div>
+                </div>
+             </div>
+             <div className="w-12 h-8 bg-[#003399] flex items-center justify-center relative overflow-hidden border border-gray-300">
+                <div className="grid grid-cols-4 gap-0.5 place-items-center p-1">
+                  {[...Array(12)].map((_, i) => (
+                    <div key={i} className="w-[1.5px] h-[1.5px] bg-yellow-400 rounded-full"></div>
+                  ))}
+                </div>
+                <span className="absolute bottom-0 right-0 text-[6px] text-white p-0.5 leading-none">UE</span>
+             </div>
+          </div>
+
+          <div className="flex flex-col items-center gap-2">
+             <div className="flex gap-1">
+                <Button variant="ghost" size="icon" className="h-6 w-6 rounded-none bg-gray-500 text-white hover:bg-gray-600">
+                  <Home className="h-3 w-3" />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={handleLogout} className="h-6 w-6 rounded-none bg-gray-700 text-white hover:bg-black">
+                  <X className="h-3 w-3" />
+                </Button>
+             </div>
+             
+             {hasMultipleRoles ? (
+               <div className="flex flex-col items-center group cursor-pointer" onClick={cycleRole}>
+                  <div className="bg-[#fb8500] p-1 rounded-sm shadow-sm transition-transform group-hover:scale-105">
+                    <Monitor className="h-6 w-6 text-white" />
+                  </div>
+                  <span className="text-[9px] font-bold text-[#fb8500] uppercase mt-0.5 tracking-tighter">Cambiar perfil</span>
+               </div>
+             ) : (
+               <div className="flex flex-col items-center opacity-50 grayscale">
+                  <div className="bg-gray-400 p-1 rounded-sm">
+                    <Monitor className="h-6 w-6 text-white" />
+                  </div>
+                  <span className="text-[9px] font-bold text-gray-500 uppercase mt-0.5 tracking-tighter">Ciudadano</span>
+               </div>
+             )}
+          </div>
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col">
+      {/* Segundo Header (Logo Rayuela) */}
+      {!selectedModule && (
+        <div className="w-full p-6 flex items-center justify-between border-b border-gray-200 bg-white">
+          <div className="flex items-center gap-4">
+            <div className="flex items-baseline font-bold scale-90 md:scale-110 origin-left">
+              <span className="text-4xl" style={{ color: '#9c4d96' }}>r</span>
+              <span className="text-4xl" style={{ color: '#e63946' }}>A</span>
+              <span className="text-4xl" style={{ color: '#ffb703' }}>Y</span>
+              <span className="text-4xl" style={{ color: '#8ecae6' }}>U</span>
+              <span className="text-4xl" style={{ color: '#fb8500' }}>E</span>
+              <span className="text-4xl" style={{ color: '#2a9d8f' }}>L</span>
+              <span className="text-4xl" style={{ color: '#0077b6' }}>A</span>
+            </div>
+            <div className="hidden md:block h-10 w-[2px] bg-gray-300 mx-2"></div>
+            <div className="flex flex-col">
+              <span className="text-base md:text-xl font-bold uppercase tracking-widest text-black leading-tight">Plataforma</span>
+              <span className="text-base md:text-xl font-bold uppercase tracking-widest text-black leading-tight">EDUCATIVA</span>
+            </div>
+          </div>
+          
+          <div className="flex flex-col items-end gap-1">
+             <span className="text-[10px] text-gray-400 font-bold uppercase">JSESSIONID={session.sesion}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Contenido Principal */}
+      <div className="flex-1 flex flex-col w-full">
         {!selectedModule ? (
           <>
-            {/* Grid de Módulos Expandido */}
-            <div className="flex-1 bg-[#7d7d7d] flex flex-wrap items-center justify-center content-center gap-8 md:gap-16 p-8">
+            {/* Grid de Módulos */}
+            <div className="flex-1 bg-[#7d7d7d] flex flex-wrap items-center justify-center content-center gap-8 md:gap-16 p-8 min-h-[400px]">
               <ModuleBox label="Gestión" onClick={() => handleModuleClick("GESTIÓN")} />
               <ModuleBox label="Secretaría Virtual" onClick={() => handleModuleClick("SECRETARÍA VIRTUAL")} />
               <ModuleBox label="Seguimiento" onClick={() => handleModuleClick("SEGUIMIENTO")} />
@@ -134,31 +253,15 @@ export default function SeleccioneModuloAccesoPage() {
             </div>
           </>
         ) : (
-          /* Contenido Directo del Módulo Full Screen */
-          <div className="flex-1 animate-in fade-in duration-300 relative bg-white flex flex-col">
-            {selectedModule === 'SEGUIMIENTO' && hasBothRoles && (
-              <div className="absolute top-6 right-8 z-50">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={toggleRole}
-                  className="text-[10px] uppercase tracking-tighter bg-white border-primary/20 text-primary gap-2 shadow-sm hover:bg-primary/5"
-                >
-                  <SwitchCamera className="h-3 w-3" />
-                  Cambiar a {activeRole === 'Profesor' ? 'alumno' : 'profesor'}
-                </Button>
-              </div>
-            )}
-
-            <div className="p-8 md:p-12 flex-1 flex flex-col space-y-8">
+          /* Vista de Módulo Seleccionado */
+          <div className="flex-1 animate-in fade-in duration-300 relative bg-white flex flex-col w-full">
+            <div className="p-8 md:p-12 flex-1 flex flex-col space-y-8 max-w-7xl mx-auto w-full">
               <div className="flex items-center justify-between border-b pb-6">
-                <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
+                <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-3 uppercase tracking-tight">
                   MODULO SELECCIONADO = {selectedModule}
-                  {selectedModule === 'SEGUIMIENTO' && activeRole && (
-                    <span className="text-lg font-normal text-muted-foreground italic">
-                      ({activeRole})
-                    </span>
-                  )}
+                  <span className="text-lg font-normal text-muted-foreground italic">
+                    ({activeRole})
+                  </span>
                 </h1>
                 <Button variant="ghost" onClick={() => setSelectedModule(null)} className="gap-2 text-gray-500 hover:text-primary transition-colors text-xs font-bold uppercase tracking-[0.2em]">
                   <ArrowLeft className="h-4 w-4" /> Volver al menú
@@ -166,32 +269,35 @@ export default function SeleccioneModuloAccesoPage() {
               </div>
 
               <div className="flex-1 flex flex-col items-center justify-center">
-                 <div className="p-12 border-4 border-dashed border-gray-50 rounded-2xl w-full max-w-4xl text-center space-y-6">
-                    {selectedModule === 'SEGUIMIENTO' ? (
-                      <div className="space-y-6">
-                        <p className="text-xl text-gray-600">Acceso como <span className="font-bold text-primary">{activeRole}</span></p>
-                        <div className="bg-blue-50/50 p-8 rounded-lg border border-blue-100 text-base text-blue-800 italic leading-relaxed">
-                          {activeRole === 'Profesor' 
-                            ? "Entorno de gestión docente activo para el seguimiento de alumnos asignados, faltas y calificaciones." 
-                            : "Entorno de seguimiento académico activo para consulta de notas y asistencia personal."}
-                        </div>
+                 <div className="p-16 border-2 border-gray-100 bg-gray-50/30 rounded-3xl w-full text-center space-y-8 shadow-inner">
+                    <div className="space-y-6">
+                      <p className="text-2xl text-gray-600">Acceso activo como <span className="font-bold text-primary">{activeRole}</span></p>
+                      <div className="bg-white p-10 rounded-xl border border-gray-200 text-lg text-gray-700 italic leading-relaxed shadow-sm max-w-3xl mx-auto">
+                        {activeRole === 'Profesor' 
+                          ? "Entorno de gestión docente activo para el seguimiento de alumnos asignados, faltas y calificaciones." 
+                          : activeRole === 'Alumno'
+                          ? "Entorno de seguimiento académico activo para consulta de notas y asistencia personal."
+                          : `Entorno de gestión administrativa activa para el perfil de ${activeRole}.`}
                       </div>
-                    ) : (
-                      <p className="text-muted-foreground text-xl">Cargando interfaz del módulo de {selectedModule.toLowerCase()}...</p>
-                    )}
+                    </div>
+                    <div className="flex justify-center pt-4">
+                      <div className="flex items-center gap-2 px-4 py-2 bg-green-100 text-green-800 rounded-full text-xs font-bold uppercase tracking-wider">
+                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                        Sesión Verificada
+                      </div>
+                    </div>
                  </div>
               </div>
             </div>
             
             <div className="bg-gray-50 border-t border-gray-100 p-4 flex items-center justify-center gap-4">
-              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-              <span className="text-[11px] text-gray-400 uppercase tracking-[0.3em] font-bold">Servicio Conectado (Firestore SESION OK)</span>
+              <span className="text-[10px] text-gray-400 uppercase tracking-[0.3em] font-bold">Servicio Conectado (Firestore SESION OK)</span>
             </div>
           </div>
         )}
 
-        {/* Footer Rayuela Full Width */}
-        <div className="bg-white p-6 flex justify-end items-center gap-8 border-t border-gray-100 px-8">
+        {/* Footer */}
+        <div className="bg-white p-6 flex justify-end items-center gap-8 border-t border-gray-100 px-8 w-full mt-auto">
           <div className="text-right text-[10px] text-gray-500 leading-relaxed font-bold uppercase">
             <p>Fondo Europeo de Desarrollo Regional</p>
             <p>Una manera de hacer Europa</p>
