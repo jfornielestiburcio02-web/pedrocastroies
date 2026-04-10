@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore } from '@/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -20,7 +20,6 @@ export default function LoginPage() {
   const db = useFirestore();
 
   useEffect(() => {
-    // Comprobar sesión manual en localStorage
     const session = localStorage.getItem('user_session');
     if (session) {
       router.push('/seleccionemoduloacceso');
@@ -44,16 +43,21 @@ export default function LoginPage() {
       if (userSnap.exists()) {
         const userData = userSnap.data();
         if (userData.contrasena === contrasena) {
-          // Sesión exitosa - Usamos el usuarioInput directamente para evitar undefined si no está en el body
+          // Generar JSESSIONID aleatorio
+          const jsessionid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+          
+          // Actualizar sesión en Firestore
+          await updateDoc(userRef, { sesion: jsessionid });
+
           localStorage.setItem('user_session', JSON.stringify({
             usuario: usuarioInput,
-            email: userData.email,
+            sesion: jsessionid,
             displayName: userData.nombreCompleto || usuarioInput
           }));
 
           toast({
-            title: "Bienvenido de nuevo",
-            description: `Hola ${userData.nombreCompleto || usuarioInput}, acceso concedido.`,
+            title: "Acceso concedido",
+            description: `Bienvenido, sesión ${jsessionid.substring(0, 8)}...`,
           });
           router.push('/seleccionemoduloacceso');
         } else {
@@ -73,72 +77,34 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4 bg-background font-verdana">
-      <div className="w-full max-w-[400px] animate-in fade-in zoom-in duration-500">
+    <div className="flex min-h-screen items-center justify-center p-4 bg-[#f0f0f0] font-verdana">
+      <div className="w-full max-w-[400px]">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg">
-            <Lock className="h-6 w-6" />
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">SecureEntry</h1>
-          <p className="text-muted-foreground mt-2">Acceso manual vía Firestore</p>
+          <h1 className="text-3xl font-bold tracking-tight text-primary">Acceso Rayuela</h1>
         </div>
 
         <Card className="border-border shadow-xl bg-card">
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-xl">Iniciar Sesión</CardTitle>
-            <CardDescription>
-              Ingresa tu usuario y contraseña de la colección
-            </CardDescription>
+          <CardHeader>
+            <CardTitle className="text-xl">Identificación</CardTitle>
+            <CardDescription>Introduzca sus credenciales</CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit}>
             <CardContent className="grid gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="usuario">Usuario</Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    id="usuario" 
-                    name="usuario" 
-                    type="text" 
-                    placeholder="nombre_usuario" 
-                    className="pl-10 focus-visible:ring-accent" 
-                    required 
-                  />
-                </div>
+                <Input id="usuario" name="usuario" type="text" required />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="contrasena">Contraseña</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    id="contrasena" 
-                    name="contrasena" 
-                    type="password" 
-                    className="pl-10 focus-visible:ring-accent" 
-                    required 
-                  />
-                </div>
+                <Input id="contrasena" name="contrasena" type="password" required />
               </div>
             </CardContent>
             <CardFooter className="flex flex-col gap-4">
-              <Button 
-                type="submit" 
-                className="w-full bg-primary hover:bg-primary/90 text-white shadow-md transition-all active:scale-95" 
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <>
-                    Entrar <ArrowRight className="ml-2 h-4 w-4" />
-                  </>
-                )}
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Entrar"}
               </Button>
               <div className="text-center text-sm">
-                ¿No tienes cuenta?{" "}
-                <Link href="/register" className="font-medium text-primary hover:text-accent transition-colors">
-                  Regístrate ahora
-                </Link>
+                <Link href="/register" className="text-primary hover:underline">Registrarse</Link>
               </div>
             </CardFooter>
           </form>

@@ -5,15 +5,15 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Usuario",
       "type": "object",
-      "description": "Entidad de usuario personalizada para autenticación manual vía Firestore.",
+      "description": "Entidad de usuario con identificador de sesión manual.",
       "properties": {
         "usuario": {
           "type": "string",
-          "description": "Nombre de usuario único (ID del documento)."
+          "description": "Nombre de usuario único."
         },
         "contrasena": {
           "type": "string",
-          "description": "Contraseña almacenada en texto plano (según requerimiento)."
+          "description": "Contraseña en texto plano."
         },
         "email": {
           "type": "string",
@@ -27,8 +27,11 @@
           "items": {
             "type": "string",
             "enum": ["EsProfesor", "EsAlumno"]
-          },
-          "description": "Lista de roles asignados al usuario."
+          }
+        },
+        "sesion": {
+          "type": "string",
+          "description": "Identificador de sesión (JSESSIONID)."
         },
         "createdAt": {
           "type": "string",
@@ -52,7 +55,7 @@
       "schema": {
         "$ref": "#/backend/entities/Usuario"
       },
-      "description": "Colección de usuarios para el sistema de login personalizado."
+      "description": "Colección de usuarios con gestión de sesión manual."
     }
   }
 }
