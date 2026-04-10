@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { UserPlus, Mail, Lock, User, Loader2, ArrowRight } from 'lucide-react';
@@ -10,34 +10,73 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { register } from '@/lib/auth-mock';
+import { useAuth, useFirestore, useUser } from '@/firebase';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { doc, serverTimestamp } from 'firebase/firestore';
+import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
+  const auth = useAuth();
+  const db = useFirestore();
+  const { user: currentUser, isUserLoading } = useUser();
+
+  useEffect(() => {
+    if (!isUserLoading && currentUser) {
+      router.push('/dashboard');
+    }
+  }, [currentUser, isUserLoading, router]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsLoading(true);
 
     const formData = new FormData(event.currentTarget);
-    const result = await register(formData);
+    const name = formData.get('name') as string;
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
 
-    if (result.success) {
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // Update basic profile
+      await updateProfile(user, { displayName: name });
+
+      // Create UserProfile in Firestore (Non-blocking as per guidelines)
+      const profileRef = doc(db, 'user_profiles', user.uid);
+      setDocumentNonBlocking(profileRef, {
+        id: user.uid,
+        firebaseUid: user.uid,
+        email: user.email,
+        displayName: name,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+
       toast({
         title: "Cuenta creada",
-        description: "Tu registro ha sido exitoso. Ahora puedes iniciar sesión.",
+        description: "Tu registro ha sido exitoso. Bienvenido a SecureEntry.",
       });
-      router.push('/login');
-    } else {
+      router.push('/dashboard');
+    } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Error de registro",
-        description: "Hubo un problema al crear tu cuenta.",
+        description: error.message || "Hubo un problema al crear tu cuenta.",
       });
       setIsLoading(false);
     }
+  }
+
+  if (isUserLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
   return (

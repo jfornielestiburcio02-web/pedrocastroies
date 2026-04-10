@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Lock, Mail, Loader2, ArrowRight } from 'lucide-react';
@@ -10,34 +10,53 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { login } from '@/lib/auth-mock';
+import { useAuth, useUser } from '@/firebase';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
+  const auth = useAuth();
+  const { user, isUserLoading } = useUser();
+
+  useEffect(() => {
+    if (!isUserLoading && user) {
+      router.push('/dashboard');
+    }
+  }, [user, isUserLoading, router]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsLoading(true);
 
     const formData = new FormData(event.currentTarget);
-    const result = await login(formData);
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
 
-    if (result.success) {
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
       toast({
         title: "Bienvenido de nuevo",
         description: "Acceso concedido exitosamente.",
       });
       router.push('/dashboard');
-    } else {
+    } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Error de autenticación",
-        description: result.error,
+        description: "Credenciales inválidas o problema de conexión.",
       });
       setIsLoading(false);
     }
+  }
+
+  if (isUserLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
   return (
@@ -71,7 +90,6 @@ export default function LoginPage() {
                     placeholder="ejemplo@correo.com" 
                     className="pl-10 focus-visible:ring-accent" 
                     required 
-                    defaultValue="demo@example.com"
                   />
                 </div>
               </div>
@@ -93,7 +111,6 @@ export default function LoginPage() {
                     type="password" 
                     className="pl-10 focus-visible:ring-accent" 
                     required 
-                    defaultValue="password123"
                   />
                 </div>
               </div>

@@ -1,31 +1,56 @@
 
-import React from 'react';
-import { redirect } from 'next/navigation';
+"use client";
+
+import React, { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { 
   ShieldCheck, 
   LogOut, 
-  User, 
+  User as UserIcon, 
   Settings, 
   Bell, 
   Key, 
   Activity,
   ChevronRight,
   Database,
-  Lock
+  Lock,
+  Loader2
 } from 'lucide-react';
-import { getSession, logout } from '@/lib/auth-mock';
+import { useAuth, useUser } from '@/firebase';
+import { signOut } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 
-export default async function DashboardPage() {
-  const session = await getSession();
+export default function DashboardPage() {
+  const { user, isUserLoading } = useUser();
+  const auth = useAuth();
+  const router = useRouter();
 
-  if (!session) {
-    redirect('/login');
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, isUserLoading, router]);
+
+  async function handleLogout() {
+    try {
+      await signOut(auth);
+      router.push('/login');
+    } catch (error) {
+      console.error("Error signing out", error);
+    }
+  }
+
+  if (isUserLoading || !user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
   const userAvatar = PlaceHolderImages.find(img => img.id === 'user-avatar');
@@ -49,8 +74,8 @@ export default async function DashboardPage() {
             <Separator orientation="vertical" className="h-6" />
             <div className="flex items-center gap-3">
               <div className="hidden text-right sm:block">
-                <p className="text-sm font-medium">Demo User</p>
-                <p className="text-xs text-muted-foreground">demo@example.com</p>
+                <p className="text-sm font-medium">{user.displayName || 'Usuario'}</p>
+                <p className="text-xs text-muted-foreground">{user.email}</p>
               </div>
               <div className="relative h-9 w-9 overflow-hidden rounded-full border border-border bg-muted shadow-sm">
                 {userAvatar && (
@@ -64,11 +89,14 @@ export default async function DashboardPage() {
                 )}
               </div>
             </div>
-            <form action={logout}>
-              <Button variant="ghost" size="icon" type="submit" className="rounded-full text-muted-foreground hover:text-destructive">
-                <LogOut className="h-5 w-5" />
-              </Button>
-            </form>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={handleLogout}
+              className="rounded-full text-muted-foreground hover:text-destructive"
+            >
+              <LogOut className="h-5 w-5" />
+            </Button>
           </div>
         </div>
       </nav>
@@ -182,7 +210,7 @@ export default async function DashboardPage() {
             <CardContent className="space-y-2">
               <Button variant="ghost" className="w-full justify-between hover:bg-primary/5 hover:text-primary">
                 <div className="flex items-center gap-3">
-                  <User className="h-4 w-4" />
+                  <UserIcon className="h-4 w-4" />
                   <span>Editar Perfil</span>
                 </div>
                 <ChevronRight className="h-4 w-4" />
