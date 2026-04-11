@@ -3,18 +3,14 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
 import { 
   Loader2, 
-  SwitchCamera, 
   ArrowLeft,
-  LogOut,
-  Home,
   X,
   Clock,
   BookOpen,
   MessageSquare,
-  ChevronRight,
+  Home,
   Monitor
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -116,102 +112,104 @@ export default function SeleccioneModuloAccesoPage() {
 
   return (
     <div className="min-h-screen bg-white font-verdana flex flex-col w-full overflow-x-hidden">
-      {/* Header Estilo Rayuela (Imagen superior) */}
-      <div className="w-full bg-[#e9e9e9] border-b border-gray-300 p-2 flex flex-col md:flex-row items-center justify-between shadow-sm">
-        <div className="flex items-center gap-4 w-full md:w-auto">
-          {/* Perfil */}
-          <div className="relative">
-            <Avatar className="h-16 w-16 border-2 border-white shadow-sm bg-gray-200">
-              <AvatarImage src={userData?.imagenPerfil || `https://picsum.photos/seed/${session.usuario}/150/150`} />
-              <AvatarFallback>{session.usuario?.substring(0, 2).toUpperCase()}</AvatarFallback>
-            </Avatar>
-            <div className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold h-5 w-5 rounded-full flex items-center justify-center border-2 border-[#e9e9e9]">
-              70
+      {/* Header Estilo Rayuela (Solo aparece si hay un módulo seleccionado) */}
+      {selectedModule && (
+        <div className="w-full bg-[#e9e9e9] border-b border-gray-300 p-2 flex flex-col md:flex-row items-center justify-between shadow-sm animate-in fade-in slide-in-from-top duration-500">
+          <div className="flex items-center gap-4 w-full md:w-auto">
+            {/* Perfil */}
+            <div className="relative">
+              <Avatar className="h-16 w-16 border-2 border-white shadow-sm bg-gray-200">
+                <AvatarImage src={userData?.imagenPerfil || `https://picsum.photos/seed/${session.usuario}/150/150`} />
+                <AvatarFallback>{session.usuario?.substring(0, 2).toUpperCase()}</AvatarFallback>
+              </Avatar>
+              <div className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold h-5 w-5 rounded-full flex items-center justify-center border-2 border-[#e9e9e9]">
+                70
+              </div>
             </div>
-          </div>
 
-          <div className="flex flex-col">
-            <div className="flex items-baseline gap-2">
-              <span className="font-bold text-[13px] text-black">
-                {userData?.nombreCompleto || session.usuario} ({activeRole})
+            <div className="flex flex-col">
+              <div className="flex items-baseline gap-2">
+                <span className="font-bold text-[13px] text-black">
+                  {userData?.nombreCompleto || session.usuario} ({activeRole})
+                </span>
+              </div>
+              <span className="text-[11px] text-gray-600">
+                06007031 - I.E.S. - Eugenio Hermoso (Fregenal de la Sierra)
               </span>
-            </div>
-            <span className="text-[11px] text-gray-600">
-              06007031 - I.E.S. - Eugenio Hermoso (Fregenal de la Sierra)
-            </span>
-            <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-[11px] text-gray-500 font-medium">
-              <span className="hover:underline cursor-pointer">Documentos solicitados</span>
-              <span className="hover:underline cursor-pointer">Configuración</span>
-              <span className="hover:underline cursor-pointer">Manuales</span>
-              <span className="hover:underline cursor-pointer">Nuevo mensaje</span>
-              <span className="hover:underline cursor-pointer">Mis mensajes</span>
-            </div>
-            <div className="flex gap-4 mt-2">
-              <Clock className="h-4 w-4 text-gray-400 cursor-pointer hover:text-gray-600" />
-              <BookOpen className="h-4 w-4 text-gray-400 cursor-pointer hover:text-gray-600" />
-              <Home className="h-4 w-4 text-gray-400 cursor-pointer hover:text-gray-600" onClick={() => setSelectedModule(null)} />
-              <MessageSquare className="h-4 w-4 text-[#fb8500] cursor-pointer" />
+              <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-[11px] text-gray-500 font-medium">
+                <span className="hover:underline cursor-pointer">Documentos solicitados</span>
+                <span className="hover:underline cursor-pointer">Configuración</span>
+                <span className="hover:underline cursor-pointer">Manuales</span>
+                <span className="hover:underline cursor-pointer">Nuevo mensaje</span>
+                <span className="hover:underline cursor-pointer">Mis mensajes</span>
+              </div>
+              <div className="flex gap-4 mt-2">
+                <Clock className="h-4 w-4 text-gray-400 cursor-pointer hover:text-gray-600" />
+                <BookOpen className="h-4 w-4 text-gray-400 cursor-pointer hover:text-gray-600" />
+                <Home className="h-4 w-4 text-gray-400 cursor-pointer hover:text-gray-600" onClick={() => setSelectedModule(null)} />
+                <MessageSquare className="h-4 w-4 text-[#fb8500] cursor-pointer" />
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Sección Central (Cofinanciado) */}
-        <div className="hidden lg:flex flex-col items-center text-center max-w-[300px]">
-          <p className="text-[9px] text-gray-500 uppercase leading-tight">Proyecto cofinanciado por</p>
-          <p className="text-[10px] font-bold text-gray-600 leading-tight">Fondo Europeo de Desarrollo Regional.</p>
-          <p className="text-[10px] text-gray-500 leading-tight italic">Una manera de hacer Europa</p>
-        </div>
-
-        {/* Lado Derecho (Banderas, Botones, Rol Switch) */}
-        <div className="flex items-center gap-6 mt-4 md:mt-0">
-          <div className="flex items-center gap-2">
-             <div className="flex flex-col items-center">
-                <div className="w-12 h-8 border border-gray-300 relative overflow-hidden">
-                   <div className="absolute top-0 w-full h-1/3 bg-green-700"></div>
-                   <div className="absolute top-1/3 w-full h-1/3 bg-white"></div>
-                   <div className="absolute bottom-0 w-full h-1/3 bg-black"></div>
-                </div>
-             </div>
-             <div className="w-12 h-8 bg-[#003399] flex items-center justify-center relative overflow-hidden border border-gray-300">
-                <div className="grid grid-cols-4 gap-0.5 place-items-center p-1">
-                  {[...Array(12)].map((_, i) => (
-                    <div key={i} className="w-[1.5px] h-[1.5px] bg-yellow-400 rounded-full"></div>
-                  ))}
-                </div>
-                <span className="absolute bottom-0 right-0 text-[6px] text-white p-0.5 leading-none">UE</span>
-             </div>
+          {/* Sección Central (Cofinanciado) */}
+          <div className="hidden lg:flex flex-col items-center text-center max-w-[300px]">
+            <p className="text-[9px] text-gray-500 uppercase leading-tight">Proyecto cofinanciado por</p>
+            <p className="text-[10px] font-bold text-gray-600 leading-tight">Fondo Europeo de Desarrollo Regional.</p>
+            <p className="text-[10px] text-gray-500 leading-tight italic">Una manera de hacer Europa</p>
           </div>
 
-          <div className="flex flex-col items-center gap-2">
-             <div className="flex gap-1">
-                <Button variant="ghost" size="icon" className="h-6 w-6 rounded-none bg-gray-500 text-white hover:bg-gray-600">
-                  <Home className="h-3 w-3" />
-                </Button>
-                <Button variant="ghost" size="icon" onClick={handleLogout} className="h-6 w-6 rounded-none bg-gray-700 text-white hover:bg-black">
-                  <X className="h-3 w-3" />
-                </Button>
-             </div>
-             
-             {hasMultipleRoles ? (
-               <div className="flex flex-col items-center group cursor-pointer" onClick={cycleRole}>
-                  <div className="bg-[#fb8500] p-1 rounded-sm shadow-sm transition-transform group-hover:scale-105">
-                    <Monitor className="h-6 w-6 text-white" />
+          {/* Lado Derecho (Banderas, Botones, Rol Switch) */}
+          <div className="flex items-center gap-6 mt-4 md:mt-0">
+            <div className="flex items-center gap-2">
+               <div className="flex flex-col items-center">
+                  <div className="w-12 h-8 border border-gray-300 relative overflow-hidden">
+                     <div className="absolute top-0 w-full h-1/3 bg-green-700"></div>
+                     <div className="absolute top-1/3 w-full h-1/3 bg-white"></div>
+                     <div className="absolute bottom-0 w-full h-1/3 bg-black"></div>
                   </div>
-                  <span className="text-[9px] font-bold text-[#fb8500] uppercase mt-0.5 tracking-tighter">Cambiar perfil</span>
                </div>
-             ) : (
-               <div className="flex flex-col items-center opacity-50 grayscale">
-                  <div className="bg-gray-400 p-1 rounded-sm">
-                    <Monitor className="h-6 w-6 text-white" />
+               <div className="w-12 h-8 bg-[#003399] flex items-center justify-center relative overflow-hidden border border-gray-300">
+                  <div className="grid grid-cols-4 gap-0.5 place-items-center p-1">
+                    {[...Array(12)].map((_, i) => (
+                      <div key={i} className="w-[1.5px] h-[1.5px] bg-yellow-400 rounded-full"></div>
+                    ))}
                   </div>
-                  <span className="text-[9px] font-bold text-gray-500 uppercase mt-0.5 tracking-tighter">Ciudadano</span>
+                  <span className="absolute bottom-0 right-0 text-[6px] text-white p-0.5 leading-none">UE</span>
                </div>
-             )}
+            </div>
+
+            <div className="flex flex-col items-center gap-2">
+               <div className="flex gap-1">
+                  <Button variant="ghost" size="icon" className="h-6 w-6 rounded-none bg-gray-500 text-white hover:bg-gray-600" onClick={() => setSelectedModule(null)}>
+                    <Home className="h-3 w-3" />
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={handleLogout} className="h-6 w-6 rounded-none bg-gray-700 text-white hover:bg-black">
+                    <X className="h-3 w-3" />
+                  </Button>
+               </div>
+               
+               {hasMultipleRoles ? (
+                 <div className="flex flex-col items-center group cursor-pointer" onClick={cycleRole}>
+                    <div className="bg-[#fb8500] p-1 rounded-sm shadow-sm transition-transform group-hover:scale-105">
+                      <Monitor className="h-6 w-6 text-white" />
+                    </div>
+                    <span className="text-[9px] font-bold text-[#fb8500] uppercase mt-0.5 tracking-tighter">Cambiar perfil</span>
+                 </div>
+               ) : (
+                 <div className="flex flex-col items-center opacity-50 grayscale">
+                    <div className="bg-gray-400 p-1 rounded-sm">
+                      <Monitor className="h-6 w-6 text-white" />
+                    </div>
+                    <span className="text-[9px] font-bold text-gray-500 uppercase mt-0.5 tracking-tighter">Ciudadano</span>
+                 </div>
+               )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Segundo Header (Logo Rayuela) */}
+      {/* Segundo Header (Logo Rayuela - Solo se muestra si NO hay módulo seleccionado) */}
       {!selectedModule && (
         <div className="w-full p-6 flex items-center justify-between border-b border-gray-200 bg-white">
           <div className="flex items-center gap-4">
@@ -233,6 +231,9 @@ export default function SeleccioneModuloAccesoPage() {
           
           <div className="flex flex-col items-end gap-1">
              <span className="text-[10px] text-gray-400 font-bold uppercase">JSESSIONID={session.sesion}</span>
+             <Button variant="ghost" size="sm" onClick={handleLogout} className="text-[10px] text-gray-500 hover:text-black p-0 h-auto">
+               Cerrar sesión
+             </Button>
           </div>
         </div>
       )}
@@ -243,9 +244,9 @@ export default function SeleccioneModuloAccesoPage() {
           <>
             {/* Grid de Módulos */}
             <div className="flex-1 bg-[#7d7d7d] flex flex-wrap items-center justify-center content-center gap-8 md:gap-16 p-8 min-h-[400px]">
-              <ModuleBox label="Gestión" onClick={() => handleModuleClick("GESTIÓN")} />
-              <ModuleBox label="Secretaría Virtual" onClick={() => handleModuleClick("SECRETARÍA VIRTUAL")} />
-              <ModuleBox label="Seguimiento" onClick={() => handleModuleClick("SEGUIMIENTO")} />
+              <ModuleBox label="Gestión" onClick={() => handleModuleClick("Gestión")} />
+              <ModuleBox label="Secretaría Virtual" onClick={() => handleModuleClick("Secretaría Virtual")} />
+              <ModuleBox label="Seguimiento" onClick={() => handleModuleClick("Seguimiento")} />
             </div>
 
             <div className="w-full p-4 bg-white text-[12px] text-black text-left border-t border-gray-200 italic px-8">
