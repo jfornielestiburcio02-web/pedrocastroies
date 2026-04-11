@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Loader2, 
   Search, 
@@ -56,6 +56,12 @@ export function EvaluationsView({ profesorId, type }: EvaluationsViewProps) {
   const [activeItemId, setActiveItemId] = useState<string | null>(null); 
   const [isCreating, setIsCreating] = useState(false);
 
+  // Limpiar selección cuando cambia el tipo (Exámenes <-> Tareas)
+  useEffect(() => {
+    setActiveItemId(null);
+    setIsCreating(false);
+  }, [type]);
+
   const [formData, setFormData] = useState({
     titulo: '',
     mostrarAlumno: true,
@@ -81,6 +87,7 @@ export function EvaluationsView({ profesorId, type }: EvaluationsViewProps) {
 
   const itemsQuery = useMemoFirebase(() => {
     if (!db || !selectedScheduleId) return null;
+    // Aseguramos que la colección sea la correcta según el tipo
     return query(
       collection(db, type === 'exam' ? 'examenes' : 'tareas'),
       where('claseId', '==', selectedScheduleId),
@@ -113,7 +120,9 @@ export function EvaluationsView({ profesorId, type }: EvaluationsViewProps) {
 
     const collectionName = type === 'exam' ? 'examenes' : 'tareas';
     const data = type === 'exam' ? {
-      ...formData,
+      titulo: formData.titulo,
+      mostrarAlumno: formData.mostrarAlumno,
+      ponderacion: formData.ponderacion,
       profesorId,
       claseId: selectedScheduleId,
       fecha: selectedDate,
@@ -139,8 +148,14 @@ export function EvaluationsView({ profesorId, type }: EvaluationsViewProps) {
     const collectionName = type === 'exam' ? 'examenes' : 'tareas';
     const field = type === 'exam' ? 'notas' : 'entregas';
     
+    // Evitar guardar NaN en Firestore
+    let safeValue = value;
+    if (type === 'exam' && typeof value === 'number' && isNaN(value)) {
+      safeValue = 0;
+    }
+    
     updateDocumentNonBlocking(doc(db, collectionName, activeItem.id), {
-      [`${field}.${studentId}`]: value
+      [`${field}.${studentId}`]: safeValue
     });
   };
 
@@ -324,7 +339,9 @@ export function EvaluationsView({ profesorId, type }: EvaluationsViewProps) {
                 <div className="p-6">
                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                       {students.map(student => {
-                        const val = type === 'exam' ? (activeItem.notas?.[student.id] ?? '') : (activeItem.entregas?.[student.id] ?? false);
+                        const rawVal = type === 'exam' ? (activeItem.notas?.[student.id]) : (activeItem.entregas?.[student.id]);
+                        // Asegurar que nunca pasamos NaN al atributo value del input
+                        const val = (rawVal === undefined || rawVal === null || (typeof rawVal === 'number' && isNaN(rawVal))) ? '' : rawVal;
                         
                         return (
                           <div key={student.id} className="flex items-center justify-between p-3 border rounded-lg bg-gray-50/50 hover:bg-white hover:shadow-sm transition-all group">
@@ -346,12 +363,15 @@ export function EvaluationsView({ profesorId, type }: EvaluationsViewProps) {
                                    className="h-8 text-center text-xs font-bold border-gray-300 focus:border-[#89a54e] p-1"
                                    placeholder="0.0"
                                    value={val}
-                                   onChange={(e) => handleUpdateStudent(student.id, parseFloat(e.target.value))}
+                                   onChange={(e) => {
+                                      const num = parseFloat(e.target.value);
+                                      handleUpdateStudent(student.id, isNaN(num) ? 0 : num);
+                                   }}
                                  />
                                ) : (
                                  <div className="flex justify-center">
                                     <Switch 
-                                      checked={val as boolean} 
+                                      checked={!!val} 
                                       onCheckedChange={(checked) => handleUpdateStudent(student.id, checked)}
                                     />
                                  </div>
