@@ -443,6 +443,8 @@ export default function SeleccioneModuloAccesoPage() {
                     <ScheduleListView />
                   ) : activeSubContent === 'Por materia' ? (
                     <AttendanceBySubjectView profesorId={session.usuario} />
+                  ) : activeSubContent === 'Guardias' ? (
+                    <div className="p-10 text-center text-gray-400 italic">Módulo de guardias en desarrollo...</div>
                   ) : activeSubContent ? (
                     <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
                        <div className="bg-white border rounded-lg p-10 shadow-sm min-h-[400px] flex flex-col items-center justify-center text-center space-y-4">
@@ -508,6 +510,276 @@ export default function SeleccioneModuloAccesoPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * Vista de Faltas por Materia para Profesores.
+ */
+function AttendanceBySubjectView({ profesorId }: { profesorId: string }) {
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(null);
+  const [historyAlumnoId, setHistoryAlumnoId] = useState<string | null>(null);
+  const db = useFirestore();
+
+  const dayOfWeek = useMemo(() => {
+    const days = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+    return days[new Date(selectedDate).getDay()];
+  }, [selectedDate]);
+
+  const schedulesQuery = useMemoFirebase(() => {
+    if (!db || !profesorId) return null;
+    return query(
+      collection(db, 'horarios'), 
+      where('profesorId', '==', profesorId), 
+      where('dia', '==', dayOfWeek)
+    );
+  }, [db, profesorId, dayOfWeek]);
+
+  const { data: schedules, isLoading: loadingSchedules } = useCollection(schedulesQuery);
+  const currentSchedule = useMemo(() => schedules?.find(s => s.id === selectedScheduleId), [schedules, selectedScheduleId]);
+
+  const attendanceQuery = useMemoFirebase(() => {
+    if (!db || !selectedScheduleId) return null;
+    return query(
+      collection(db, 'asistenciasInasistencias'),
+      where('claseId', '==', selectedScheduleId),
+      where('fecha', '==', selectedDate)
+    );
+  }, [db, selectedScheduleId, selectedDate]);
+
+  const { data: attendances } = useCollection(attendanceQuery);
+
+  const usersQuery = useMemoFirebase(() => {
+    if (!db) return null;
+    return collection(db, 'usuarios');
+  }, [db]);
+
+  const { data: allUsers } = useCollection(usersQuery);
+
+  const students = useMemo(() => {
+    if (!currentSchedule || !allUsers) return [];
+    return allUsers.filter(u => currentSchedule.alumnosIds?.includes(u.id));
+  }, [currentSchedule, allUsers]);
+
+  const handleAttendanceChange = (alumnoId: string, tipo: string) => {
+    if (!db || !selectedScheduleId) return;
+
+    const existing = attendances?.find(a => a.alumnoId === alumnoId);
+
+    if (tipo === 'A') {
+      if (existing) {
+        deleteDocumentNonBlocking(doc(db, 'asistenciasInasistencias', existing.id));
+      }
+      return;
+    }
+
+    const attendanceData = {
+      alumnoId,
+      claseId: selectedScheduleId,
+      fecha: selectedDate,
+      tipo,
+      profesorId,
+      createdAt: new Date().toISOString()
+    };
+
+    if (existing) {
+      setDocumentNonBlocking(doc(db, 'asistenciasInasistencias', existing.id), attendanceData, { merge: true });
+    } else {
+      addDocumentNonBlocking(collection(db, 'asistenciasInasistencias'), attendanceData);
+    }
+  };
+
+  return (
+    <div className="animate-in fade-in duration-500 space-y-6 max-w-7xl mx-auto w-full font-verdana">
+      <div className="bg-[#f2f2f2] border p-4 flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm">
+        <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
+          <div className="flex items-center gap-2">
+            <Label className="text-[11px] font-bold text-gray-600">Fecha:</Label>
+            <Input 
+              type="date" 
+              value={selectedDate} 
+              onChange={(e) => { setSelectedDate(e.target.value); setSelectedScheduleId(null); }}
+              className="h-8 border-gray-300 w-[150px] text-[11px]"
+            />
+          </div>
+
+          <div className="flex items-center gap-2 min-w-[300px]">
+            <Label className="text-[11px] font-bold text-gray-600">Sesión:</Label>
+            {loadingSchedules ? (
+              <Loader2 className="h-4 w-4 animate-spin text-[#89a54e]" />
+            ) : (
+              <Select onValueChange={setSelectedScheduleId} value={selectedScheduleId || ""}>
+                <SelectTrigger className="h-8 border-gray-300 text-[11px]">
+                  <SelectValue placeholder={schedules && schedules.length > 0 ? "Seleccione sesión..." : "Sin horario"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {schedules?.map(s => (
+                    <SelectItem key={s.id} value={s.id} className="text-[11px]">
+                      {s.horaInicio}-{s.horaFin} | {s.asignatura}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+        </div>
+
+        <div className="flex gap-4">
+           <div className="flex items-center gap-1.5">
+             <div className="w-3 h-3 bg-[#EB8A5F] rounded-sm"></div>
+             <span className="text-[10px] font-bold text-gray-500 uppercase">Injustificada</span>
+           </div>
+           <div className="flex items-center gap-1.5">
+             <div className="w-3 h-3 bg-[#FFCD2D] rounded-sm"></div>
+             <span className="text-[10px] font-bold text-gray-500 uppercase">Retraso</span>
+           </div>
+        </div>
+      </div>
+
+      {!selectedScheduleId ? (
+        <div className="py-20 text-center space-y-4">
+           <div className="bg-gray-100 h-16 w-16 rounded-full flex items-center justify-center mx-auto text-gray-400">
+             <Search className="h-8 w-8" />
+           </div>
+           <p className="text-gray-500 italic text-sm">Seleccione una sesión de su horario para visualizar los alumnos.</p>
+        </div>
+      ) : students.length === 0 ? (
+        <div className="py-20 text-center text-gray-400 italic text-sm">
+          No hay alumnos asignados a este tramo horario.
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 justify-items-center animate-in zoom-in-95 duration-300">
+           {students.map(student => {
+             const studentAttendance = attendances?.find(a => a.alumnoId === student.id);
+             const currentStatus = studentAttendance?.tipo || 'A';
+
+             return (
+               <div key={student.id} className="itemAlumnoEnClase relative group">
+                  <Avatar className="imagenAlumnoEnClase" onClick={() => setHistoryAlumnoId(student.id)}>
+                    <AvatarImage src={student.imagenPerfil} />
+                    <AvatarFallback>{student.usuario?.substring(0, 2).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  
+                  <div className="nombreAlumno" onClick={() => setHistoryAlumnoId(student.id)}>
+                    {student.nombrePersona || student.usuario}
+                  </div>
+
+                  <div className="flex mt-auto pb-4 gap-1">
+                    <button 
+                      onClick={() => handleAttendanceChange(student.id, 'A')}
+                      data-state="A"
+                      title="Asiste"
+                      className={cn("botonFalta", currentStatus === 'A' && "botonFalta-active")}
+                    >A</button>
+                    <button 
+                      onClick={() => handleAttendanceChange(student.id, 'I')}
+                      data-state="I"
+                      title="Injustificada"
+                      className={cn("botonFalta", currentStatus === 'I' && "botonFalta-active")}
+                    >I</button>
+                    <button 
+                      onClick={() => handleAttendanceChange(student.id, 'R')}
+                      data-state="R"
+                      title="Retraso"
+                      className={cn("botonFalta", currentStatus === 'R' && "botonFalta-active")}
+                    >R</button>
+                  </div>
+
+                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-6 w-6 text-gray-300 hover:text-[#008D88]"
+                      onClick={() => setHistoryAlumnoId(student.id)}
+                    >
+                      <History className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+               </div>
+             );
+           })}
+        </div>
+      )}
+
+      {historyAlumnoId && (
+        <AttendanceHistoryDialog 
+          alumnoId={historyAlumnoId} 
+          claseId={selectedScheduleId!} 
+          onClose={() => setHistoryAlumnoId(null)} 
+        />
+      )}
+    </div>
+  );
+}
+
+/**
+ * Diálogo de historial de asistencias para un alumno en una clase específica.
+ */
+function AttendanceHistoryDialog({ alumnoId, claseId, onClose }: { alumnoId: string, claseId: string, onClose: () => void }) {
+  const db = useFirestore();
+  const [alumnoName, setAlumnoName] = useState("");
+
+  useEffect(() => {
+    if (!db || !alumnoId) return;
+    getDoc(doc(db, 'usuarios', alumnoId)).then(snap => {
+      if (snap.exists()) setAlumnoName(snap.data().nombrePersona || snap.data().usuario);
+    });
+  }, [db, alumnoId]);
+
+  const historyQuery = useMemoFirebase(() => {
+    if (!db) return null;
+    return query(
+      collection(db, 'asistenciasInasistencias'),
+      where('alumnoId', '==', alumnoId),
+      where('claseId', '==', claseId),
+      orderBy('fecha', 'desc')
+    );
+  }, [db, alumnoId, claseId]);
+
+  const { data: history, isLoading } = useCollection(historyQuery);
+
+  return (
+    <Dialog open={true} onOpenChange={onClose}>
+      <DialogContent className="max-w-md font-verdana p-0 gap-0 border-none overflow-hidden">
+        <DialogHeader className="bg-[#f2f2f2] p-4 text-center">
+          <DialogTitle className="text-[14px] font-bold text-black uppercase tracking-tight">Historial de Asistencias</DialogTitle>
+          <DialogDescription className="text-[11px] font-bold text-[#008D88] uppercase mt-1">
+            Alumno: {alumnoName}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="p-6 bg-white">
+          {isLoading ? (
+            <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+          ) : history && history.length > 0 ? (
+            <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
+              {history.map(item => (
+                <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                  <div className="flex flex-col">
+                    <span className="text-[11px] font-bold text-gray-700">{format(new Date(item.fecha), 'EEEE d MMMM', { locale: es })}</span>
+                    <span className="text-[9px] text-gray-400 uppercase">Registrado el {format(new Date(item.createdAt), 'HH:mm')}</span>
+                  </div>
+                  <Badge className={cn(
+                    "text-[10px] font-bold px-3 border-none",
+                    item.tipo === 'I' ? "bg-[#EB8A5F] text-white" : "bg-[#FFCD2D] text-gray-800"
+                  )}>
+                    {item.tipo === 'I' ? 'INJUSTIFICADA' : 'RETRASO'}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-10 text-gray-400 italic text-sm">
+              No constan incidencias de asistencia para este alumno en este horario.
+            </div>
+          )}
+          <div className="mt-6 flex justify-center">
+             <Button onClick={onClose} className="bg-[#008D88] hover:bg-[#00706b] text-white text-[11px] font-bold uppercase h-8 px-6">Cerrar</Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -624,12 +896,6 @@ function ScheduleListView() {
               )}
             </TableBody>
           </Table>
-        </div>
-      </div>
-      <div className="mt-4 flex justify-center">
-        <div className="flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-full text-[10px] font-bold text-gray-500 uppercase tracking-widest">
-           <CalendarIcon className="h-3 w-3" />
-           Consulta en tiempo real vía Firestore
         </div>
       </div>
     </div>
@@ -825,293 +1091,15 @@ function ScheduleCreationView() {
             </div>
           </div>
 
-          <div className="pt-6 border-t flex items-center justify-between gap-4">
-             <div className="flex items-center gap-2 text-[10px] text-gray-400 uppercase font-bold tracking-widest italic">
-                <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                Gestión de Horarios v1.0
-             </div>
-             <div className="flex gap-4">
-                <Button type="button" variant="outline" className="text-[11px] font-bold uppercase tracking-widest">
-                  Limpiar Formulario
-                </Button>
-                <Button type="submit" disabled={isSaving} className="bg-[#9c4d96] hover:bg-[#833d7d] text-white gap-2 px-8 text-[11px] font-bold uppercase tracking-widest h-12">
-                  {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                  Guardar en Rayuela
-                </Button>
-             </div>
+          <div className="pt-6 border-t flex items-center justify-end">
+             <Button type="submit" disabled={isSaving} className="bg-[#9c4d96] hover:bg-[#833d7d] text-white gap-2 px-8 text-[11px] font-bold uppercase tracking-widest h-12">
+               {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+               Guardar en Rayuela
+             </Button>
           </div>
         </form>
       </div>
     </div>
-  );
-}
-
-/**
- * Vista de Faltas por Materia para Profesores.
- */
-function AttendanceBySubjectView({ profesorId }: { profesorId: string }) {
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(null);
-  const [historyAlumnoId, setHistoryAlumnoId] = useState<string | null>(null);
-  const db = useFirestore();
-  const { toast } = useToast();
-
-  const dayOfWeek = useMemo(() => {
-    const days = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
-    return days[new Date(selectedDate).getDay()];
-  }, [selectedDate]);
-
-  const schedulesQuery = useMemoFirebase(() => {
-    if (!db || !profesorId) return null;
-    return query(
-      collection(db, 'horarios'), 
-      where('profesorId', '==', profesorId), 
-      where('dia', '==', dayOfWeek)
-    );
-  }, [db, profesorId, dayOfWeek]);
-
-  const { data: schedules, isLoading: loadingSchedules } = useCollection(schedulesQuery);
-  const currentSchedule = useMemo(() => schedules?.find(s => s.id === selectedScheduleId), [schedules, selectedScheduleId]);
-
-  const attendanceQuery = useMemoFirebase(() => {
-    if (!db || !selectedScheduleId) return null;
-    return query(
-      collection(db, 'asistenciasInasistencias'),
-      where('claseId', '==', selectedScheduleId),
-      where('fecha', '==', selectedDate)
-    );
-  }, [db, selectedScheduleId, selectedDate]);
-
-  const { data: attendances } = useCollection(attendanceQuery);
-
-  const usersQuery = useMemoFirebase(() => {
-    if (!db) return null;
-    return collection(db, 'usuarios');
-  }, [db]);
-
-  const { data: allUsers } = useCollection(usersQuery);
-
-  const students = useMemo(() => {
-    if (!currentSchedule || !allUsers) return [];
-    return allUsers.filter(u => currentSchedule.alumnosIds?.includes(u.id));
-  }, [currentSchedule, allUsers]);
-
-  const handleAttendanceChange = async (alumnoId: string, tipo: string) => {
-    if (!db || !selectedScheduleId) return;
-
-    const existing = attendances?.find(a => a.alumnoId === alumnoId);
-
-    if (tipo === 'A') {
-      if (existing) {
-        deleteDocumentNonBlocking(doc(db, 'asistenciasInasistencias', existing.id));
-      }
-      return;
-    }
-
-    const attendanceData = {
-      alumnoId,
-      claseId: selectedScheduleId,
-      fecha: selectedDate,
-      tipo,
-      profesorId,
-      createdAt: new Date().toISOString()
-    };
-
-    const collectionRef = collection(db, 'asistenciasInasistencias');
-    if (existing) {
-      setDocumentNonBlocking(doc(db, 'asistenciasInasistencias', existing.id), attendanceData, { merge: true });
-    } else {
-      addDocumentNonBlocking(collectionRef, attendanceData);
-    }
-  };
-
-  return (
-    <div className="animate-in fade-in duration-500 space-y-6 max-w-7xl mx-auto w-full font-verdana">
-      <div className="bg-gray-50 border p-6 rounded-xl flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm">
-        <div className="flex flex-col md:flex-row items-center gap-6 w-full md:w-auto">
-          <div className="space-y-1.5 w-full md:w-auto">
-            <Label className="text-[10px] font-bold uppercase text-gray-400">Fecha de seguimiento</Label>
-            <Input 
-              type="date" 
-              value={selectedDate} 
-              onChange={(e) => { setSelectedDate(e.target.value); setSelectedScheduleId(null); }}
-              className="h-10 border-gray-300"
-            />
-          </div>
-
-          <div className="space-y-1.5 w-full md:w-auto min-w-[250px]">
-            <Label className="text-[10px] font-bold uppercase text-gray-400">Materia / Tramo Horario</Label>
-            {loadingSchedules ? (
-              <div className="h-10 flex items-center px-3 bg-white border rounded-md">
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                <span className="text-xs">Cargando horario...</span>
-              </div>
-            ) : (
-              <Select onValueChange={setSelectedScheduleId} value={selectedScheduleId || ""}>
-                <SelectTrigger className="h-10 border-gray-300">
-                  <SelectValue placeholder={schedules && schedules.length > 0 ? "Seleccione una sesión..." : "Sin horario este día"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {schedules?.map(s => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.horaInicio}-{s.horaFin} | {s.asignatura}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </div>
-        </div>
-
-        <div className="flex gap-4">
-           <div className="flex items-center gap-1.5">
-             <div className="w-3 h-3 bg-[#EB8A5F] rounded-sm"></div>
-             <span className="text-[10px] font-bold text-gray-500 uppercase">Injustificada</span>
-           </div>
-           <div className="flex items-center gap-1.5">
-             <div className="w-3 h-3 bg-[#FFCD2D] rounded-sm"></div>
-             <span className="text-[10px] font-bold text-gray-500 uppercase">Retraso</span>
-           </div>
-        </div>
-      </div>
-
-      {!selectedScheduleId ? (
-        <div className="py-20 text-center space-y-4">
-           <div className="bg-gray-100 h-16 w-16 rounded-full flex items-center justify-center mx-auto text-gray-400">
-             <Search className="h-8 w-8" />
-           </div>
-           <p className="text-gray-500 italic">Seleccione una sesión de su horario para visualizar los alumnos.</p>
-        </div>
-      ) : students.length === 0 ? (
-        <div className="py-20 text-center text-gray-400 italic">
-          No hay alumnos asignados a este tramo horario.
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 justify-items-center animate-in zoom-in-95 duration-300">
-           {students.map(student => {
-             const studentAttendance = attendances?.find(a => a.alumnoId === student.id);
-             const currentStatus = studentAttendance?.tipo || 'A';
-
-             return (
-               <div key={student.id} className="itemAlumnoEnClase relative group">
-                  <Avatar className="imagenAlumnoEnClase" onClick={() => setHistoryAlumnoId(student.id)}>
-                    <AvatarImage src={student.imagenPerfil} />
-                    <AvatarFallback>{student.usuario?.substring(0, 2).toUpperCase()}</AvatarFallback>
-                  </Avatar>
-                  
-                  <div className="nombreAlumno" onClick={() => setHistoryAlumnoId(student.id)}>
-                    {student.nombrePersona || student.usuario}
-                  </div>
-
-                  <div className="flex mt-auto pb-4 gap-1">
-                    <button 
-                      onClick={() => handleAttendanceChange(student.id, 'A')}
-                      data-state="A"
-                      className={cn("botonFalta", currentStatus === 'A' && "botonFalta-active ring-2 ring-offset-1 ring-gray-400")}
-                    >A</button>
-                    <button 
-                      onClick={() => handleAttendanceChange(student.id, 'I')}
-                      data-state="I"
-                      className={cn("botonFalta", currentStatus === 'I' && "botonFalta-active ring-2 ring-offset-1 ring-[#EB8A5F]")}
-                    >I</button>
-                    <button 
-                      onClick={() => handleAttendanceChange(student.id, 'R')}
-                      data-state="R"
-                      className={cn("botonFalta", currentStatus === 'R' && "botonFalta-active ring-2 ring-offset-1 ring-[#FFCD2D]")}
-                    >R</button>
-                  </div>
-
-                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-6 w-6 text-gray-300 hover:text-primary"
-                      onClick={() => setHistoryAlumnoId(student.id)}
-                    >
-                      <History className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-               </div>
-             );
-           })}
-        </div>
-      )}
-
-      {historyAlumnoId && (
-        <AttendanceHistoryDialog 
-          alumnoId={historyAlumnoId} 
-          claseId={selectedScheduleId!} 
-          onClose={() => setHistoryAlumnoId(null)} 
-        />
-      )}
-    </div>
-  );
-}
-
-/**
- * Diálogo de historial de asistencias para un alumno en una clase específica.
- */
-function AttendanceHistoryDialog({ alumnoId, claseId, onClose }: { alumnoId: string, claseId: string, onClose: () => void }) {
-  const db = useFirestore();
-  const [alumnoName, setAlumnoName] = useState("");
-
-  useEffect(() => {
-    if (!db || !alumnoId) return;
-    getDoc(doc(db, 'usuarios', alumnoId)).then(snap => {
-      if (snap.exists()) setAlumnoName(snap.data().nombrePersona || snap.data().usuario);
-    });
-  }, [db, alumnoId]);
-
-  const historyQuery = useMemoFirebase(() => {
-    if (!db) return null;
-    return query(
-      collection(db, 'asistenciasInasistencias'),
-      where('alumnoId', '==', alumnoId),
-      where('claseId', '==', claseId),
-      orderBy('fecha', 'desc')
-    );
-  }, [db, alumnoId, claseId]);
-
-  const { data: history, isLoading } = useCollection(historyQuery);
-
-  return (
-    <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="max-w-md font-verdana">
-        <DialogHeader>
-          <DialogTitle className="text-gray-800 uppercase tracking-tight">Historial de Asistencias</DialogTitle>
-          <DialogDescription className="text-[11px] font-bold text-[#008D88] uppercase">
-            Alumno: {alumnoName}
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="mt-4">
-          {isLoading ? (
-            <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
-          ) : history && history.length > 0 ? (
-            <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
-              {history.map(item => (
-                <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
-                  <div className="flex flex-col">
-                    <span className="text-xs font-bold text-gray-700">{format(new Date(item.fecha), 'EEEE d MMMM', { locale: es })}</span>
-                    <span className="text-[9px] text-gray-400 uppercase">Registrado el {format(new Date(item.createdAt), 'HH:mm')}</span>
-                  </div>
-                  <Badge className={cn(
-                    "text-[10px] font-bold px-3",
-                    item.tipo === 'I' ? "bg-[#EB8A5F] hover:bg-[#EB8A5F]" : "bg-[#FFCD2D] hover:bg-[#FFCD2D] text-gray-800"
-                  )}>
-                    {item.tipo === 'I' ? 'INJUSTIFICADA' : 'RETRASO'}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-10 text-gray-400 italic text-sm">
-              No constan incidencias de asistencia para este alumno en este horario.
-            </div>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
   );
 }
 
