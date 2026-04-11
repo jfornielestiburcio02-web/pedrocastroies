@@ -22,7 +22,9 @@ import {
   Files,
   UserCog,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  Users,
+  Calendar
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useFirestore } from '@/firebase';
@@ -38,7 +40,9 @@ export default function SeleccioneModuloAccesoPage() {
   const [activeRole, setActiveRole] = useState<string | null>(null);
   const [activeSubContent, setActiveSubContent] = useState<string | null>(null);
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({
-    'faltas': true
+    'faltas': true,
+    'usuarios': true,
+    'horarios': true
   });
   const router = useRouter();
   const db = useFirestore();
@@ -260,44 +264,98 @@ export default function SeleccioneModuloAccesoPage() {
       )}
 
       <div className="flex-1 flex w-full relative">
-        {/* Professor Sidebar */}
-        {selectedModule && activeRole === 'Profesor' && (
+        {/* Sidebar Manager */}
+        {selectedModule && (activeRole === 'Profesor' || activeRole === 'Dirección') && (
           <div className="group relative z-40 bg-[#f4f4f4] border-r border-gray-300 w-[60px] hover:w-[250px] transition-all duration-300 ease-in-out flex flex-col min-h-full overflow-hidden">
             <div className="flex-1 flex flex-col">
               <div className="flex h-full">
                 {/* Fixed Icon Strip */}
                 <div className="w-[60px] min-w-[60px] flex flex-col items-center py-4 gap-4 bg-[#f4f4f4] border-r border-gray-200/50">
-                  <div className="p-2 bg-[#89a54e] rounded-sm text-white"><BookOpen className="h-5 w-5" /></div>
-                  <div className="p-2 bg-[#89a54e] rounded-sm text-white"><Volume2 className="h-5 w-5" /></div>
-                  <div className="p-2 bg-[#89a54e] rounded-sm text-white"><Video className="h-5 w-5" /></div>
-                  <div className="p-2 bg-[#89a54e] rounded-sm text-white"><Pin className="h-5 w-5" /></div>
-                  <div className="p-2 bg-[#89a54e] rounded-sm text-white"><Files className="h-5 w-5" /></div>
-                  <div className="p-2 bg-[#89a54e] rounded-sm text-white"><UserCog className="h-5 w-5" /></div>
+                  {activeRole === 'Profesor' ? (
+                    <>
+                      <div className="p-2 bg-[#89a54e] rounded-sm text-white"><BookOpen className="h-5 w-5" /></div>
+                      <div className="p-2 bg-[#89a54e] rounded-sm text-white"><Volume2 className="h-5 w-5" /></div>
+                      <div className="p-2 bg-[#89a54e] rounded-sm text-white"><Video className="h-5 w-5" /></div>
+                      <div className="p-2 bg-[#89a54e] rounded-sm text-white"><Pin className="h-5 w-5" /></div>
+                      <div className="p-2 bg-[#89a54e] rounded-sm text-white"><Files className="h-5 w-5" /></div>
+                      <div className="p-2 bg-[#89a54e] rounded-sm text-white"><UserCog className="h-5 w-5" /></div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="p-2 bg-[#9c4d96] rounded-sm text-white"><Users className="h-5 w-5" /></div>
+                      <div className="p-2 bg-[#9c4d96] rounded-sm text-white"><Clock className="h-5 w-5" /></div>
+                      <div className="p-2 bg-[#9c4d96] rounded-sm text-white"><Files className="h-5 w-5" /></div>
+                      <div className="p-2 bg-[#9c4d96] rounded-sm text-white"><ShieldCheck className="h-5 w-5" /></div>
+                      <div className="p-2 bg-[#9c4d96] rounded-sm text-white"><UserCog className="h-5 w-5" /></div>
+                    </>
+                  )}
                 </div>
                 
                 {/* Expandable Label Panel */}
                 <div className="hidden group-hover:flex flex-col py-4 w-full bg-white animate-in fade-in slide-in-from-left-2 duration-300 overflow-y-auto">
                   <div className="px-2 space-y-0.5">
-                    {/* Faltas de asistencia Collapsible */}
-                    <div className="flex flex-col">
-                      <div 
-                        onClick={() => toggleExpanded('faltas')}
-                        className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-100 cursor-pointer group/item transition-colors"
-                      >
-                        <div className="w-3.5 h-3.5 border border-gray-400 rounded-sm bg-white flex items-center justify-center">
-                          {expandedItems['faltas'] ? <ChevronDown className="h-2.5 w-2.5 text-[#89a54e]" /> : <ChevronRight className="h-2.5 w-2.5 text-gray-400" />}
+                    {activeRole === 'Profesor' ? (
+                      <div className="flex flex-col">
+                        <div 
+                          onClick={() => toggleExpanded('faltas')}
+                          className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-100 cursor-pointer group/item transition-colors"
+                        >
+                          <div className="w-3.5 h-3.5 border border-gray-400 rounded-sm bg-white flex items-center justify-center">
+                            {expandedItems['faltas'] ? <ChevronDown className="h-2.5 w-2.5 text-[#89a54e]" /> : <ChevronRight className="h-2.5 w-2.5 text-gray-400" />}
+                          </div>
+                          <span className="text-[12px] font-bold text-gray-700 whitespace-nowrap">Faltas de asistencia</span>
                         </div>
-                        <span className="text-[12px] font-bold text-gray-700 whitespace-nowrap">Faltas de asistencia</span>
+                        
+                        {expandedItems['faltas'] && (
+                          <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
+                            <SidebarItem color="#89a54e" label="Por materia" isSubItem onClick={() => setActiveSubContent('Por materia')} active={activeSubContent === 'Por materia'} />
+                            <SidebarItem color="#89a54e" label="Funcion tutorial" isSubItem onClick={() => setActiveSubContent('Funcion tutorial')} active={activeSubContent === 'Funcion tutorial'} />
+                            <SidebarItem color="#89a54e" label="Guardias" isSubItem onClick={() => setActiveSubContent('Guardias')} active={activeSubContent === 'Guardias'} />
+                          </div>
+                        )}
                       </div>
-                      
-                      {expandedItems['faltas'] && (
-                        <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
-                          <SidebarItem label="Por materia" isSubItem onClick={() => setActiveSubContent('Por materia')} active={activeSubContent === 'Por materia'} />
-                          <SidebarItem label="Funcion tutorial" isSubItem onClick={() => setActiveSubContent('Funcion tutorial')} active={activeSubContent === 'Funcion tutorial'} />
-                          <SidebarItem label="Guardias" isSubItem onClick={() => setActiveSubContent('Guardias')} active={activeSubContent === 'Guardias'} />
+                    ) : (
+                      <div className="space-y-2">
+                        {/* Dirección - Usuarios */}
+                        <div className="flex flex-col">
+                          <div 
+                            onClick={() => toggleExpanded('usuarios')}
+                            className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-100 cursor-pointer group/item transition-colors"
+                          >
+                            <div className="w-3.5 h-3.5 border border-gray-400 rounded-sm bg-white flex items-center justify-center">
+                              {expandedItems['usuarios'] ? <ChevronDown className="h-2.5 w-2.5 text-[#9c4d96]" /> : <ChevronRight className="h-2.5 w-2.5 text-gray-400" />}
+                            </div>
+                            <span className="text-[12px] font-bold text-gray-700 whitespace-nowrap">Usuarios</span>
+                          </div>
+                          {expandedItems['usuarios'] && (
+                            <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
+                              <SidebarItem color="#9c4d96" label="Creación" isSubItem onClick={() => setActiveSubContent('Creación de Usuarios')} active={activeSubContent === 'Creación de Usuarios'} />
+                              <SidebarItem color="#9c4d96" label="Eliminación" isSubItem onClick={() => setActiveSubContent('Eliminación de Usuarios')} active={activeSubContent === 'Eliminación de Usuarios'} />
+                              <SidebarItem color="#9c4d96" label="Visualización" isSubItem onClick={() => setActiveSubContent('Visualización de Usuarios')} active={activeSubContent === 'Visualización de Usuarios'} />
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
+
+                        {/* Dirección - Horarios */}
+                        <div className="flex flex-col">
+                          <div 
+                            onClick={() => toggleExpanded('horarios')}
+                            className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-100 cursor-pointer group/item transition-colors"
+                          >
+                            <div className="w-3.5 h-3.5 border border-gray-400 rounded-sm bg-white flex items-center justify-center">
+                              {expandedItems['horarios'] ? <ChevronDown className="h-2.5 w-2.5 text-[#9c4d96]" /> : <ChevronRight className="h-2.5 w-2.5 text-gray-400" />}
+                            </div>
+                            <span className="text-[12px] font-bold text-gray-700 whitespace-nowrap">Horarios</span>
+                          </div>
+                          {expandedItems['horarios'] && (
+                            <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
+                              <SidebarItem color="#9c4d96" label="Ver" isSubItem onClick={() => setActiveSubContent('Ver Horarios')} active={activeSubContent === 'Ver Horarios'} />
+                              <SidebarItem color="#9c4d96" label="Modificar / crear" isSubItem onClick={() => setActiveSubContent('Modificar / crear Horarios')} active={activeSubContent === 'Modificar / crear Horarios'} />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -339,12 +397,15 @@ export default function SeleccioneModuloAccesoPage() {
                   {activeSubContent ? (
                     <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
                        <div className="bg-white border rounded-lg p-10 shadow-sm min-h-[400px] flex flex-col items-center justify-center text-center space-y-4">
-                          <div className="w-16 h-16 bg-[#89a54e]/10 rounded-full flex items-center justify-center text-[#89a54e]">
+                          <div className={cn(
+                            "w-16 h-16 rounded-full flex items-center justify-center",
+                            activeRole === 'Profesor' ? "bg-[#89a54e]/10 text-[#89a54e]" : "bg-[#9c4d96]/10 text-[#9c4d96]"
+                          )}>
                              <Files className="h-8 w-8" />
                           </div>
                           <h2 className="text-2xl font-bold text-gray-800 uppercase tracking-tight">{activeSubContent}</h2>
                           <p className="text-gray-500 italic max-w-md">
-                            Contenido del módulo de seguimiento académico para la sección de {activeSubContent.toLowerCase()}.
+                            Contenido del módulo de {selectedModule?.toLowerCase()} para la sección de {activeSubContent.toLowerCase()}.
                           </p>
                           <div className="pt-8 grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-2xl">
                              {[1, 2, 3].map(i => (
@@ -409,7 +470,7 @@ export default function SeleccioneModuloAccesoPage() {
   );
 }
 
-function SidebarItem({ label, isSubItem = false, onClick, active = false }: { label: string; isSubItem?: boolean; onClick?: () => void; active?: boolean }) {
+function SidebarItem({ label, isSubItem = false, onClick, active = false, color = "#89a54e" }: { label: string; isSubItem?: boolean; onClick?: () => void; active?: boolean; color?: string }) {
   return (
     <div 
       onClick={onClick}
@@ -420,20 +481,20 @@ function SidebarItem({ label, isSubItem = false, onClick, active = false }: { la
       )}
     >
       <div className={cn(
-        "w-3.5 h-3.5 border border-gray-400 rounded-sm bg-white group-hover/item:border-[#89a54e] flex items-center justify-center transition-colors",
+        "w-3.5 h-3.5 border border-gray-400 rounded-sm bg-white flex items-center justify-center transition-colors",
         isSubItem ? "w-3 h-3 border-gray-300" : "",
-        active ? "border-[#89a54e]" : ""
-      )}>
+        active ? "border-[var(--sidebar-item-color)]" : "group-hover/item:border-[var(--sidebar-item-color)]"
+      )} style={{ "--sidebar-item-color": color } as any}>
         <div className={cn(
-          "w-1.5 h-1.5 bg-[#89a54e] transition-transform rounded-full",
+          "w-1.5 h-1.5 transition-transform rounded-full",
           active ? "scale-100" : "scale-0 group-hover/item:scale-100"
-        )} />
+        )} style={{ backgroundColor: color }} />
       </div>
       <span className={cn(
         "text-[12px] text-gray-700 whitespace-nowrap",
         isSubItem ? "text-gray-500 text-[11px]" : "font-medium",
-        active ? "text-[#89a54e] font-bold" : ""
-      )}>{label}</span>
+        active ? "font-bold" : ""
+      )} style={{ color: active ? color : undefined }}>{label}</span>
     </div>
   );
 }
