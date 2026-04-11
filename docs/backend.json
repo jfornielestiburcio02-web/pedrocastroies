@@ -19,8 +19,9 @@
           "type": "string",
           "format": "email"
         },
-        "nombreCompleto": {
-          "type": "string"
+        "nombrePersona": {
+          "type": "string",
+          "description": "Nombre completo de la persona."
         },
         "imagenPerfil": {
           "type": "string",

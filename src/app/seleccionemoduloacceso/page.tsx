@@ -57,7 +57,6 @@ export default function SeleccioneModuloAccesoPage() {
             const data = userSnap.data();
             setUserData(data);
             
-            // Prioridad inicial de rol para la cabecera
             const roles = data.rolesUsuario || [];
             if (roles.includes('EsDireccion')) setActiveRole('Dirección');
             else if (roles.includes('EsCau')) setActiveRole('CAU');
@@ -80,8 +79,6 @@ export default function SeleccioneModuloAccesoPage() {
 
   const handleModuleClick = (label: string) => {
     setSelectedModule(label.toUpperCase());
-    
-    // Al entrar en un módulo, ajustamos el rol activo según la prioridad
     const roles = userData?.rolesUsuario || [];
     if (label === "Seguimiento") {
       if (roles.includes('EsProfesor')) setActiveRole('Profesor');
@@ -117,10 +114,7 @@ export default function SeleccioneModuloAccesoPage() {
     );
   }
 
-  // Deduplicamos los roles para evitar errores de duplicidad de llaves en el renderizado
   const userRoles = Array.from(new Set(userData?.rolesUsuario || [])) as string[];
-
-  // Lógica de visibilidad de módulos
   const canSeeSeguimiento = userRoles.includes('EsProfesor') || userRoles.includes('EsAlumno');
   const canSeeGestion = userRoles.includes('EsDireccion');
   const canSeeSecretaria = userRoles.includes('EsSecretaria');
@@ -128,7 +122,6 @@ export default function SeleccioneModuloAccesoPage() {
 
   return (
     <div className="min-h-screen bg-white font-verdana flex flex-col w-full overflow-x-hidden">
-      {/* Header Estilo Rayuela (Solo aparece si hay un módulo seleccionado) */}
       {selectedModule && (
         <div className="w-full bg-[#e9e9e9] border-b border-gray-300 p-2 flex flex-col md:flex-row items-center justify-between shadow-sm animate-in fade-in slide-in-from-top duration-500">
           <div className="flex items-center gap-4 w-full md:w-auto">
@@ -142,7 +135,7 @@ export default function SeleccioneModuloAccesoPage() {
             <div className="flex flex-col">
               <div className="flex items-baseline gap-2">
                 <span className="font-bold text-[13px] text-black">
-                  {userData?.nombreCompleto || session.usuario} ({activeRole})
+                  {userData?.nombrePersona || session.usuario} ({activeRole})
                 </span>
               </div>
               <span className="text-[11px] text-gray-600">
@@ -297,7 +290,7 @@ export default function SeleccioneModuloAccesoPage() {
                           : activeRole === 'Secretaría'
                           ? "Entorno de secretaría virtual para trámites administrativos y expedientes."
                           : activeRole === 'CAU'
-                          ? "Entorno de soporte técnico y atención de usuarios activo para la resolución de ignorancia."
+                          ? "Entorno de soporte técnico y atención de usuarios activo para la resolución de incidencias."
                           : `Entorno de gestión activa para el perfil de ${activeRole}.`}
                       </div>
                     </div>
