@@ -46,6 +46,7 @@ import { MyTutoringStudentsView, CenterStudentsView } from '@/components/rayuela
 import { EvaluationsView } from '@/components/rayuela/evaluations-views';
 import { EvaluationOpeningView, GradingStatsView } from '@/components/rayuela/management-evaluation-views';
 import { TeacherGradingView } from '@/components/rayuela/teacher-grading-view';
+import { TutoringGradesView } from '@/components/rayuela/tutoring-grades-view';
 
 export default function SeleccioneModuloAccesoPage() {
   const [session, setSession] = useState<any>(null);
@@ -437,7 +438,7 @@ export default function SeleccioneModuloAccesoPage() {
                     ) : (
                       <div className="space-y-2">
                         <div className="flex flex-col">
-                          <SidebarHeading label="Usuarios" expanded={expandedItems['usuarios']} onClick={() => toggleExpanded('usuarios')} />
+                          <SidebarHeading label="Usuarios" expanded={expandedItems['usuarios']} onClick={() => toggleExpanded('usuarios']} />
                           {expandedItems['usuarios'] && (
                             <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
                               <SidebarItem color="#9c4d96" label="Creación" isSubItem onClick={() => setActiveSubContent('Creación de Usuarios')} active={activeSubContent === 'Creación de Usuarios'} />
@@ -541,6 +542,8 @@ export default function SeleccioneModuloAccesoPage() {
                     <EvaluationsView profesorId={session.usuario} type="task" />
                   ) : activeSubContent === 'Calificar' ? (
                     <TeacherGradingView profesorId={session.usuario} />
+                  ) : activeSubContent === 'Evaluación como tutor' ? (
+                    <TutoringGradesView grupoTutorizado={userData?.esTutor} />
                   ) : activeSubContent === 'Resumen (Tasas)' ? (
                     <GradingStatsView />
                   ) : activeSubContent === 'Apertura de la evaluación' ? (
