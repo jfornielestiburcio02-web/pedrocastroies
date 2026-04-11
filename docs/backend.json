@@ -63,6 +63,19 @@
         "asignatura": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       }
+    },
+    "Asistencia": {
+      "title": "Asistencia",
+      "type": "object",
+      "description": "Registro de falta o retraso de un alumno en una clase específica.",
+      "properties": {
+        "alumnoId": { "type": "string" },
+        "claseId": { "type": "string" },
+        "fecha": { "type": "string", "description": "Fecha en formato YYYY-MM-DD" },
+        "tipo": { "type": "string", "enum": ["I", "R", "J", "H"] },
+        "profesorId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "auth": {
@@ -82,6 +95,12 @@
         "$ref": "#/backend/entities/Horario"
       },
       "description": "Colección global de horarios lectivos y guardias."
+    },
+    "/asistenciasInasistencias/{asistenciaId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Asistencia"
+      },
+      "description": "Colección de faltas de asistencia y retrasos."
     }
   }
 }

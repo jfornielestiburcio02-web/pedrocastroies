@@ -28,7 +28,9 @@ import {
   Trash2,
   Save,
   CheckCircle2,
-  Calendar as CalendarIcon
+  Calendar as CalendarIcon,
+  Search,
+  History
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -51,11 +53,30 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { doc, getDoc, collection, query, orderBy, serverTimestamp } from 'firebase/firestore';
+import { 
+  doc, 
+  getDoc, 
+  collection, 
+  query, 
+  where, 
+  orderBy, 
+  serverTimestamp, 
+  getDocs,
+  deleteDoc
+} from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export default function SeleccioneModuloAccesoPage() {
   const [session, setSession] = useState<any>(null);
@@ -291,12 +312,10 @@ export default function SeleccioneModuloAccesoPage() {
       )}
 
       <div className="flex-1 flex w-full relative">
-        {/* Sidebar Manager */}
         {selectedModule && (activeRole === 'Profesor' || activeRole === 'Dirección') && (
           <div className="group relative z-40 bg-[#f4f4f4] border-r border-gray-300 w-[60px] hover:w-[250px] transition-all duration-300 ease-in-out flex flex-col min-h-full overflow-hidden">
             <div className="flex-1 flex flex-col">
               <div className="flex h-full">
-                {/* Fixed Icon Strip */}
                 <div className="w-[60px] min-w-[60px] flex flex-col items-center py-4 gap-4 bg-[#f4f4f4] border-r border-gray-200/50">
                   {activeRole === 'Profesor' ? (
                     <>
@@ -318,7 +337,6 @@ export default function SeleccioneModuloAccesoPage() {
                   )}
                 </div>
                 
-                {/* Expandable Label Panel */}
                 <div className="hidden group-hover:flex flex-col py-4 w-full bg-white animate-in fade-in slide-in-from-left-2 duration-300 overflow-y-auto">
                   <div className="px-2 space-y-0.5">
                     {activeRole === 'Profesor' ? (
@@ -343,7 +361,6 @@ export default function SeleccioneModuloAccesoPage() {
                       </div>
                     ) : (
                       <div className="space-y-2">
-                        {/* Dirección - Usuarios */}
                         <div className="flex flex-col">
                           <div 
                             onClick={() => toggleExpanded('usuarios')}
@@ -363,7 +380,6 @@ export default function SeleccioneModuloAccesoPage() {
                           )}
                         </div>
 
-                        {/* Dirección - Horarios */}
                         <div className="flex flex-col">
                           <div 
                             onClick={() => toggleExpanded('horarios')}
@@ -425,6 +441,8 @@ export default function SeleccioneModuloAccesoPage() {
                     <ScheduleCreationView />
                   ) : activeSubContent === 'Ver Horarios' ? (
                     <ScheduleListView />
+                  ) : activeSubContent === 'Por materia' ? (
+                    <AttendanceBySubjectView profesorId={session.usuario} />
                   ) : activeSubContent ? (
                     <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
                        <div className="bg-white border rounded-lg p-10 shadow-sm min-h-[400px] flex flex-col items-center justify-center text-center space-y-4">
@@ -625,7 +643,6 @@ function ScheduleCreationView() {
   const db = useFirestore();
   const { toast } = useToast();
   
-  // Fetch users for selection
   const usersQuery = useMemoFirebase(() => {
     if (!db) return null;
     return collection(db, 'usuarios');
@@ -673,7 +690,6 @@ function ScheduleCreationView() {
       description: `Se ha asignado la clase de ${formData.dia} a las ${formData.horaInicio}.`,
     });
     
-    // Reset form except professor and day for batch entry
     setFormData(prev => ({
       ...prev,
       asignatura: '',
@@ -702,7 +718,6 @@ function ScheduleCreationView() {
         
         <form onSubmit={handleSubmit} className="p-8 space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {/* Profesor y Día */}
             <div className="space-y-6">
               <div className="space-y-2">
                 <Label className="text-xs font-bold uppercase text-gray-500">Profesor Asignado</Label>
@@ -754,7 +769,6 @@ function ScheduleCreationView() {
               </div>
             </div>
 
-            {/* Detalles Clase */}
             <div className="space-y-6">
               <div className="space-y-2">
                 <Label className="text-xs font-bold uppercase text-gray-500">Nombre de Asignatura / Actividad</Label>
@@ -829,6 +843,275 @@ function ScheduleCreationView() {
         </form>
       </div>
     </div>
+  );
+}
+
+/**
+ * Vista de Faltas por Materia para Profesores.
+ */
+function AttendanceBySubjectView({ profesorId }: { profesorId: string }) {
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(null);
+  const [historyAlumnoId, setHistoryAlumnoId] = useState<string | null>(null);
+  const db = useFirestore();
+  const { toast } = useToast();
+
+  const dayOfWeek = useMemo(() => {
+    const days = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+    return days[new Date(selectedDate).getDay()];
+  }, [selectedDate]);
+
+  const schedulesQuery = useMemoFirebase(() => {
+    if (!db || !profesorId) return null;
+    return query(
+      collection(db, 'horarios'), 
+      where('profesorId', '==', profesorId), 
+      where('dia', '==', dayOfWeek)
+    );
+  }, [db, profesorId, dayOfWeek]);
+
+  const { data: schedules, isLoading: loadingSchedules } = useCollection(schedulesQuery);
+  const currentSchedule = useMemo(() => schedules?.find(s => s.id === selectedScheduleId), [schedules, selectedScheduleId]);
+
+  const attendanceQuery = useMemoFirebase(() => {
+    if (!db || !selectedScheduleId) return null;
+    return query(
+      collection(db, 'asistenciasInasistencias'),
+      where('claseId', '==', selectedScheduleId),
+      where('fecha', '==', selectedDate)
+    );
+  }, [db, selectedScheduleId, selectedDate]);
+
+  const { data: attendances } = useCollection(attendanceQuery);
+
+  const usersQuery = useMemoFirebase(() => {
+    if (!db) return null;
+    return collection(db, 'usuarios');
+  }, [db]);
+
+  const { data: allUsers } = useCollection(usersQuery);
+
+  const students = useMemo(() => {
+    if (!currentSchedule || !allUsers) return [];
+    return allUsers.filter(u => currentSchedule.alumnosIds?.includes(u.id));
+  }, [currentSchedule, allUsers]);
+
+  const handleAttendanceChange = async (alumnoId: string, tipo: string) => {
+    if (!db || !selectedScheduleId) return;
+
+    const existing = attendances?.find(a => a.alumnoId === alumnoId);
+
+    if (tipo === 'A') {
+      if (existing) {
+        deleteDocumentNonBlocking(doc(db, 'asistenciasInasistencias', existing.id));
+      }
+      return;
+    }
+
+    const attendanceData = {
+      alumnoId,
+      claseId: selectedScheduleId,
+      fecha: selectedDate,
+      tipo,
+      profesorId,
+      createdAt: new Date().toISOString()
+    };
+
+    const collectionRef = collection(db, 'asistenciasInasistencias');
+    if (existing) {
+      setDocumentNonBlocking(doc(db, 'asistenciasInasistencias', existing.id), attendanceData, { merge: true });
+    } else {
+      addDocumentNonBlocking(collectionRef, attendanceData);
+    }
+  };
+
+  return (
+    <div className="animate-in fade-in duration-500 space-y-6 max-w-7xl mx-auto w-full font-verdana">
+      <div className="bg-gray-50 border p-6 rounded-xl flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm">
+        <div className="flex flex-col md:flex-row items-center gap-6 w-full md:w-auto">
+          <div className="space-y-1.5 w-full md:w-auto">
+            <Label className="text-[10px] font-bold uppercase text-gray-400">Fecha de seguimiento</Label>
+            <Input 
+              type="date" 
+              value={selectedDate} 
+              onChange={(e) => { setSelectedDate(e.target.value); setSelectedScheduleId(null); }}
+              className="h-10 border-gray-300"
+            />
+          </div>
+
+          <div className="space-y-1.5 w-full md:w-auto min-w-[250px]">
+            <Label className="text-[10px] font-bold uppercase text-gray-400">Materia / Tramo Horario</Label>
+            {loadingSchedules ? (
+              <div className="h-10 flex items-center px-3 bg-white border rounded-md">
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                <span className="text-xs">Cargando horario...</span>
+              </div>
+            ) : (
+              <Select onValueChange={setSelectedScheduleId} value={selectedScheduleId || ""}>
+                <SelectTrigger className="h-10 border-gray-300">
+                  <SelectValue placeholder={schedules && schedules.length > 0 ? "Seleccione una sesión..." : "Sin horario este día"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {schedules?.map(s => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.horaInicio}-{s.horaFin} | {s.asignatura}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+        </div>
+
+        <div className="flex gap-4">
+           <div className="flex items-center gap-1.5">
+             <div className="w-3 h-3 bg-[#EB8A5F] rounded-sm"></div>
+             <span className="text-[10px] font-bold text-gray-500 uppercase">Injustificada</span>
+           </div>
+           <div className="flex items-center gap-1.5">
+             <div className="w-3 h-3 bg-[#FFCD2D] rounded-sm"></div>
+             <span className="text-[10px] font-bold text-gray-500 uppercase">Retraso</span>
+           </div>
+        </div>
+      </div>
+
+      {!selectedScheduleId ? (
+        <div className="py-20 text-center space-y-4">
+           <div className="bg-gray-100 h-16 w-16 rounded-full flex items-center justify-center mx-auto text-gray-400">
+             <Search className="h-8 w-8" />
+           </div>
+           <p className="text-gray-500 italic">Seleccione una sesión de su horario para visualizar los alumnos.</p>
+        </div>
+      ) : students.length === 0 ? (
+        <div className="py-20 text-center text-gray-400 italic">
+          No hay alumnos asignados a este tramo horario.
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 justify-items-center animate-in zoom-in-95 duration-300">
+           {students.map(student => {
+             const studentAttendance = attendances?.find(a => a.alumnoId === student.id);
+             const currentStatus = studentAttendance?.tipo || 'A';
+
+             return (
+               <div key={student.id} className="itemAlumnoEnClase relative group">
+                  <Avatar className="imagenAlumnoEnClase" onClick={() => setHistoryAlumnoId(student.id)}>
+                    <AvatarImage src={student.imagenPerfil} />
+                    <AvatarFallback>{student.usuario?.substring(0, 2).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  
+                  <div className="nombreAlumno" onClick={() => setHistoryAlumnoId(student.id)}>
+                    {student.nombrePersona || student.usuario}
+                  </div>
+
+                  <div className="flex mt-auto pb-4 gap-1">
+                    <button 
+                      onClick={() => handleAttendanceChange(student.id, 'A')}
+                      data-state="A"
+                      className={cn("botonFalta", currentStatus === 'A' && "botonFalta-active ring-2 ring-offset-1 ring-gray-400")}
+                    >A</button>
+                    <button 
+                      onClick={() => handleAttendanceChange(student.id, 'I')}
+                      data-state="I"
+                      className={cn("botonFalta", currentStatus === 'I' && "botonFalta-active ring-2 ring-offset-1 ring-[#EB8A5F]")}
+                    >I</button>
+                    <button 
+                      onClick={() => handleAttendanceChange(student.id, 'R')}
+                      data-state="R"
+                      className={cn("botonFalta", currentStatus === 'R' && "botonFalta-active ring-2 ring-offset-1 ring-[#FFCD2D]")}
+                    >R</button>
+                  </div>
+
+                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-6 w-6 text-gray-300 hover:text-primary"
+                      onClick={() => setHistoryAlumnoId(student.id)}
+                    >
+                      <History className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+               </div>
+             );
+           })}
+        </div>
+      )}
+
+      {historyAlumnoId && (
+        <AttendanceHistoryDialog 
+          alumnoId={historyAlumnoId} 
+          claseId={selectedScheduleId!} 
+          onClose={() => setHistoryAlumnoId(null)} 
+        />
+      )}
+    </div>
+  );
+}
+
+/**
+ * Diálogo de historial de asistencias para un alumno en una clase específica.
+ */
+function AttendanceHistoryDialog({ alumnoId, claseId, onClose }: { alumnoId: string, claseId: string, onClose: () => void }) {
+  const db = useFirestore();
+  const [alumnoName, setAlumnoName] = useState("");
+
+  useEffect(() => {
+    if (!db || !alumnoId) return;
+    getDoc(doc(db, 'usuarios', alumnoId)).then(snap => {
+      if (snap.exists()) setAlumnoName(snap.data().nombrePersona || snap.data().usuario);
+    });
+  }, [db, alumnoId]);
+
+  const historyQuery = useMemoFirebase(() => {
+    if (!db) return null;
+    return query(
+      collection(db, 'asistenciasInasistencias'),
+      where('alumnoId', '==', alumnoId),
+      where('claseId', '==', claseId),
+      orderBy('fecha', 'desc')
+    );
+  }, [db, alumnoId, claseId]);
+
+  const { data: history, isLoading } = useCollection(historyQuery);
+
+  return (
+    <Dialog open={true} onOpenChange={onClose}>
+      <DialogContent className="max-w-md font-verdana">
+        <DialogHeader>
+          <DialogTitle className="text-gray-800 uppercase tracking-tight">Historial de Asistencias</DialogTitle>
+          <DialogDescription className="text-[11px] font-bold text-[#008D88] uppercase">
+            Alumno: {alumnoName}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="mt-4">
+          {isLoading ? (
+            <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+          ) : history && history.length > 0 ? (
+            <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
+              {history.map(item => (
+                <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold text-gray-700">{format(new Date(item.fecha), 'EEEE d MMMM', { locale: es })}</span>
+                    <span className="text-[9px] text-gray-400 uppercase">Registrado el {format(new Date(item.createdAt), 'HH:mm')}</span>
+                  </div>
+                  <Badge className={cn(
+                    "text-[10px] font-bold px-3",
+                    item.tipo === 'I' ? "bg-[#EB8A5F] hover:bg-[#EB8A5F]" : "bg-[#FFCD2D] hover:bg-[#FFCD2D] text-gray-800"
+                  )}>
+                    {item.tipo === 'I' ? 'INJUSTIFICADA' : 'RETRASO'}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-10 text-gray-400 italic text-sm">
+              No constan incidencias de asistencia para este alumno en este horario.
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

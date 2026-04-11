@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -64,4 +65,107 @@
   h1, h2, h3, h4, h5, h6 {
     @apply font-headline;
   }
+}
+
+/* RAYUELA CUSTOM CSS */
+.font-verdana {
+  font-family: 'Verdana', sans-serif !important;
+}
+
+.itemAlumnoEnClase {
+  border-radius: 10px;
+  border: 1px solid #D0CECE;
+  width: 140px;
+  height: 195px;
+  background: white;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 10px;
+  transition: all 0.2s ease;
+}
+
+.imagenAlumnoEnClase {
+  border: 2px solid #D0CECE;
+  border-radius: 100%;
+  height: 73px;
+  width: 73px;
+  object-fit: cover;
+}
+
+.imagenAlumnoEnClase:hover {
+  cursor: pointer;
+  border-color: #008D88;
+}
+
+.nombreAlumno {
+  height: 35px;
+  font-size: 11px;
+  color: #595959;
+  cursor: pointer;
+  text-align: center;
+  padding: 5px;
+  font-weight: bold;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.nombreAlumno:hover {
+  color: #008D88;
+}
+
+.botonFalta {
+  color: #595959;
+  border: 1px solid #c0c0c0;
+  border-radius: 3px;
+  display: inline-block;
+  font-size: 11px;
+  margin: 2px;
+  width: 35px;
+  height: 24px;
+  line-height: 22px;
+  text-align: center;
+  font-weight: bold;
+  transition: all 0.1s;
+}
+
+.botonFalta:hover {
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+/* Estados de Falta */
+.botonFalta[data-state="A"] {
+  background: #D0CECE;
+  border-color: #D0CECE;
+  color: #595959;
+}
+
+.botonFalta[data-state="I"] {
+  background: #EB8A5F;
+  border-color: #EB8A5F;
+  color: white;
+}
+
+.botonFalta[data-state="R"] {
+  background: #FFCD2D;
+  border-color: #FFCD2D;
+  color: #595959;
+}
+
+.botonFalta[data-state="J"] {
+  background: #78B64E;
+  border-color: #78B64E;
+  color: white;
+}
+
+.botonFalta-active {
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+  transform: scale(0.95);
+}
+
+.deberes b {
+  color: #008D88;
 }
