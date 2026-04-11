@@ -35,7 +35,9 @@ import {
   ExternalLink,
   Check,
   ThumbsUp,
-  ThumbsDown
+  ThumbsDown,
+  AlertCircle,
+  FileText
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -93,6 +95,8 @@ export default function SeleccioneModuloAccesoPage() {
   const [activeSubContent, setActiveSubContent] = useState<string | null>(null);
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({
     'faltas': true,
+    'conductas': false,
+    'graves': false,
     'usuarios': true,
     'horarios': true
   });
@@ -346,24 +350,60 @@ export default function SeleccioneModuloAccesoPage() {
                 <div className="hidden group-hover:flex flex-col py-4 w-full bg-white animate-in fade-in slide-in-from-left-2 duration-300 overflow-y-auto">
                   <div className="px-2 space-y-0.5">
                     {activeRole === 'Profesor' ? (
-                      <div className="flex flex-col">
-                        <div 
-                          onClick={() => toggleExpanded('faltas')}
-                          className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-100 cursor-pointer group/item transition-colors"
-                        >
-                          <div className="w-3.5 h-3.5 border border-gray-400 rounded-sm bg-white flex items-center justify-center">
-                            {expandedItems['faltas'] ? <ChevronDown className="h-2.5 w-2.5 text-[#89a54e]" /> : <ChevronRight className="h-2.5 w-2.5 text-gray-400" />}
+                      <div className="flex flex-col space-y-2">
+                        <div className="flex flex-col">
+                          <div 
+                            onClick={() => toggleExpanded('faltas')}
+                            className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-100 cursor-pointer group/item transition-colors"
+                          >
+                            <div className="w-3.5 h-3.5 border border-gray-400 rounded-sm bg-white flex items-center justify-center">
+                              {expandedItems['faltas'] ? <ChevronDown className="h-2.5 w-2.5 text-[#89a54e]" /> : <ChevronRight className="h-2.5 w-2.5 text-gray-400" />}
+                            </div>
+                            <span className="text-[12px] font-bold text-gray-700 whitespace-nowrap">Faltas de asistencia</span>
                           </div>
-                          <span className="text-[12px] font-bold text-gray-700 whitespace-nowrap">Faltas de asistencia</span>
+                          
+                          {expandedItems['faltas'] && (
+                            <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
+                              <SidebarItem color="#89a54e" label="Por materia" isSubItem onClick={() => setActiveSubContent('Por materia')} active={activeSubContent === 'Por materia'} />
+                              <SidebarItem color="#89a54e" label="Funcion tutorial" isSubItem onClick={() => setActiveSubContent('Funcion tutorial')} active={activeSubContent === 'Funcion tutorial'} />
+                              <SidebarItem color="#89a54e" label="Guardias" isSubItem onClick={() => setActiveSubContent('Guardias')} active={activeSubContent === 'Guardias'} />
+                            </div>
+                          )}
                         </div>
-                        
-                        {expandedItems['faltas'] && (
-                          <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
-                            <SidebarItem color="#89a54e" label="Por materia" isSubItem onClick={() => setActiveSubContent('Por materia')} active={activeSubContent === 'Por materia'} />
-                            <SidebarItem color="#89a54e" label="Funcion tutorial" isSubItem onClick={() => setActiveSubContent('Funcion tutorial')} active={activeSubContent === 'Funcion tutorial'} />
-                            <SidebarItem color="#89a54e" label="Guardias" isSubItem onClick={() => setActiveSubContent('Guardias')} active={activeSubContent === 'Guardias'} />
+
+                        {/* Nueva Sección: Conductas contrarias */}
+                        <div className="flex flex-col">
+                           <div 
+                            onClick={() => toggleExpanded('conductas')}
+                            className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-100 cursor-pointer group/item transition-colors"
+                          >
+                            <div className="w-3.5 h-3.5 border border-gray-400 rounded-sm bg-white flex items-center justify-center">
+                              {expandedItems['conductas'] ? <ChevronDown className="h-2.5 w-2.5 text-[#89a54e]" /> : <ChevronRight className="h-2.5 w-2.5 text-gray-400" />}
+                            </div>
+                            <span className="text-[12px] font-bold text-gray-700 whitespace-nowrap">Conductas contrarias</span>
                           </div>
-                        )}
+
+                          {expandedItems['conductas'] && (
+                            <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
+                               <div className="flex flex-col">
+                                  <div 
+                                    onClick={() => toggleExpanded('graves')}
+                                    className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-100 cursor-pointer group/item transition-colors"
+                                  >
+                                    <div className="w-3.5 h-3.5 border border-gray-400 rounded-sm bg-white flex items-center justify-center">
+                                      {expandedItems['graves'] ? <ChevronDown className="h-2.5 w-2.5 text-[#89a54e]" /> : <ChevronRight className="h-2.5 w-2.5 text-gray-400" />}
+                                    </div>
+                                    <span className="text-[11px] text-gray-500 whitespace-nowrap">Conductas contrarias y graves</span>
+                                  </div>
+                                  {expandedItems['graves'] && (
+                                    <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
+                                       <SidebarItem color="#89a54e" label="Alumnado Incidente" isSubItem onClick={() => setActiveSubContent('Alumnado Incidente')} active={activeSubContent === 'Alumnado Incidente'} />
+                                    </div>
+                                  )}
+                               </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     ) : (
                       <div className="space-y-2">
@@ -451,6 +491,8 @@ export default function SeleccioneModuloAccesoPage() {
                     <AttendanceBySubjectView profesorId={session.usuario} />
                   ) : activeSubContent === 'Guardias' ? (
                     <GuardDutyView profesorId={session.usuario} />
+                  ) : activeSubContent === 'Alumnado Incidente' ? (
+                    <AlumnadoIncidenteView />
                   ) : activeSubContent ? (
                     <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
                        <div className="bg-white border rounded-lg p-10 shadow-sm min-h-[400px] flex flex-col items-center justify-center text-center space-y-4">
@@ -514,6 +556,107 @@ export default function SeleccioneModuloAccesoPage() {
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Vista de Alumnado Incidente (Módulo de Conductas Contrarias).
+ */
+function AlumnadoIncidenteView() {
+  const db = useFirestore();
+  
+  const usersQuery = useMemoFirebase(() => {
+    if (!db) return null;
+    return query(collection(db, 'usuarios'), where('rolesUsuario', 'array-contains', 'EsAlumno'));
+  }, [db]);
+
+  const { data: students, isLoading } = useCollection(usersQuery);
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center p-20">
+        <Loader2 className="h-8 w-8 animate-spin text-[#89a54e]" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 space-y-6 max-w-6xl mx-auto w-full">
+      <div className="bg-white border rounded-lg shadow-sm overflow-hidden">
+        <div className="bg-[#f8f9fa] border-b p-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-5 w-5 text-red-600" />
+            <span className="text-sm font-bold text-gray-700 uppercase">Gestión de Alumnado Incidente</span>
+          </div>
+          <Button size="sm" className="bg-[#89a54e] text-white text-[10px] font-bold uppercase h-8 px-4 gap-2">
+            <Plus className="h-3 w-3" /> Nueva Incidencia
+          </Button>
+        </div>
+
+        <div className="p-0">
+          <Table>
+            <TableHeader className="bg-gray-50">
+              <TableRow>
+                <TableHead className="text-[10px] font-bold uppercase text-gray-500">Alumno</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase text-gray-500">Grupo</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase text-gray-500">Nº Incidencias</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase text-gray-500 text-center">Estado</TableHead>
+                <TableHead className="text-right text-[10px] font-bold uppercase text-gray-500">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {students && students.length > 0 ? (
+                students.map((student) => (
+                  <TableRow key={student.id} className="hover:bg-gray-50/50">
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={student.imagenPerfil} />
+                          <AvatarFallback>{student.usuario?.substring(0, 2).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        <span className="text-xs font-bold text-gray-700">{student.nombrePersona || student.usuario}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-xs text-gray-600">4º ESO - A</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="text-[10px] font-bold bg-red-50 text-red-700 border-red-200">
+                        {Math.floor(Math.random() * 5)} INCIDENCIAS
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <div className="flex justify-center">
+                        <CheckCircle2 className="h-4 w-4 text-green-500" />
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="ghost" size="sm" className="h-8 px-2 text-[9px] font-bold text-[#89a54e] uppercase gap-1">
+                        <FileText className="h-3 w-3" /> Ver Expediente
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-40 text-center text-muted-foreground italic text-sm">
+                    No se han encontrado registros de alumnos incidentes.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+      
+      <div className="bg-red-50 border border-red-100 p-4 rounded-lg flex items-start gap-3">
+         <AlertTriangle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
+         <div className="space-y-1">
+            <p className="text-xs font-bold text-red-800 uppercase">Aviso de Seguridad Convivencial</p>
+            <p className="text-[11px] text-red-700 leading-relaxed italic">
+              Los registros aquí mostrados forman parte del expediente disciplinario del centro. Cualquier modificación queda registrada con firma digital del docente.
+            </p>
+         </div>
       </div>
     </div>
   );
