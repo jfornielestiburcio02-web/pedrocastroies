@@ -40,6 +40,7 @@ import { MessagingView } from '@/components/rayuela/messaging-view';
 import { TutorialFunctionView } from '@/components/rayuela/tutorial-function-view';
 import { ScheduleListView, ScheduleCreationView } from '@/components/rayuela/schedule-views';
 import { SidebarItem, SidebarHeading, ModuleBox } from '@/components/rayuela/shared-components';
+import { MyTutoringStudentsView, CenterStudentsView } from '@/components/rayuela/student-management-views';
 
 export default function SeleccioneModuloAccesoPage() {
   const [session, setSession] = useState<any>(null);
@@ -55,7 +56,8 @@ export default function SeleccioneModuloAccesoPage() {
     'graves': false,
     'usuarios': true,
     'horarios': true,
-    'mensajeria': true
+    'mensajeria': true,
+    'miAlumnado': true
   });
   
   const router = useRouter();
@@ -359,6 +361,18 @@ export default function SeleccioneModuloAccesoPage() {
                                 </div>
                               )}
                             </div>
+
+                            <div className="flex flex-col">
+                              <SidebarHeading label="Mi alumnado" expanded={expandedItems['miAlumnado']} onClick={() => toggleExpanded('miAlumnado')} />
+                              {expandedItems['miAlumnado'] && (
+                                <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
+                                  {isTeacherTutor && (
+                                    <SidebarItem color="#89a54e" label="Alumnado de mi tutoria" isSubItem onClick={() => setActiveSubContent('Alumnado de mi tutoria')} active={activeSubContent === 'Alumnado de mi tutoria'} />
+                                  )}
+                                  <SidebarItem color="#89a54e" label="Alumnado del centro" isSubItem onClick={() => setActiveSubContent('Alumnado del centro')} active={activeSubContent === 'Alumnado del centro'} />
+                                </div>
+                              )}
+                            </div>
                           </>
                         ) : (
                           <div className="flex flex-col">
@@ -450,6 +464,10 @@ export default function SeleccioneModuloAccesoPage() {
                     <MessagingView mode="inbox" usuarioId={session.usuario} />
                   ) : activeSubContent === 'Papelera Mensajería' ? (
                     <MessagingView mode="trash" usuarioId={session.usuario} />
+                  ) : activeSubContent === 'Alumnado de mi tutoria' ? (
+                    <MyTutoringStudentsView grupoTutorizado={userData?.esTutor} />
+                  ) : activeSubContent === 'Alumnado del centro' ? (
+                    <CenterStudentsView />
                   ) : activeSubContent ? (
                     <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
                        <div className="bg-white border rounded-lg p-10 shadow-sm min-h-[400px] flex flex-col items-center justify-center text-center space-y-4">
