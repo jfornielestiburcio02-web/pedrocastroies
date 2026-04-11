@@ -48,6 +48,21 @@
         "contrasena",
         "email"
       ]
+    },
+    "Horario": {
+      "title": "Horario",
+      "type": "object",
+      "description": "Definición de clase o guardia asignada a un profesor.",
+      "properties": {
+        "profesorId": { "type": "string" },
+        "dia": { "type": "string", "enum": ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"] },
+        "horaInicio": { "type": "string" },
+        "horaFin": { "type": "string" },
+        "alumnosIds": { "type": "array", "items": { "type": "string" } },
+        "esGuardia": { "type": "boolean" },
+        "asignatura": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "auth": {
@@ -61,6 +76,12 @@
         "$ref": "#/backend/entities/Usuario"
       },
       "description": "Colección de usuarios con gestión de sesión manual."
+    },
+    "/horarios/{horarioId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Horario"
+      },
+      "description": "Colección global de horarios lectivos y guardias."
     }
   }
 }

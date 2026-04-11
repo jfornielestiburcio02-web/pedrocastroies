@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   Loader2, 
@@ -24,13 +24,28 @@ import {
   ChevronDown,
   ChevronRight,
   Users,
-  Calendar
+  Plus,
+  Trash2,
+  Save,
+  CheckCircle2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useFirestore } from '@/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { doc, getDoc, collection, addDoc, query, where, serverTimestamp } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
+import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 export default function SeleccioneModuloAccesoPage() {
   const [session, setSession] = useState<any>(null);
@@ -44,8 +59,10 @@ export default function SeleccioneModuloAccesoPage() {
     'usuarios': true,
     'horarios': true
   });
+  
   const router = useRouter();
   const db = useFirestore();
+  const { toast } = useToast();
 
   useEffect(() => {
     const savedSessionStr = localStorage.getItem('user_session');
@@ -394,7 +411,9 @@ export default function SeleccioneModuloAccesoPage() {
                 </div>
 
                 <div className="flex-1">
-                  {activeSubContent ? (
+                  {activeSubContent === 'Modificar / crear Horarios' ? (
+                    <ScheduleCreationView />
+                  ) : activeSubContent ? (
                     <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
                        <div className="bg-white border rounded-lg p-10 shadow-sm min-h-[400px] flex flex-col items-center justify-center text-center space-y-4">
                           <div className={cn(
@@ -407,14 +426,6 @@ export default function SeleccioneModuloAccesoPage() {
                           <p className="text-gray-500 italic max-w-md">
                             Contenido del módulo de {selectedModule?.toLowerCase()} para la sección de {activeSubContent.toLowerCase()}.
                           </p>
-                          <div className="pt-8 grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-2xl">
-                             {[1, 2, 3].map(i => (
-                               <div key={i} className="border-2 border-dashed border-gray-200 rounded-lg p-6 flex flex-col items-center gap-2">
-                                  <div className="h-2 w-12 bg-gray-100 rounded"></div>
-                                  <div className="h-2 w-full bg-gray-50 rounded"></div>
-                               </div>
-                             ))}
-                          </div>
                        </div>
                     </div>
                   ) : (
@@ -465,6 +476,220 @@ export default function SeleccioneModuloAccesoPage() {
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Vista de creación de horarios para el perfil de Dirección.
+ */
+function ScheduleCreationView() {
+  const db = useFirestore();
+  const { toast } = useToast();
+  
+  // Fetch users for selection
+  const usersQuery = useMemoFirebase(() => {
+    if (!db) return null;
+    return collection(db, 'usuarios');
+  }, [db]);
+  
+  const { data: allUsers, isLoading: loadingUsers } = useCollection(usersQuery);
+  
+  const professors = useMemo(() => allUsers?.filter(u => u.rolesUsuario?.includes('EsProfesor')) || [], [allUsers]);
+  const students = useMemo(() => allUsers?.filter(u => u.rolesUsuario?.includes('EsAlumno')) || [], [allUsers]);
+
+  const [formData, setFormData] = useState({
+    profesorId: '',
+    dia: 'Lunes',
+    horaInicio: '08:30',
+    horaFin: '09:30',
+    asignatura: '',
+    esGuardia: false,
+    alumnosIds: [] as string[]
+  });
+
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!db) return;
+    if (!formData.profesorId || (!formData.asignatura && !formData.esGuardia)) {
+      toast({
+        variant: "destructive",
+        title: "Error de validación",
+        description: "Debe seleccionar un profesor y asignar una materia o marcar como guardia."
+      });
+      return;
+    }
+
+    setIsSaving(true);
+    
+    const horariosRef = collection(db, 'horarios');
+    addDocumentNonBlocking(horariosRef, {
+      ...formData,
+      createdAt: new Date().toISOString()
+    });
+
+    toast({
+      title: "Horario creado",
+      description: `Se ha asignado la clase de ${formData.dia} a las ${formData.horaInicio}.`,
+    });
+    
+    // Reset form except professor and day for batch entry
+    setFormData(prev => ({
+      ...prev,
+      asignatura: '',
+      esGuardia: false,
+      alumnosIds: []
+    }));
+    setIsSaving(false);
+  };
+
+  const toggleStudent = (id: string) => {
+    setFormData(prev => ({
+      ...prev,
+      alumnosIds: prev.alumnosIds.includes(id) 
+        ? prev.alumnosIds.filter(sid => sid !== id)
+        : [...prev.alumnosIds, id]
+    }));
+  };
+
+  return (
+    <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 max-w-4xl mx-auto w-full">
+      <div className="bg-white border rounded-xl shadow-sm overflow-hidden">
+        <div className="bg-[#9c4d96] p-4 text-white flex items-center gap-2">
+          <Clock className="h-5 w-5" />
+          <h2 className="font-bold text-lg uppercase tracking-tight">Nuevo Registro de Horario</h2>
+        </div>
+        
+        <form onSubmit={handleSubmit} className="p-8 space-y-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Profesor y Día */}
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase text-gray-500">Profesor Asignado</Label>
+                <Select onValueChange={(val) => setFormData({...formData, profesorId: val})} value={formData.profesorId}>
+                  <SelectTrigger className="border-gray-300">
+                    <SelectValue placeholder="Seleccione un profesor..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {professors.map(p => (
+                      <SelectItem key={p.id} value={p.id}>{p.nombrePersona || p.usuario}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase text-gray-500">Día de la semana</Label>
+                <Select onValueChange={(val) => setFormData({...formData, dia: val})} value={formData.dia}>
+                  <SelectTrigger className="border-gray-300">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"].map(d => (
+                      <SelectItem key={d} value={d}>{d}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase text-gray-500">Hora Inicio</Label>
+                  <Input 
+                    type="time" 
+                    className="border-gray-300"
+                    value={formData.horaInicio}
+                    onChange={(e) => setFormData({...formData, horaInicio: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase text-gray-500">Hora Fin</Label>
+                  <Input 
+                    type="time" 
+                    className="border-gray-300"
+                    value={formData.horaFin}
+                    onChange={(e) => setFormData({...formData, horaFin: e.target.value})}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Detalles Clase */}
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase text-gray-500">Nombre de Asignatura / Actividad</Label>
+                <Input 
+                  placeholder="Ej: Matemáticas II" 
+                  className="border-gray-300"
+                  value={formData.asignatura}
+                  disabled={formData.esGuardia}
+                  onChange={(e) => setFormData({...formData, asignatura: e.target.value})}
+                />
+              </div>
+
+              <div className="flex items-center space-x-2 bg-gray-50 p-4 rounded-lg border border-dashed border-gray-300">
+                <Checkbox 
+                  id="esGuardia" 
+                  checked={formData.esGuardia}
+                  onCheckedChange={(checked) => setFormData({...formData, esGuardia: !!checked, asignatura: checked ? 'GUARDIA' : ''})}
+                />
+                <Label htmlFor="esGuardia" className="text-sm font-bold text-gray-700 cursor-pointer">Es una sesión de GUARDIA</Label>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase text-gray-500 flex justify-between">
+                  <span>Alumnos Asignados</span>
+                  <span className="text-primary">{formData.alumnosIds.length} seleccionados</span>
+                </Label>
+                <div className="border rounded-lg h-[200px] overflow-y-auto p-2 bg-gray-50/50 space-y-1">
+                  {students.length === 0 ? (
+                    <p className="text-center text-[11px] text-gray-400 mt-10 italic">No hay alumnos registrados</p>
+                  ) : (
+                    students.map(s => (
+                      <div 
+                        key={s.id} 
+                        onClick={() => toggleStudent(s.id)}
+                        className={cn(
+                          "flex items-center gap-3 p-2 rounded-md cursor-pointer transition-all border",
+                          formData.alumnosIds.includes(s.id) 
+                            ? "bg-white border-[#9c4d96] shadow-sm" 
+                            : "bg-transparent border-transparent hover:bg-white hover:border-gray-200"
+                        )}
+                      >
+                        <div className={cn(
+                          "w-4 h-4 rounded-sm border flex items-center justify-center transition-colors",
+                          formData.alumnosIds.includes(s.id) ? "bg-[#9c4d96] border-[#9c4d96]" : "bg-white border-gray-300"
+                        )}>
+                          {formData.alumnosIds.includes(s.id) && <Plus className="h-3 w-3 text-white" />}
+                        </div>
+                        <span className="text-[12px]">{s.nombrePersona || s.usuario}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-6 border-t flex items-center justify-between gap-4">
+             <div className="flex items-center gap-2 text-[10px] text-gray-400 uppercase font-bold tracking-widest italic">
+                <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                Gestión de Horarios v1.0
+             </div>
+             <div className="flex gap-4">
+                <Button type="button" variant="outline" className="text-[11px] font-bold uppercase tracking-widest">
+                  Limpiar Formulario
+                </Button>
+                <Button type="submit" disabled={isSaving} className="bg-[#9c4d96] hover:bg-[#833d7d] text-white gap-2 px-8 text-[11px] font-bold uppercase tracking-widest h-12">
+                  {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  Guardar en Rayuela
+                </Button>
+             </div>
+          </div>
+        </form>
       </div>
     </div>
   );

@@ -2,16 +2,13 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    /**
-     * Reglas para el sistema de login personalizado.
-     * Permitimos lectura y creación para que el sistema de login manual funcione.
-     */
     match /usuarios/{usuarioId} {
       allow read, create, update: if true;
       allow delete: if false;
     }
-    
-    // Reglas por defecto para otros perfiles
+    match /horarios/{horarioId} {
+      allow read, write: if true;
+    }
     match /user_profiles/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
