@@ -37,6 +37,7 @@ import { AttendanceBySubjectView } from '@/components/rayuela/attendance-by-subj
 import { GuardDutyView } from '@/components/rayuela/guard-duty-view';
 import { AlumnadoIncidenteView } from '@/components/rayuela/alumnado-incidente-view';
 import { MessagingView } from '@/components/rayuela/messaging-view';
+import { TutorialFunctionView } from '@/components/rayuela/tutorial-function-view';
 import { ScheduleListView, ScheduleCreationView } from '@/components/rayuela/schedule-views';
 import { SidebarItem, SidebarHeading, ModuleBox } from '@/components/rayuela/shared-components';
 
@@ -153,6 +154,8 @@ export default function SeleccioneModuloAccesoPage() {
   const canSeeGestion = userRoles.includes('EsDireccion');
   const canSeeSecretaria = userRoles.includes('EsSecretaria');
   const canSeeCau = userRoles.includes('EsCau');
+
+  const isTeacherTutor = userData?.esTutor && userData?.esTutor !== "";
 
   return (
     <div className="min-h-screen bg-white font-verdana flex flex-col w-full overflow-x-hidden">
@@ -314,7 +317,9 @@ export default function SeleccioneModuloAccesoPage() {
                               {expandedItems['faltas'] && (
                                 <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
                                   <SidebarItem color="#89a54e" label="Por materia" isSubItem onClick={() => setActiveSubContent('Por materia')} active={activeSubContent === 'Por materia'} />
-                                  <SidebarItem color="#89a54e" label="Funcion tutorial" isSubItem onClick={() => setActiveSubContent('Funcion tutorial')} active={activeSubContent === 'Funcion tutorial'} />
+                                  {isTeacherTutor && (
+                                    <SidebarItem color="#89a54e" label="Funcion tutorial" isSubItem onClick={() => setActiveSubContent('Funcion tutorial')} active={activeSubContent === 'Funcion tutorial'} />
+                                  )}
                                   <SidebarItem color="#89a54e" label="Guardias" isSubItem onClick={() => setActiveSubContent('Guardias')} active={activeSubContent === 'Guardias'} />
                                 </div>
                               )}
@@ -416,6 +421,8 @@ export default function SeleccioneModuloAccesoPage() {
                     <ScheduleListView />
                   ) : activeSubContent === 'Por materia' ? (
                     <AttendanceBySubjectView profesorId={session.usuario} />
+                  ) : activeSubContent === 'Funcion tutorial' ? (
+                    <TutorialFunctionView profesorId={session.usuario} grupoTutorizado={userData?.esTutor} />
                   ) : activeSubContent === 'Guardias' ? (
                     <GuardDutyView profesorId={session.usuario} />
                   ) : activeSubContent === 'Alumnado Incidente' ? (

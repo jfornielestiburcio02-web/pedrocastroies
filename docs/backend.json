@@ -38,6 +38,10 @@
           "type": "string",
           "description": "Curso asignado al alumno (ej: 4º ESO A)."
         },
+        "esTutor": {
+          "type": "string",
+          "description": "Grupo que tutela el profesor (ej: 2 ESO B)."
+        },
         "sesion": {
           "type": "string",
           "description": "Identificador de sesión (JSESSIONID)."
