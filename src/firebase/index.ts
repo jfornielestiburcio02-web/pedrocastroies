@@ -15,7 +15,6 @@ import {
   Firestore
 } from 'firebase/firestore';
 
-// 🔥 Inicializa Firebase UNA sola vez
 export function initializeFirebase() {
   let firebaseApp: FirebaseApp;
 
@@ -28,7 +27,6 @@ export function initializeFirebase() {
   return getSdks(firebaseApp);
 }
 
-// 🔥 Inicializa servicios correctamente (IMPORTANTE para tu entorno)
 export function getSdks(firebaseApp: FirebaseApp): {
   firebaseApp: FirebaseApp;
   auth: ReturnType<typeof getAuth>;
@@ -38,11 +36,10 @@ export function getSdks(firebaseApp: FirebaseApp): {
 
   const auth = getAuth(firebaseApp);
 
-  // 🔴 CONFIG CLAVE para evitar errores ca9 / b815 / permisos falsos
+  // ✅ CONFIG CORRECTA (SIN conflictos)
   const firestore = initializeFirestore(firebaseApp, {
     experimentalForceLongPolling: true,
-    experimentalAutoDetectLongPolling: true, // 👈 clave
-    useFetchStreams: false, // 👈 clave en cloud/proxy
+    useFetchStreams: false,
   });
 
   return {
@@ -52,7 +49,7 @@ export function getSdks(firebaseApp: FirebaseApp): {
   };
 }
 
-// 🔁 exports tuyos
+// exports
 export * from './provider';
 export * from './client-provider';
 export * from './firestore/use-collection';
