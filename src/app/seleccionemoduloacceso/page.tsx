@@ -39,7 +39,11 @@ import {
   AlertCircle,
   FileText,
   Filter,
-  ShieldAlert
+  ShieldAlert,
+  Megaphone,
+  Mail,
+  Inbox,
+  Eye
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -97,12 +101,14 @@ export default function SeleccioneModuloAccesoPage() {
   const [selectedModule, setSelectedModule] = useState<string | null>(null);
   const [activeRole, setActiveRole] = useState<string | null>(null);
   const [activeSubContent, setActiveSubContent] = useState<string | null>(null);
+  const [sidebarMode, setSidebarMode] = useState<'ACADEMIC' | 'MESSAGING'>('ACADEMIC');
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({
     'faltas': true,
     'conductas': false,
     'graves': false,
     'usuarios': true,
-    'horarios': true
+    'horarios': true,
+    'mensajeria': true
   });
   
   const router = useRouter();
@@ -157,6 +163,7 @@ export default function SeleccioneModuloAccesoPage() {
   const handleModuleClick = (label: string) => {
     setSelectedModule(label.toUpperCase());
     setActiveSubContent(null);
+    setSidebarMode('ACADEMIC');
     const roles = userData?.rolesUsuario || [];
     if (label === "Seguimiento") {
       if (roles.includes('EsProfesor')) setActiveRole('Profesor');
@@ -333,12 +340,12 @@ export default function SeleccioneModuloAccesoPage() {
                 <div className="w-[60px] min-w-[60px] flex flex-col items-center py-4 gap-4 bg-[#f4f4f4] border-r border-gray-200/50">
                   {activeRole === 'Profesor' ? (
                     <>
-                      <div className="p-2 bg-[#89a54e] rounded-sm text-white"><BookOpen className="h-5 w-5" /></div>
-                      <div className="p-2 bg-[#89a54e] rounded-sm text-white"><Volume2 className="h-5 w-5" /></div>
-                      <div className="p-2 bg-[#89a54e] rounded-sm text-white"><Video className="h-5 w-5" /></div>
-                      <div className="p-2 bg-[#89a54e] rounded-sm text-white"><Pin className="h-5 w-5" /></div>
-                      <div className="p-2 bg-[#89a54e] rounded-sm text-white"><Files className="h-5 w-5" /></div>
-                      <div className="p-2 bg-[#89a54e] rounded-sm text-white"><UserCog className="h-5 w-5" /></div>
+                      <div className={cn("p-2 rounded-sm text-white cursor-pointer transition-colors", sidebarMode === 'ACADEMIC' ? "bg-[#89a54e]" : "bg-gray-400")} onClick={() => setSidebarMode('ACADEMIC')}><BookOpen className="h-5 w-5" /></div>
+                      <div className={cn("p-2 rounded-sm text-white cursor-pointer transition-colors", sidebarMode === 'MESSAGING' ? "bg-[#fb8500]" : "bg-gray-400")} onClick={() => setSidebarMode('MESSAGING')}><Megaphone className="h-5 w-5" /></div>
+                      <div className="p-2 bg-gray-400 rounded-sm text-white"><Video className="h-5 w-5" /></div>
+                      <div className="p-2 bg-gray-400 rounded-sm text-white"><Pin className="h-5 w-5" /></div>
+                      <div className="p-2 bg-gray-400 rounded-sm text-white"><Files className="h-5 w-5" /></div>
+                      <div className="p-2 bg-gray-400 rounded-sm text-white"><UserCog className="h-5 w-5" /></div>
                     </>
                   ) : (
                     <>
@@ -355,58 +362,81 @@ export default function SeleccioneModuloAccesoPage() {
                   <div className="px-2 space-y-0.5">
                     {activeRole === 'Profesor' ? (
                       <div className="flex flex-col space-y-2">
-                        <div className="flex flex-col">
-                          <div 
-                            onClick={() => toggleExpanded('faltas')}
-                            className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-100 cursor-pointer group/item transition-colors"
-                          >
-                            <div className="w-3.5 h-3.5 border border-gray-400 rounded-sm bg-white flex items-center justify-center">
-                              {expandedItems['faltas'] ? <ChevronDown className="h-2.5 w-2.5 text-[#89a54e]" /> : <ChevronRight className="h-2.5 w-2.5 text-gray-400" />}
+                        {sidebarMode === 'ACADEMIC' ? (
+                          <>
+                            <div className="flex flex-col">
+                              <div 
+                                onClick={() => toggleExpanded('faltas')}
+                                className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-100 cursor-pointer group/item transition-colors"
+                              >
+                                <div className="w-3.5 h-3.5 border border-gray-400 rounded-sm bg-white flex items-center justify-center">
+                                  {expandedItems['faltas'] ? <ChevronDown className="h-2.5 w-2.5 text-[#89a54e]" /> : <ChevronRight className="h-2.5 w-2.5 text-gray-400" />}
+                                </div>
+                                <span className="text-[12px] font-bold text-gray-700 whitespace-nowrap">Faltas de asistencia</span>
+                              </div>
+                              
+                              {expandedItems['faltas'] && (
+                                <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
+                                  <SidebarItem color="#89a54e" label="Por materia" isSubItem onClick={() => setActiveSubContent('Por materia')} active={activeSubContent === 'Por materia'} />
+                                  <SidebarItem color="#89a54e" label="Funcion tutorial" isSubItem onClick={() => setActiveSubContent('Funcion tutorial')} active={activeSubContent === 'Funcion tutorial'} />
+                                  <SidebarItem color="#89a54e" label="Guardias" isSubItem onClick={() => setActiveSubContent('Guardias')} active={activeSubContent === 'Guardias'} />
+                                </div>
+                              )}
                             </div>
-                            <span className="text-[12px] font-bold text-gray-700 whitespace-nowrap">Faltas de asistencia</span>
-                          </div>
-                          
-                          {expandedItems['faltas'] && (
-                            <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
-                              <SidebarItem color="#89a54e" label="Por materia" isSubItem onClick={() => setActiveSubContent('Por materia')} active={activeSubContent === 'Por materia'} />
-                              <SidebarItem color="#89a54e" label="Funcion tutorial" isSubItem onClick={() => setActiveSubContent('Funcion tutorial')} active={activeSubContent === 'Funcion tutorial'} />
-                              <SidebarItem color="#89a54e" label="Guardias" isSubItem onClick={() => setActiveSubContent('Guardias')} active={activeSubContent === 'Guardias'} />
-                            </div>
-                          )}
-                        </div>
 
-                        <div className="flex flex-col">
-                           <div 
-                            onClick={() => toggleExpanded('conductas')}
-                            className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-100 cursor-pointer group/item transition-colors"
-                          >
-                            <div className="w-3.5 h-3.5 border border-gray-400 rounded-sm bg-white flex items-center justify-center">
-                              {expandedItems['conductas'] ? <ChevronDown className="h-2.5 w-2.5 text-[#89a54e]" /> : <ChevronRight className="h-2.5 w-2.5 text-gray-400" />}
-                            </div>
-                            <span className="text-[12px] font-bold text-gray-700 whitespace-nowrap">Conductas contrarias</span>
-                          </div>
+                            <div className="flex flex-col">
+                               <div 
+                                onClick={() => toggleExpanded('conductas')}
+                                className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-100 cursor-pointer group/item transition-colors"
+                              >
+                                <div className="w-3.5 h-3.5 border border-gray-400 rounded-sm bg-white flex items-center justify-center">
+                                  {expandedItems['conductas'] ? <ChevronDown className="h-2.5 w-2.5 text-[#89a54e]" /> : <ChevronRight className="h-2.5 w-2.5 text-gray-400" />}
+                                </div>
+                                <span className="text-[12px] font-bold text-gray-700 whitespace-nowrap">Conductas contrarias</span>
+                              </div>
 
-                          {expandedItems['conductas'] && (
-                            <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
-                               <div className="flex flex-col">
-                                  <div 
-                                    onClick={() => toggleExpanded('graves')}
-                                    className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-100 cursor-pointer group/item transition-colors"
-                                  >
-                                    <div className="w-3.5 h-3.5 border border-gray-400 rounded-sm bg-white flex items-center justify-center">
-                                      {expandedItems['graves'] ? <ChevronDown className="h-2.5 w-2.5 text-[#89a54e]" /> : <ChevronRight className="h-2.5 w-2.5 text-gray-400" />}
-                                    </div>
-                                    <span className="text-[11px] text-gray-500 whitespace-nowrap">Conductas contrarias y graves</span>
-                                  </div>
-                                  {expandedItems['graves'] && (
-                                    <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
-                                       <SidebarItem color="#89a54e" label="Alumnado Incidente" isSubItem onClick={() => setActiveSubContent('Alumnado Incidente')} active={activeSubContent === 'Alumnado Incidente'} />
-                                    </div>
-                                  )}
-                               </div>
+                              {expandedItems['conductas'] && (
+                                <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
+                                   <div className="flex flex-col">
+                                      <div 
+                                        onClick={() => toggleExpanded('graves')}
+                                        className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-100 cursor-pointer group/item transition-colors"
+                                      >
+                                        <div className="w-3.5 h-3.5 border border-gray-400 rounded-sm bg-white flex items-center justify-center">
+                                          {expandedItems['graves'] ? <ChevronDown className="h-2.5 w-2.5 text-[#89a54e]" /> : <ChevronRight className="h-2.5 w-2.5 text-gray-400" />}
+                                        </div>
+                                        <span className="text-[11px] text-gray-500 whitespace-nowrap">Conductas contrarias y graves</span>
+                                      </div>
+                                      {expandedItems['graves'] && (
+                                        <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
+                                           <SidebarItem color="#89a54e" label="Alumnado Incidente" isSubItem onClick={() => setActiveSubContent('Alumnado Incidente')} active={activeSubContent === 'Alumnado Incidente'} />
+                                        </div>
+                                      )}
+                                   </div>
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
+                          </>
+                        ) : (
+                          <div className="flex flex-col">
+                            <div 
+                              onClick={() => toggleExpanded('mensajeria')}
+                              className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-100 cursor-pointer group/item transition-colors"
+                            >
+                              <div className="w-3.5 h-3.5 border border-gray-400 rounded-sm bg-white flex items-center justify-center">
+                                {expandedItems['mensajeria'] ? <ChevronDown className="h-2.5 w-2.5 text-[#fb8500]" /> : <ChevronRight className="h-2.5 w-2.5 text-gray-400" />}
+                              </div>
+                              <span className="text-[12px] font-bold text-gray-700 whitespace-nowrap">Mensajería</span>
+                            </div>
+                            
+                            {expandedItems['mensajeria'] && (
+                              <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
+                                <SidebarItem color="#fb8500" label="Mis Mensajes" isSubItem onClick={() => setActiveSubContent('Mis Mensajes')} active={activeSubContent === 'Mis Mensajes'} />
+                                <SidebarItem color="#fb8500" label="Papelera" isSubItem onClick={() => setActiveSubContent('Papelera Mensajería')} active={activeSubContent === 'Papelera Mensajería'} />
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className="space-y-2">
@@ -496,6 +526,10 @@ export default function SeleccioneModuloAccesoPage() {
                     <GuardDutyView profesorId={session.usuario} />
                   ) : activeSubContent === 'Alumnado Incidente' ? (
                     <AlumnadoIncidenteView profesorId={session.usuario} />
+                  ) : activeSubContent === 'Mis Mensajes' ? (
+                    <MessagingView mode="inbox" />
+                  ) : activeSubContent === 'Papelera Mensajería' ? (
+                    <MessagingView mode="trash" />
                   ) : activeSubContent ? (
                     <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
                        <div className="bg-white border rounded-lg p-10 shadow-sm min-h-[400px] flex flex-col items-center justify-center text-center space-y-4">
@@ -565,6 +599,35 @@ export default function SeleccioneModuloAccesoPage() {
 }
 
 /**
+ * Vista de Mensajería.
+ */
+function MessagingView({ mode }: { mode: 'inbox' | 'trash' }) {
+  return (
+    <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 space-y-6 w-full">
+      <div className="bg-white border rounded-lg shadow-sm overflow-hidden min-h-[400px] flex flex-col">
+        <div className="bg-[#f8f9fa] border-b p-4 flex items-center gap-3">
+          {mode === 'inbox' ? <Inbox className="h-5 w-5 text-[#fb8500]" /> : <Trash2 className="h-5 w-5 text-gray-400" />}
+          <span className="text-sm font-bold text-gray-700 uppercase">
+            {mode === 'inbox' ? 'Bandeja de Entrada' : 'Papelera de Reciclaje'}
+          </span>
+        </div>
+        
+        <div className="flex-1 flex flex-col items-center justify-center p-12 text-center space-y-4">
+           <Mail className="h-16 w-16 text-gray-100" />
+           <div className="space-y-1">
+             <h3 className="text-lg font-bold text-gray-400 uppercase tracking-tight">No hay mensajes</h3>
+             <p className="text-xs text-gray-400 italic">Su carpeta de {mode === 'inbox' ? 'entrada' : 'papelera'} está actualmente vacía.</p>
+           </div>
+           <Button size="sm" className="bg-[#fb8500] hover:bg-[#e07600] text-white text-[10px] font-bold uppercase h-8 px-6">
+             Redactar Nuevo
+           </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
  * Vista de Alumnado Incidente (Módulo de Conductas Contrarias).
  */
 function AlumnadoIncidenteView({ profesorId }: { profesorId: string }) {
@@ -572,6 +635,7 @@ function AlumnadoIncidenteView({ profesorId }: { profesorId: string }) {
   const { toast } = useToast();
   const [selectedCourse, setSelectedCourse] = useState<string>("TODOS");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [viewExpedienteId, setViewExpedienteId] = useState<string | null>(null);
   
   const usersQuery = useMemoFirebase(() => {
     if (!db) return null;
@@ -732,7 +796,7 @@ function AlumnadoIncidenteView({ profesorId }: { profesorId: string }) {
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" className="h-8 px-2 text-[9px] font-bold text-[#89a54e] uppercase gap-1 hover:bg-[#89a54e]/10">
+                        <Button variant="ghost" size="sm" onClick={() => setViewExpedienteId(student.id)} className="h-8 px-2 text-[9px] font-bold text-[#89a54e] uppercase gap-1 hover:bg-[#89a54e]/10">
                           <FileText className="h-3 w-3" /> Ver Expediente
                         </Button>
                       </TableCell>
@@ -750,6 +814,15 @@ function AlumnadoIncidenteView({ profesorId }: { profesorId: string }) {
           </Table>
         </div>
       </div>
+
+      {/* DIALOGO EXPEDIENTE */}
+      {viewExpedienteId && (
+        <ExpedienteDisciplinarioDialog 
+          alumnoId={viewExpedienteId} 
+          onClose={() => setViewExpedienteId(null)} 
+          incidencias={allIncidents?.filter(i => i.alumnoId === viewExpedienteId) || []}
+        />
+      )}
 
       {/* DIALOGO NUEVA INCIDENCIA */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -873,6 +946,134 @@ function AlumnadoIncidenteView({ profesorId }: { profesorId: string }) {
 }
 
 /**
+ * Diálogo de Expediente Disciplinario.
+ */
+function ExpedienteDisciplinarioDialog({ alumnoId, onClose, incidencias }: { alumnoId: string, onClose: () => void, incidencias: any[] }) {
+  const db = useFirestore();
+  const [alumno, setAlumno] = useState<any>(null);
+  const [selectedIncident, setSelectedIncident] = useState<any>(null);
+
+  useEffect(() => {
+    if (db && alumnoId) {
+      getDoc(doc(db, 'usuarios', alumnoId)).then(s => s.exists() && setAlumno(s.data()));
+    }
+  }, [db, alumnoId]);
+
+  return (
+    <Dialog open={true} onOpenChange={onClose}>
+      <DialogContent className="max-w-4xl font-verdana p-0 border-none overflow-hidden max-h-[90vh] flex flex-col">
+        <DialogHeader className="bg-[#f2f2f2] p-6 border-b shrink-0">
+           <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                 <Avatar className="h-12 w-12 border-2 border-white shadow-sm">
+                   <AvatarImage src={alumno?.imagenPerfil} />
+                   <AvatarFallback>{alumno?.usuario?.substring(0,2).toUpperCase()}</AvatarFallback>
+                 </Avatar>
+                 <div className="text-left">
+                    <DialogTitle className="text-sm font-bold uppercase tracking-tight">Expediente Disciplinario Digital</DialogTitle>
+                    <p className="text-[11px] font-bold text-[#89a54e] uppercase">{alumno?.nombrePersona || alumno?.usuario} ({alumno?.cursoAlumno})</p>
+                 </div>
+              </div>
+              <Badge className="bg-red-700 text-white font-bold uppercase px-3 py-1">{incidencias.length} INCIDENCIAS</Badge>
+           </div>
+        </DialogHeader>
+
+        <div className="flex-1 flex overflow-hidden">
+           <div className="w-1/3 border-r bg-gray-50/50 flex flex-col overflow-y-auto">
+              <div className="p-4 border-b bg-gray-100 text-[10px] font-bold text-gray-500 uppercase">Listado de Incidencias</div>
+              {incidencias.length === 0 ? (
+                <div className="p-8 text-center text-xs text-gray-400 italic">No hay registros previos.</div>
+              ) : (
+                incidencias.map((inc) => (
+                  <div 
+                    key={inc.id} 
+                    onClick={() => setSelectedIncident(inc)}
+                    className={cn(
+                      "p-4 border-b cursor-pointer transition-colors hover:bg-white group",
+                      selectedIncident?.id === inc.id ? "bg-white border-l-4 border-l-red-700" : ""
+                    )}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase">{format(new Date(inc.fecha), 'dd/MM/yyyy')}</span>
+                      <Badge variant="outline" className={cn("text-[8px] font-bold uppercase border-none", inc.tipoIncidencia === 'Grave' ? "bg-red-100 text-red-700" : "bg-orange-100 text-orange-700")}>
+                        {inc.tipoIncidencia}
+                      </Badge>
+                    </div>
+                    <p className="text-[11px] font-bold text-gray-700 group-hover:text-red-700 truncate">{inc.descripcion}</p>
+                  </div>
+                ))
+              )}
+           </div>
+
+           <div className="flex-1 bg-white p-8 overflow-y-auto">
+              {selectedIncident ? (
+                <div className="animate-in fade-in slide-in-from-right-2 duration-300 space-y-8">
+                   <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-bold text-gray-800 uppercase tracking-tight flex items-center gap-2">
+                        Detalle de la Incidencia
+                        <Badge className="bg-red-700">{selectedIncident.gravedad}/5</Badge>
+                      </h3>
+                      <span className="text-xs text-gray-400 italic">ID: {selectedIncident.id}</span>
+                   </div>
+
+                   <div className="grid grid-cols-2 gap-8">
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-bold uppercase text-gray-400">Tipo de conducta</Label>
+                        <p className="text-sm font-bold text-gray-700">{selectedIncident.tipoIncidencia}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-bold uppercase text-gray-400">Fecha del Registro</Label>
+                        <p className="text-sm font-bold text-gray-700">{format(new Date(selectedIncident.fecha), "eeee d 'de' MMMM 'a las' HH:mm", { locale: es })}</p>
+                      </div>
+                   </div>
+
+                   <div className="space-y-2">
+                      <Label className="text-[10px] font-bold uppercase text-gray-400">Relato de los Hechos</Label>
+                      <div className="bg-gray-50 p-4 rounded-lg border border-dashed border-gray-200 text-sm italic leading-relaxed text-gray-600">
+                        "{selectedIncident.descripcion}"
+                      </div>
+                   </div>
+
+                   <div className="space-y-2">
+                      <Label className="text-[10px] font-bold uppercase text-gray-400">Conductas Específicas</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedIncident.conductas?.map((c: string) => (
+                          <Badge key={c} variant="outline" className="bg-white text-[9px] font-bold text-gray-500 uppercase border-gray-200">{c}</Badge>
+                        ))}
+                      </div>
+                   </div>
+
+                   <div className="space-y-2">
+                      <Label className="text-[10px] font-bold uppercase text-gray-400">Medidas Correctoras</Label>
+                      <p className="text-sm font-bold text-gray-800">{selectedIncident.medidasCorrectoras || "Ninguna registrada."}</p>
+                   </div>
+
+                   <div className="pt-4 border-t flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-[10px] font-bold text-blue-800 uppercase bg-blue-50 px-3 py-1 rounded">
+                        {selectedIncident.comunicadoFamilia ? <CheckCircle2 className="h-4 w-4" /> : <X className="h-4 w-4" />}
+                        {selectedIncident.comunicadoFamilia ? 'Familia Informada' : 'Pendiente comunicación familia'}
+                      </div>
+                      <span className="text-[10px] font-bold text-gray-400 uppercase">Profesor: {selectedIncident.profesorId}</span>
+                   </div>
+                </div>
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center text-center space-y-4 opacity-40">
+                   <Eye className="h-16 w-16" />
+                   <p className="text-sm italic">Seleccione una incidencia del listado para ver los detalles completos.</p>
+                </div>
+              )}
+           </div>
+        </div>
+
+        <DialogFooter className="bg-gray-50 p-6 border-t shrink-0">
+           <Button onClick={onClose} className="bg-gray-700 hover:bg-gray-800 text-white text-[11px] font-bold uppercase h-10 px-8">Cerrar Expediente</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/**
  * Vista de Gestión de Guardias para Profesores.
  */
 function GuardDutyView({ profesorId }: { profesorId: string }) {
@@ -897,7 +1098,6 @@ function GuardDutyView({ profesorId }: { profesorId: string }) {
     return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
   }, [now]);
 
-  // Query para buscar si el profesor actual está de guardia hoy
   const myScheduleQuery = useMemoFirebase(() => {
     if (!db || !profesorId || !currentDay) return null;
     return query(
@@ -910,13 +1110,11 @@ function GuardDutyView({ profesorId }: { profesorId: string }) {
 
   const { data: myDutySlots, isLoading: loadingMyDuty } = useCollection(myScheduleQuery);
 
-  // Comprobar si hay una guardia activa en el tramo horario actual
   const activeDuty = useMemo(() => {
     if (!myDutySlots || !currentTimeStr) return null;
     return myDutySlots.find(slot => currentTimeStr >= slot.horaInicio && currentTimeStr <= slot.horaFin);
   }, [myDutySlots, currentTimeStr]);
 
-  // Query para traer todas las clases lectivas del día
   const allSchedulesQuery = useMemoFirebase(() => {
     if (!db || !currentDay) return null;
     return query(
@@ -928,7 +1126,6 @@ function GuardDutyView({ profesorId }: { profesorId: string }) {
 
   const { data: allSchedules } = useCollection(allSchedulesQuery);
 
-  // Filtrar clases que están ocurriendo ahora mismo
   const activeClasses = useMemo(() => {
     if (!allSchedules || !currentTimeStr) return [];
     return allSchedules.filter(slot => currentTimeStr >= slot.horaInicio && currentTimeStr <= slot.horaFin);
