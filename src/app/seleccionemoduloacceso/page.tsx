@@ -119,7 +119,8 @@ export default function SeleccioneModuloAccesoPage() {
     );
   }
 
-  const userRoles = userData?.rolesUsuario || [];
+  // Deduplicamos los roles para evitar errores de duplicidad de llaves en el renderizado
+  const userRoles = Array.from(new Set(userData?.rolesUsuario || [])) as string[];
 
   // Lógica de visibilidad de módulos
   const canSeeSeguimiento = userRoles.includes('EsProfesor') || userRoles.includes('EsAlumno');
