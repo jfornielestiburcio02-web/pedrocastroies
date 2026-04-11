@@ -24,7 +24,7 @@ import {
   Search
 } from 'lucide-react';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, orderBy, doc, getDocs } from 'firebase/firestore';
+import { collection, query, where, orderBy, doc, getDocs, getDoc } from 'firebase/firestore';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -44,7 +44,7 @@ import {
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { updateDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { updateDocumentNonBlocking, setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { useToast } from '@/hooks/use-toast';
 
 /**
@@ -137,10 +137,31 @@ export function StudentAttendanceView({ studentId, onlyUnjustified = false }: { 
       return;
     }
 
-    // Para cada sesión seleccionada, crear o actualizar el registro de asistencia
-    // CRÍTICO: El 'tipo' se queda VACÍO. No es falta aún, solo es una NOTIFICACIÓN.
+    // 1. Obtener datos del alumno para el mensaje
+    const studentSnap = await getDoc(doc(db, 'usuarios', studentId));
+    const studentData = studentSnap.data();
+    const studentName = studentData?.nombrePersona || studentData?.usuario || studentId;
+    const studentGroup = studentData?.cursoAlumno;
+
+    // 2. Buscar al tutor del grupo
+    let tutorId = null;
+    if (studentGroup) {
+      const tutorQuery = query(collection(db, 'usuarios'), where('esTutor', '==', studentGroup));
+      const tutorSnap = await getDocs(tutorQuery);
+      if (!tutorSnap.empty) {
+        tutorId = tutorSnap.docs[0].id;
+      }
+    }
+
+    const diadelanotificacion = format(new Date(formData.fecha), 'dd/MM/yyyy');
+    const fullMotivo = `${formData.titulo ? formData.titulo + ': ' : ''}${formData.descripcion}`;
+
+    // 3. Procesar cada sesión seleccionada
     formData.sesionesSeleccionadas.forEach(claseId => {
       const schedule = daySchedules?.find(s => s.id === claseId);
+      const horadelaclase = schedule?.horaInicio || 'N/A';
+      
+      // Crear registro de asistencia/notificación
       const notificationId = `${studentId}_${claseId}_${formData.fecha}`;
       const docRef = doc(db, 'asistenciasInasistencias', notificationId);
 
@@ -149,15 +170,41 @@ export function StudentAttendanceView({ studentId, onlyUnjustified = false }: { 
         claseId: claseId,
         fecha: formData.fecha,
         tipo: '', // SIN ESTADO - Solo notificación de motivo
-        motivo: `${formData.titulo ? formData.titulo + ': ' : ''}${formData.descripcion}`,
+        motivo: fullMotivo,
         profesorId: schedule?.profesorId || 'SISTEMA',
         createdAt: new Date().toISOString()
       }, { merge: true });
+
+      // 4. Enviar mensaje al PROFESOR de la materia
+      if (schedule?.profesorId) {
+        addDocumentNonBlocking(collection(db, 'mensajes'), {
+          remitenteId: 'SISTEMA',
+          destinatarioId: schedule.profesorId,
+          asunto: 'Aviso de Ausencia de Alumno',
+          cuerpo: `Es alumno ${studentName} ha notificado la falta a las ${horadelaclase} por motivo ${fullMotivo} el ${diadelanotificacion}`,
+          leido: false,
+          eliminado: false,
+          createdAt: new Date().toISOString()
+        });
+      }
+
+      // 5. Enviar mensaje al TUTOR (si es distinto del profesor para no duplicar)
+      if (tutorId && tutorId !== schedule?.profesorId) {
+        addDocumentNonBlocking(collection(db, 'mensajes'), {
+          remitenteId: 'SISTEMA',
+          destinatarioId: tutorId,
+          asunto: 'Notificación de Ausencia (Grupo Tutoría)',
+          cuerpo: `Es alumno ${studentName} ha notificado la falta a las ${horadelaclase} por motivo ${fullMotivo} el ${diadelanotificacion}`,
+          leido: false,
+          eliminado: false,
+          createdAt: new Date().toISOString()
+        });
+      }
     });
 
     toast({ 
-      title: "Notificación Enviada", 
-      description: `Se ha avisado a los profesores de las ${formData.sesionesSeleccionadas.length} sesiones. El docente podrá ver el aviso en su lista.` 
+      title: "Avisos Enviados", 
+      description: `Se ha notificado a los profesores y al tutor de su ausencia.` 
     });
 
     setFormData({ ...formData, titulo: '', descripcion: '', sesionesSeleccionadas: [] });
@@ -271,14 +318,14 @@ export function StudentAttendanceView({ studentId, onlyUnjustified = false }: { 
                <div className="bg-blue-50 border border-blue-100 p-3 rounded-lg flex items-center gap-3 max-w-md">
                   <ShieldAlert className="h-5 w-5 text-blue-600 shrink-0" />
                   <p className="text-[10px] text-blue-800 font-bold leading-relaxed uppercase">
-                    Este envío es solo una notificación. El profesor deberá validar su mensaje para marcar la falta como Justificada.
+                    Este envío generará un aviso directo a sus profesores y tutor. El docente validará la falta en el panel de asistencia.
                   </p>
                </div>
                <Button 
                 onClick={handleProactiveSave}
                 className="bg-[#fb8500] hover:bg-[#e07600] text-white px-10 h-12 text-[11px] font-bold uppercase tracking-widest gap-2 shadow-lg"
                >
-                 <Send className="h-4 w-4" /> Enviar Aviso
+                 <Send className="h-4 w-4" /> Enviar Avisos
                </Button>
             </div>
           </div>
