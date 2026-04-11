@@ -96,6 +96,7 @@ export function MessagingView({ mode, usuarioId }: MessagingViewProps) {
   }, [messages, searchTerm]);
 
   const getUserName = (id: string) => {
+    if (id === 'SISTEMA') return 'Plataforma Rayuela';
     const user = allUsers?.find(u => u.id === id);
     return user ? (user.nombrePersona || user.usuario) : id;
   };

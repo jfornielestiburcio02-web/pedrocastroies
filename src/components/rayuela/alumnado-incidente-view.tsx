@@ -39,7 +39,8 @@ import {
   query, 
   where, 
   doc, 
-  getDoc 
+  getDoc,
+  getDocs 
 } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from '@/lib/utils';
@@ -119,16 +120,35 @@ export function AlumnadoIncidenteView({ profesorId }: { profesorId: string }) {
     }
 
     const student = allStudents?.find(s => s.id === formData.alumnoId);
+    const studentCourse = student?.cursoAlumno;
     
     addDocumentNonBlocking(collection(db, 'incidencias'), {
       ...formData,
       profesorId,
-      curso: student?.cursoAlumno || "SIN CURSO",
+      curso: studentCourse || "SIN CURSO",
       fecha: new Date().toISOString(),
       createdAt: new Date().toISOString()
     });
 
-    toast({ title: "Incidencia Registrada", description: "Se ha añadido al expediente disciplinario." });
+    // Enviar notificación al tutor si existe
+    if (studentCourse && studentCourse !== "SIN CURSO") {
+      const tutorsQuery = query(collection(db, 'usuarios'), where('esTutor', '==', studentCourse));
+      getDocs(tutorsQuery).then(snap => {
+        snap.forEach(tutorDoc => {
+          addDocumentNonBlocking(collection(db, 'mensajes'), {
+            remitenteId: 'SISTEMA',
+            destinatarioId: tutorDoc.id,
+            asunto: 'Plataforma Rayuela: Nueva Incidencia de Alumno',
+            cuerpo: `Se ha registrado una nueva conducta ${formData.tipoIncidencia} para el alumno ${student?.nombrePersona || student?.usuario}, para verla -pulse aqui-`,
+            leido: false,
+            eliminado: false,
+            createdAt: new Date().toISOString()
+          });
+        });
+      });
+    }
+
+    toast({ title: "Incidencia Registrada", description: "Se ha añadido al expediente disciplinario y se ha notificado al tutor." });
     setIsDialogOpen(false);
     setFormData({
       alumnoId: '',
