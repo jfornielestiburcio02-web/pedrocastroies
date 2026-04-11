@@ -7,7 +7,9 @@ import {
   Clock, 
   Trash2, 
   Save, 
-  Plus 
+  Plus,
+  Calendar,
+  AlertCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,7 +36,8 @@ import {
   collection, 
   query, 
   orderBy, 
-  doc 
+  doc,
+  where
 } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { 
@@ -154,6 +157,103 @@ export function ScheduleListView() {
             </TableBody>
           </Table>
         </div>
+      </div>
+    </div>
+  );
+}
+
+export function MyScheduleView({ profesorId }: { profesorId: string }) {
+  const db = useFirestore();
+  
+  const schedulesQuery = useMemoFirebase(() => {
+    if (!db || !profesorId) return null;
+    return query(
+      collection(db, 'horarios'),
+      where('profesorId', '==', profesorId),
+      orderBy('dia'),
+      orderBy('horaInicio')
+    );
+  }, [db, profesorId]);
+
+  const { data: schedules, isLoading } = useCollection(schedulesQuery);
+
+  const days = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"];
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center p-20">
+        <Loader2 className="h-8 w-8 animate-spin text-[#89a54e]" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 max-w-6xl mx-auto w-full space-y-6">
+      <div className="bg-white border rounded-xl shadow-sm overflow-hidden">
+        <div className="bg-[#89a54e] p-4 text-white flex items-center gap-2">
+          <Calendar className="h-5 w-5" />
+          <h2 className="font-bold text-lg uppercase tracking-tight">Mi Horario Semanal</h2>
+        </div>
+
+        <div className="p-0 overflow-x-auto">
+          <Table>
+            <TableHeader className="bg-gray-50">
+              <TableRow>
+                {days.map(day => (
+                  <TableHead key={day} className="text-center font-bold text-[#89a54e] uppercase text-[10px] min-w-[150px] border-r last:border-r-0">
+                    {day}
+                  </TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {/* Aquí mostramos una versión simplificada por lista agrupada por día para mejor lectura en móvil/tablet */}
+              <TableRow>
+                {days.map(day => (
+                  <TableCell key={day} className="p-2 align-top border-r last:border-r-0 bg-gray-50/30">
+                    <div className="space-y-2">
+                      {schedules?.filter(s => s.dia === day).length === 0 ? (
+                        <div className="py-8 text-center text-[10px] text-gray-300 italic">Sin sesiones</div>
+                      ) : (
+                        schedules?.filter(s => s.dia === day).map(session => (
+                          <div key={session.id} className={cn(
+                            "p-3 rounded-lg border shadow-sm transition-all hover:shadow-md",
+                            session.esGuardia ? "bg-red-50 border-red-100" : "bg-white border-gray-100"
+                          )}>
+                            <div className="flex flex-col gap-1">
+                              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">
+                                {session.horaInicio} - {session.horaFin}
+                              </span>
+                              <span className={cn(
+                                "text-[11px] font-bold leading-tight uppercase",
+                                session.esGuardia ? "text-red-700" : "text-gray-800"
+                              )}>
+                                {session.asignatura}
+                              </span>
+                              {session.alumnosIds?.length > 0 && (
+                                <div className="mt-1 flex items-center gap-1 text-[8px] font-bold text-blue-600 uppercase">
+                                  <Users className="h-2.5 w-2.5" />
+                                  {session.alumnosIds.length} Alum.
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </TableCell>
+                ))}
+              </TableRow>
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+      
+      <div className="bg-blue-50 border border-blue-100 p-4 rounded-lg flex items-start gap-3">
+        <AlertCircle className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+        <p className="text-[11px] text-blue-800 leading-relaxed font-medium">
+          <strong>Aviso de Coordinación:</strong> Este horario refleja sus sesiones lectivas y guardias oficiales registradas en Rayuela. Si detecta alguna discrepancia, por favor póngase en contacto con Jefatura de Estudios.
+        </p>
       </div>
     </div>
   );

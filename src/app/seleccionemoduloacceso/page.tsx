@@ -24,7 +24,8 @@ import {
   ChevronDown,
   ChevronRight,
   Users,
-  Megaphone
+  Megaphone,
+  Calendar
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -38,7 +39,7 @@ import { GuardDutyView } from '@/components/rayuela/guard-duty-view';
 import { AlumnadoIncidenteView } from '@/components/rayuela/alumnado-incidente-view';
 import { MessagingView } from '@/components/rayuela/messaging-view';
 import { TutorialFunctionView } from '@/components/rayuela/tutorial-function-view';
-import { ScheduleListView, ScheduleCreationView } from '@/components/rayuela/schedule-views';
+import { ScheduleListView, ScheduleCreationView, MyScheduleView } from '@/components/rayuela/schedule-views';
 import { SidebarItem, SidebarHeading, ModuleBox } from '@/components/rayuela/shared-components';
 import { MyTutoringStudentsView, CenterStudentsView } from '@/components/rayuela/student-management-views';
 
@@ -57,7 +58,8 @@ export default function SeleccioneModuloAccesoPage() {
     'usuarios': false,
     'horarios': false,
     'mensajeria': false,
-    'miAlumnado': false
+    'miAlumnado': false,
+    'horario_profesor': false
   });
   
   const router = useRouter();
@@ -373,6 +375,15 @@ export default function SeleccioneModuloAccesoPage() {
                                 </div>
                               )}
                             </div>
+
+                            <div className="flex flex-col">
+                              <SidebarHeading label="Horario" expanded={expandedItems['horario_profesor']} onClick={() => toggleExpanded('horario_profesor')} />
+                              {expandedItems['horario_profesor'] && (
+                                <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
+                                  <SidebarItem color="#89a54e" label="Ver horario" isSubItem onClick={() => setActiveSubContent('Mi Horario Personal')} active={activeSubContent === 'Mi Horario Personal'} />
+                                </div>
+                              )}
+                            </div>
                           </>
                         ) : (
                           <div className="flex flex-col">
@@ -452,6 +463,8 @@ export default function SeleccioneModuloAccesoPage() {
                     <ScheduleCreationView />
                   ) : activeSubContent === 'Ver Horarios' ? (
                     <ScheduleListView />
+                  ) : activeSubContent === 'Mi Horario Personal' ? (
+                    <MyScheduleView profesorId={session.usuario} />
                   ) : activeSubContent === 'Por materia' ? (
                     <AttendanceBySubjectView profesorId={session.usuario} />
                   ) : activeSubContent === 'Funcion tutorial' ? (
