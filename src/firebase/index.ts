@@ -1,11 +1,21 @@
 'use client';
 
 import { firebaseConfig } from '@/firebase/config';
-import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore, Firestore } from 'firebase/firestore';
+import {
+  initializeApp,
+  getApps,
+  getApp,
+  FirebaseApp
+} from 'firebase/app';
 
-// 🔥 Inicializar Firebase UNA sola vez
+import { getAuth } from 'firebase/auth';
+
+import {
+  initializeFirestore,
+  Firestore
+} from 'firebase/firestore';
+
+// 🔥 Inicializa Firebase UNA sola vez
 export function initializeFirebase() {
   let firebaseApp: FirebaseApp;
 
@@ -18,16 +28,22 @@ export function initializeFirebase() {
   return getSdks(firebaseApp);
 }
 
-// 🔥 Obtener servicios (SIN configuraciones raras)
+// 🔥 Inicializa servicios correctamente (IMPORTANTE para tu entorno)
 export function getSdks(firebaseApp: FirebaseApp): {
   firebaseApp: FirebaseApp;
   auth: ReturnType<typeof getAuth>;
   firestore: Firestore;
 } {
+  console.log("🔥 PROJECT ID:", firebaseApp.options.projectId);
+
   const auth = getAuth(firebaseApp);
 
-  // ⚠️ IMPORTANTE: usar getFirestore normal
-  const firestore = getFirestore(firebaseApp);
+  // 🔴 CONFIG CLAVE para evitar errores ca9 / b815 / permisos falsos
+  const firestore = initializeFirestore(firebaseApp, {
+    experimentalForceLongPolling: true,
+    experimentalAutoDetectLongPolling: true, // 👈 clave
+    useFetchStreams: false, // 👈 clave en cloud/proxy
+  });
 
   return {
     firebaseApp,
