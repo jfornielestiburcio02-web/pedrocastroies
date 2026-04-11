@@ -14,7 +14,7 @@
         "contrasena": {
           "type": "string",
           "description": "Contraseña en texto plano."
-        },
+"        },
         "email": {
           "type": "string",
           "format": "email"
@@ -73,6 +73,7 @@
         "claseId": { "type": "string" },
         "fecha": { "type": "string", "description": "Fecha en formato YYYY-MM-DD" },
         "tipo": { "type": "string", "enum": ["I", "R", "J", "H"] },
+        "motivo": { "type": "string", "description": "Motivo de la justificación de la falta." },
         "profesorId": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       }

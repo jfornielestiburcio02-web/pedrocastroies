@@ -32,7 +32,8 @@ import {
   Search,
   History,
   AlertTriangle,
-  ExternalLink
+  ExternalLink,
+  Check
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -69,7 +70,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
@@ -79,6 +80,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Textarea } from '@/components/ui/textarea';
 
 export default function SeleccioneModuloAccesoPage() {
   const [session, setSession] = useState<any>(null);
@@ -787,6 +789,7 @@ function AttendanceBySubjectView({ profesorId, manualScheduleId }: { profesorId:
     if (status === 'A') return 'Asiste';
     if (status === 'I') return 'Injustif.';
     if (status === 'R') return 'Retraso';
+    if (status === 'J') return 'Justif.';
     return 'Asiste';
   };
 
@@ -840,6 +843,10 @@ function AttendanceBySubjectView({ profesorId, manualScheduleId }: { profesorId:
              <div className="w-3 h-3 bg-[#FFCD2D] rounded-sm"></div>
              <span className="text-[10px] font-bold text-gray-500 uppercase">Retraso</span>
            </div>
+           <div className="flex items-center gap-1.5">
+             <div className="w-3 h-3 bg-[#78B64E] rounded-sm"></div>
+             <span className="text-[10px] font-bold text-gray-500 uppercase">Justificada</span>
+           </div>
         </div>
       </div>
 
@@ -873,9 +880,12 @@ function AttendanceBySubjectView({ profesorId, manualScheduleId }: { profesorId:
 
                   <div className="mt-auto w-full px-2 pb-3">
                     <button 
-                      onClick={() => handleCycleAttendance(student.id)}
+                      onClick={() => currentStatus !== 'J' && handleCycleAttendance(student.id)}
                       data-state={currentStatus}
-                      className="botonFalta w-full h-8 transition-colors active:scale-95 flex items-center justify-center font-bold text-black"
+                      className={cn(
+                        "botonFalta w-full h-8 transition-colors flex items-center justify-center font-bold text-black",
+                        currentStatus === 'J' ? "bg-[#78B64E] border-[#78B64E] cursor-default" : "active:scale-95"
+                      )}
                     >
                       {getStatusText(currentStatus)}
                     </button>
@@ -914,6 +924,9 @@ function AttendanceBySubjectView({ profesorId, manualScheduleId }: { profesorId:
 function AttendanceHistoryDialog({ alumnoId, claseId, onClose }: { alumnoId: string, claseId: string, onClose: () => void }) {
   const db = useFirestore();
   const [alumnoName, setAlumnoName] = useState("");
+  const [justifyingId, setJustifyingId] = useState<string | null>(null);
+  const [motivo, setMotivo] = useState("");
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!db || !alumnoId) return;
@@ -934,6 +947,25 @@ function AttendanceHistoryDialog({ alumnoId, claseId, onClose }: { alumnoId: str
 
   const { data: history, isLoading } = useCollection(historyQuery);
 
+  const handleJustify = (id: string) => {
+    if (!db || !motivo) return;
+    const docRef = doc(db, 'asistenciasInasistencias', id);
+    updateDocumentNonBlocking(docRef, {
+      tipo: 'J',
+      motivo: motivo,
+      justifiedAt: new Date().toISOString()
+    });
+    setJustifyingId(null);
+    setMotivo("");
+    toast({ title: "Falta justificada", description: "Se ha registrado el motivo correctamente." });
+  };
+
+  const handleDelete = (id: string) => {
+    if (!db) return;
+    deleteDocumentNonBlocking(doc(db, 'asistenciasInasistencias', id));
+    toast({ title: "Registro eliminado", description: "La falta ha sido borrada." });
+  };
+
   return (
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className="max-w-md font-verdana p-0 gap-0 border-none overflow-hidden">
@@ -948,19 +980,76 @@ function AttendanceHistoryDialog({ alumnoId, claseId, onClose }: { alumnoId: str
           {isLoading ? (
             <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
           ) : history && history.length > 0 ? (
-            <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
+            <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
               {history.map(item => (
-                <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
-                  <div className="flex flex-col">
-                    <span className="text-[11px] font-bold text-gray-700">{format(new Date(item.fecha), 'EEEE d MMMM', { locale: es })}</span>
-                    <span className="text-[9px] text-gray-400 uppercase">Registrado el {format(new Date(item.createdAt), 'HH:mm')}</span>
+                <div key={item.id} className="p-3 bg-gray-50 rounded-lg border border-gray-100 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex flex-col">
+                      <span className="text-[11px] font-bold text-gray-700">{format(new Date(item.fecha), 'EEEE d MMMM', { locale: es })}</span>
+                      <span className="text-[9px] text-gray-400 uppercase">Registrado el {format(new Date(item.createdAt), 'HH:mm')}</span>
+                    </div>
+                    <Badge className={cn(
+                      "text-[10px] font-bold px-3 border-none",
+                      item.tipo === 'I' ? "bg-[#EB8A5F] text-white" : 
+                      item.tipo === 'R' ? "bg-[#FFCD2D] text-gray-800" :
+                      "bg-[#78B64E] text-white"
+                    )}>
+                      {item.tipo === 'I' ? 'INJUSTIFICADA' : item.tipo === 'R' ? 'RETRASO' : 'JUSTIFICADA'}
+                    </Badge>
                   </div>
-                  <Badge className={cn(
-                    "text-[10px] font-bold px-3 border-none",
-                    item.tipo === 'I' ? "bg-[#EB8A5F] text-white" : "bg-[#FFCD2D] text-gray-800"
-                  )}>
-                    {item.tipo === 'I' ? 'INJUSTIFICADA' : 'RETRASO'}
-                  </Badge>
+
+                  {item.tipo === 'J' && item.motivo && (
+                    <div className="p-2 bg-white rounded border border-gray-100 text-[10px] italic text-gray-600">
+                      <strong>Motivo:</strong> {item.motivo}
+                    </div>
+                  )}
+
+                  <div className="flex justify-end gap-2 pt-1 border-t border-gray-200/50">
+                    {item.tipo !== 'J' && justifyingId !== item.id && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => setJustifyingId(item.id)}
+                        className="h-6 px-2 text-[9px] font-bold text-[#008D88] hover:bg-[#008D88]/10 gap-1 uppercase"
+                      >
+                        <Check className="h-3 w-3" /> Justificar
+                      </Button>
+                    )}
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => handleDelete(item.id)}
+                      className="h-6 px-2 text-[9px] font-bold text-destructive hover:bg-destructive/10 gap-1 uppercase"
+                    >
+                      <Trash2 className="h-3 w-3" /> Eliminar
+                    </Button>
+                  </div>
+
+                  {justifyingId === item.id && (
+                    <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
+                      <Textarea 
+                        placeholder="Escriba el motivo de la justificación..." 
+                        value={motivo}
+                        onChange={(e) => setMotivo(e.target.value)}
+                        className="text-[10px] min-h-[60px]"
+                      />
+                      <div className="flex gap-2">
+                        <Button 
+                          onClick={() => handleJustify(item.id)} 
+                          className="flex-1 bg-[#008D88] hover:bg-[#00706b] text-white text-[9px] font-bold h-7 uppercase"
+                        >
+                          Guardar
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          onClick={() => setJustifyingId(null)} 
+                          className="flex-1 text-[9px] font-bold h-7 uppercase"
+                        >
+                          Cancelar
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -970,7 +1059,7 @@ function AttendanceHistoryDialog({ alumnoId, claseId, onClose }: { alumnoId: str
             </div>
           )}
           <div className="mt-6 flex justify-center">
-             <Button onClick={onClose} className="bg-[#008D88] hover:bg-[#00706b] text-white text-[11px] font-bold uppercase h-8 px-6">Cerrar</Button>
+             <Button onClick={onClose} className="bg-gray-500 hover:bg-gray-600 text-white text-[11px] font-bold uppercase h-8 px-6">Cerrar</Button>
           </div>
         </div>
       </DialogContent>
