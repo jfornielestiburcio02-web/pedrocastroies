@@ -58,13 +58,13 @@ export default function SeleccioneModuloAccesoPage() {
             const data = userSnap.data();
             setUserData(data);
             
+            // Prioridad inicial de rol para la cabecera basada en los roles disponibles
             const roles = data.rolesUsuario || [];
-            // Prioridad de rol inicial para la cabecera
             if (roles.includes('EsDireccion')) setActiveRole('Dirección');
-            else if (roles.includes('EsCau')) setActiveRole('CAU');
             else if (roles.includes('EsProfesor')) setActiveRole('Profesor');
             else if (roles.includes('EsAlumno')) setActiveRole('Alumno');
             else if (roles.includes('EsSecretaria')) setActiveRole('Secretaría');
+            else if (roles.includes('EsCau')) setActiveRole('CAU');
           }
         } catch (error) {
           console.error("Error validando sesión:", error);
@@ -81,6 +81,17 @@ export default function SeleccioneModuloAccesoPage() {
 
   const handleModuleClick = (label: string) => {
     setSelectedModule(label.toUpperCase());
+    
+    // Al entrar en un módulo, ajustamos el rol activo según la prioridad solicitada
+    const roles = userData?.rolesUsuario || [];
+    if (label === "Seguimiento") {
+      if (roles.includes('EsProfesor')) setActiveRole('Profesor');
+      else if (roles.includes('EsAlumno')) setActiveRole('Alumno');
+    } else if (label === "Gestión") {
+      setActiveRole('Dirección');
+    } else if (label === "Secretaría Virtual") {
+      setActiveRole('Secretaría');
+    }
   };
 
   const handleLogout = () => {
@@ -107,7 +118,7 @@ export default function SeleccioneModuloAccesoPage() {
 
   const userRoles = userData?.rolesUsuario || [];
 
-  // Lógica de visibilidad de módulos
+  // Lógica de visibilidad de módulos solicitada
   const canSeeSeguimiento = userRoles.includes('EsProfesor') || userRoles.includes('EsAlumno');
   const canSeeGestion = userRoles.includes('EsDireccion');
   const canSeeSecretaria = userRoles.includes('EsSecretaria');
