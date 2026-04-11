@@ -3,31 +3,28 @@
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore, initializeFirestore } from 'firebase/firestore'
+import { getFirestore, initializeFirestore, terminate } from 'firebase/firestore'
 
-// Inicialización de Firebase con persistencia y long-polling para evitar fallos de conexión
+// Inicialización de Firebase optimizada para entornos de proxy/workstation
 export function initializeFirebase() {
   if (!getApps().length) {
-    let firebaseApp;
-    try {
-      firebaseApp = initializeApp();
-    } catch (e) {
-      firebaseApp = initializeApp(firebaseConfig);
-    }
+    const firebaseApp = initializeApp(firebaseConfig);
     return getSdks(firebaseApp);
   }
   return getSdks(getApp());
 }
 
 export function getSdks(firebaseApp: FirebaseApp) {
+  // Inicialización de Firestore con configuraciones para evitar el error "Assertion Failed"
+  const firestore = initializeFirestore(firebaseApp, {
+    experimentalForceLongPolling: true,
+    experimentalAutoDetectLongPolling: false, // Desactivamos autodetección para evitar cambios de estado bruscos
+  });
+
   return {
     firebaseApp,
     auth: getAuth(firebaseApp),
-    // Forzamos Long Polling y ajustamos la configuración para entornos de proxy/workstations
-    firestore: initializeFirestore(firebaseApp, {
-      experimentalForceLongPolling: true,
-      useFetchStreams: false,
-    })
+    firestore
   };
 }
 
