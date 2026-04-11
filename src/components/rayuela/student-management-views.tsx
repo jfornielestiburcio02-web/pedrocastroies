@@ -8,7 +8,8 @@ import {
   UserCircle, 
   Users,
   Search,
-  CheckCircle2
+  CheckCircle2,
+  Lock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,7 +24,7 @@ import { cn } from '@/lib/utils';
 
 /**
  * Vista de alumnos del grupo de tutoría del profesor.
- * Permite listar alumnos y generar nuevas contraseñas.
+ * Permite listar alumnos y generar nuevas contraseñas de forma segura.
  */
 export function MyTutoringStudentsView({ grupoTutorizado }: { grupoTutorizado: string }) {
   const db = useFirestore();
@@ -44,16 +45,18 @@ export function MyTutoringStudentsView({ grupoTutorizado }: { grupoTutorizado: s
   const handleGeneratePassword = (studentId: string, studentName: string) => {
     if (!db) return;
     
-    // Generar contraseña aleatoria de 8 caracteres
+    // Generar contraseña aleatoria de 8 caracteres (mayúsculas y números)
     const newPassword = Math.random().toString(36).substring(2, 10).toUpperCase();
     const docRef = doc(db, 'usuarios', studentId);
     
+    // Actualización no bloqueante en Firestore
     updateDocumentNonBlocking(docRef, { contrasena: newPassword });
     
+    // Notificación al profesor con la nueva clave para que se la entregue al alumno
     toast({
-      title: "Contraseña Actualizada",
-      description: `Nueva clave para ${studentName}: ${newPassword}`,
-      duration: 10000,
+      title: "Nueva Contraseña Generada",
+      description: `La clave para ${studentName} ahora es: ${newPassword}`,
+      duration: 15000, // Duración extendida para que dé tiempo a anotarla
     });
   };
 
@@ -75,7 +78,7 @@ export function MyTutoringStudentsView({ grupoTutorizado }: { grupoTutorizado: s
         <div className="bg-[#f8f9fa] border-b p-4 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <UserCircle className="h-5 w-5 text-[#89a54e]" />
-            <span className="text-sm font-bold text-gray-700 uppercase">Alumnado de mi Tutoría: {grupoTutorizado}</span>
+            <span className="text-sm font-bold text-gray-700 uppercase">Gestión de Claves: {grupoTutorizado}</span>
           </div>
           <div className="relative w-full md:w-64">
             <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-gray-400" />
@@ -91,7 +94,7 @@ export function MyTutoringStudentsView({ grupoTutorizado }: { grupoTutorizado: s
         <ScrollArea className="flex-1">
           <div className="p-4 space-y-2">
             {filteredStudents.length === 0 ? (
-              <p className="text-center py-20 text-gray-400 italic text-sm">No se han encontrado alumnos.</p>
+              <p className="text-center py-20 text-gray-400 italic text-sm">No se han encontrado alumnos en este grupo.</p>
             ) : (
               filteredStudents.map((student) => (
                 <div key={student.id} className="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors shadow-sm">
@@ -102,14 +105,15 @@ export function MyTutoringStudentsView({ grupoTutorizado }: { grupoTutorizado: s
                     </Avatar>
                     <div className="flex flex-col">
                       <span className="text-sm font-bold text-gray-700">{student.nombrePersona || student.usuario}</span>
-                      <span className="text-[10px] text-gray-400 uppercase font-medium">Usuario: {student.usuario}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-gray-400 uppercase font-medium">Usuario: {student.usuario}</span>
+                        <Badge variant="outline" className="h-4 text-[8px] font-bold border-gray-200 text-gray-400 uppercase gap-1">
+                          <Lock className="h-2 w-2" /> Clave Protegida
+                        </Badge>
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
-                    <div className="flex flex-col items-end mr-4">
-                      <span className="text-[10px] font-bold text-gray-400 uppercase">Clave Actual:</span>
-                      <span className="text-xs font-mono font-bold text-primary">{student.contrasena || 'No definida'}</span>
-                    </div>
                     <Button 
                       size="sm" 
                       onClick={() => handleGeneratePassword(student.id, student.nombrePersona || student.usuario)}
@@ -129,7 +133,7 @@ export function MyTutoringStudentsView({ grupoTutorizado }: { grupoTutorizado: s
 }
 
 /**
- * Vista de todos los alumnos del centro.
+ * Vista de todos los alumnos del centro (Listado general).
  */
 export function CenterStudentsView() {
   const db = useFirestore();
@@ -164,7 +168,7 @@ export function CenterStudentsView() {
         <div className="bg-[#f8f9fa] border-b p-4 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Users className="h-5 w-5 text-[#89a54e]" />
-            <span className="text-sm font-bold text-gray-700 uppercase">Alumnado del Centro</span>
+            <span className="text-sm font-bold text-gray-700 uppercase">Listado General de Alumnado</span>
             <Badge variant="secondary" className="text-[9px] font-bold bg-gray-200 text-gray-500">{students?.length || 0} TOTAL</Badge>
           </div>
           <div className="relative w-full md:w-64">
@@ -192,7 +196,7 @@ export function CenterStudentsView() {
               <tbody>
                 {filteredStudents.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="p-8 text-center text-gray-400 italic text-sm">No se han encontrado registros.</td>
+                    <td colSpan={4} className="p-8 text-center text-gray-400 italic text-sm">No se han encontrado registros en el centro.</td>
                   </tr>
                 ) : (
                   filteredStudents.map((student) => (
