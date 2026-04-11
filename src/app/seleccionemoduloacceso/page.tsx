@@ -44,6 +44,7 @@ import { ScheduleListView, ScheduleCreationView, MyScheduleView } from '@/compon
 import { SidebarItem, SidebarHeading, ModuleBox } from '@/components/rayuela/shared-components';
 import { MyTutoringStudentsView, CenterStudentsView } from '@/components/rayuela/student-management-views';
 import { EvaluationsView } from '@/components/rayuela/evaluations-views';
+import { EvaluationOpeningView, GradingStatsView } from '@/components/rayuela/management-evaluation-views';
 
 export default function SeleccioneModuloAccesoPage() {
   const [session, setSession] = useState<any>(null);
@@ -64,7 +65,9 @@ export default function SeleccioneModuloAccesoPage() {
     'horario_profesor': false,
     'calificaciones_root': false,
     'evaluaciones': false,
-    'resumen': false
+    'resumen': false,
+    'evaluaciones_dir': false,
+    'apertura_root': false
   });
   
   const router = useRouter();
@@ -452,6 +455,23 @@ export default function SeleccioneModuloAccesoPage() {
                             </div>
                           )}
                         </div>
+
+                        <div className="flex flex-col">
+                          <SidebarHeading label="Evaluaciones" expanded={expandedItems['evaluaciones_dir']} onClick={() => toggleExpanded('evaluaciones_dir')} />
+                          {expandedItems['evaluaciones_dir'] && (
+                            <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
+                              <SidebarItem color="#9c4d96" label="Resumen (Tasas)" isSubItem onClick={() => setActiveSubContent('Resumen (Tasas)')} active={activeSubContent === 'Resumen (Tasas)'} />
+                              <div className="flex flex-col">
+                                <SidebarHeading label="Apertura de la evaluación" expanded={expandedItems['apertura_root']} onClick={() => toggleExpanded('apertura_root')} />
+                                {expandedItems['apertura_root'] && (
+                                  <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
+                                    <SidebarItem color="#9c4d96" label="Gestión de Apertura" isSubItem onClick={() => setActiveSubContent('Apertura de la evaluación')} active={activeSubContent === 'Apertura de la evaluación'} />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -518,6 +538,10 @@ export default function SeleccioneModuloAccesoPage() {
                     <EvaluationsView profesorId={session.usuario} type="exam" />
                   ) : activeSubContent === 'Tareas' ? (
                     <EvaluationsView profesorId={session.usuario} type="task" />
+                  ) : activeSubContent === 'Resumen (Tasas)' ? (
+                    <GradingStatsView />
+                  ) : activeSubContent === 'Apertura de la evaluación' ? (
+                    <EvaluationOpeningView />
                   ) : activeSubContent ? (
                     <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
                        <div className="bg-white border rounded-lg p-10 shadow-sm min-h-[400px] flex flex-col items-center justify-center text-center space-y-4">

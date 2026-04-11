@@ -159,6 +159,19 @@
         "eliminado": { "type": "boolean" },
         "createdAt": { "type": "string", "format": "date-time" }
       }
+    },
+    "EvaluacionPeriodo": {
+      "title": "EvaluacionPeriodo",
+      "type": "object",
+      "description": "Configuración de un periodo evaluativo por parte de dirección.",
+      "properties": {
+        "periodo": { "type": "string", "enum": ["1", "2", "3"] },
+        "tipoCalificacion": { "type": "string", "enum": ["Numerica", "Cualitativa"] },
+        "abiertaProfesores": { "type": "boolean" },
+        "abiertaAlumnos": { "type": "boolean" },
+        "cursoEscolar": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "auth": {
@@ -214,6 +227,12 @@
         "$ref": "#/backend/entities/Mensaje"
       },
       "description": "Colección de mensajes internos entre usuarios."
+    },
+    "/evaluacionesPeriodos/{periodoId}": {
+      "schema": {
+        "$ref": "#/backend/entities/EvaluacionPeriodo"
+      },
+      "description": "Configuración de periodos de evaluación del centro."
     }
   }
 }
