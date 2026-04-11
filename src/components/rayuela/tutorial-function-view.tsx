@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useMemo } from 'react';
+import React from 'react';
 import { 
   Loader2, 
   Users, 
@@ -15,10 +15,15 @@ import { collection, query, where } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from '@/components/ui/badge';
 
+/**
+ * Vista de Función Tutorial de Rayuela.
+ * Muestra a los alumnos del grupo que el profesor tutela.
+ */
 export function TutorialFunctionView({ profesorId, grupoTutorizado }: { profesorId: string, grupoTutorizado: string }) {
   const db = useFirestore();
 
   // Query para obtener los alumnos del grupo tutorizado
+  // Se asume que grupoTutorizado es un string como "2 ESO" o "4 ESO A"
   const studentsQuery = useMemoFirebase(() => {
     if (!db || !grupoTutorizado) return null;
     return query(
@@ -61,7 +66,7 @@ export function TutorialFunctionView({ profesorId, grupoTutorizado }: { profesor
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 justify-items-center">
            {students.map(student => (
-             <div key={student.id} className="itemAlumnoEnClase relative group flex flex-col items-center pt-3 h-[190px] hover:border-[#89a54e] hover:shadow-md transition-all">
+             <div key={student.id} className="itemAlumnoEnClase relative group flex flex-col items-center pt-3 h-[190px] hover:border-[#89a54e] hover:shadow-md transition-all bg-white shadow-sm">
                 <Avatar className="imagenAlumnoEnClase h-[73px] w-[73px]">
                   <AvatarImage src={student.imagenPerfil} />
                   <AvatarFallback>{student.usuario?.substring(0, 2).toUpperCase()}</AvatarFallback>
