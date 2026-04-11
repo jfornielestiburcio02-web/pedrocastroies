@@ -11,7 +11,7 @@ import {
   FileText
 } from 'lucide-react';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, query, where, orderBy } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -20,12 +20,13 @@ import { cn } from '@/lib/utils';
 export function TutoringGradesView({ grupoTutorizado }: { grupoTutorizado: string }) {
   const db = useFirestore();
 
-  // 1. Obtener periodo activo
+  // 1. Obtener periodo activo (el que está abierto para profesores para que el tutor vea las notas en tiempo real)
   const periodosQuery = useMemoFirebase(() => {
     if (!db) return null;
     return query(
       collection(db, 'evaluacionesPeriodos'),
-      where('abiertaAlumnos', '==', true) // O simplemente el más reciente
+      where('abiertaProfesores', '==', true),
+      orderBy('createdAt', 'desc')
     );
   }, [db]);
 
@@ -44,7 +45,7 @@ export function TutoringGradesView({ grupoTutorizado }: { grupoTutorizado: strin
 
   const { data: students, isLoading: loadingStudents } = useCollection(studentsQuery);
 
-  // 3. Obtener todas las calificaciones finales
+  // 3. Obtener todas las calificaciones finales del periodo activo
   const gradesQuery = useMemoFirebase(() => {
     if (!db || !activePeriodo) return null;
     return query(
@@ -75,6 +76,15 @@ export function TutoringGradesView({ grupoTutorizado }: { grupoTutorizado: strin
     );
   }
 
+  if (!activePeriodo) {
+    return (
+      <div className="py-20 text-center opacity-50">
+        <GraduationCap className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+        <p className="text-sm font-bold uppercase text-gray-400">No hay periodos de evaluación abiertos</p>
+      </div>
+    );
+  }
+
   return (
     <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 space-y-6 max-w-7xl mx-auto w-full font-verdana">
       <div className="bg-[#89a54e] p-6 text-white rounded-xl shadow-md flex items-center justify-between">
@@ -85,11 +95,9 @@ export function TutoringGradesView({ grupoTutorizado }: { grupoTutorizado: strin
             <p className="text-white/80 text-sm">Resumen de calificaciones finales del grupo para el periodo activo.</p>
           </div>
         </div>
-        {activePeriodo && (
-          <Badge className="bg-white text-[#89a54e] font-bold uppercase px-4 py-1.5 border-none">
-            {activePeriodo.periodo}ª EVALUACIÓN
-          </Badge>
-        )}
+        <Badge className="bg-white text-[#89a54e] font-bold uppercase px-4 py-1.5 border-none">
+          {activePeriodo.periodo}ª EVALUACIÓN
+        </Badge>
       </div>
 
       <ScrollArea className="h-[650px] pr-4">

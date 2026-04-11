@@ -544,10 +544,6 @@ export default function SeleccioneModuloAccesoPage() {
                     <TeacherGradingView profesorId={session.usuario} />
                   ) : activeSubContent === 'Evaluación como tutor' ? (
                     <TutoringGradesView grupoTutorizado={userData?.esTutor} />
-                  ) : activeSubContent === 'Resumen (Tasas)' ? (
-                    <GradingStatsView />
-                  ) : activeSubContent === 'Apertura de la evaluación' ? (
-                    <EvaluationOpeningView />
                   ) : activeSubContent ? (
                     <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
                        <div className="bg-white border rounded-lg p-10 shadow-sm min-h-[400px] flex flex-col items-center justify-center text-center space-y-4">
