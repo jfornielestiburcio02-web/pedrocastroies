@@ -30,7 +30,7 @@
           "type": "array",
           "items": {
             "type": "string",
-            "enum": ["EsProfesor", "EsAlumno", "EsDireccion", "EsCau"]
+            "enum": ["EsProfesor", "EsAlumno", "EsDireccion", "EsCau", "EsSecretaria"]
           }
         },
         "sesion": {

@@ -15,7 +15,8 @@ import {
   UserCircle,
   ShieldCheck,
   Settings,
-  Users
+  Users,
+  Briefcase
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useFirestore } from '@/firebase';
@@ -58,11 +59,12 @@ export default function SeleccioneModuloAccesoPage() {
             setUserData(data);
             
             const roles = data.rolesUsuario || [];
-            // Prioridad de rol inicial
+            // Prioridad de rol inicial para la cabecera
             if (roles.includes('EsDireccion')) setActiveRole('Dirección');
             else if (roles.includes('EsCau')) setActiveRole('CAU');
             else if (roles.includes('EsProfesor')) setActiveRole('Profesor');
             else if (roles.includes('EsAlumno')) setActiveRole('Alumno');
+            else if (roles.includes('EsSecretaria')) setActiveRole('Secretaría');
           }
         } catch (error) {
           console.error("Error validando sesión:", error);
@@ -91,6 +93,7 @@ export default function SeleccioneModuloAccesoPage() {
     if (role === 'EsCau') return 'CAU';
     if (role === 'EsProfesor') return 'Profesor';
     if (role === 'EsAlumno') return 'Alumno';
+    if (role === 'EsSecretaria') return 'Secretaría';
     return role;
   };
 
@@ -104,13 +107,17 @@ export default function SeleccioneModuloAccesoPage() {
 
   const userRoles = userData?.rolesUsuario || [];
 
+  // Lógica de visibilidad de módulos
+  const canSeeSeguimiento = userRoles.includes('EsProfesor') || userRoles.includes('EsAlumno');
+  const canSeeGestion = userRoles.includes('EsDireccion');
+  const canSeeSecretaria = userRoles.includes('EsSecretaria');
+
   return (
     <div className="min-h-screen bg-white font-verdana flex flex-col w-full overflow-x-hidden">
       {/* Header Estilo Rayuela (Solo aparece si hay un módulo seleccionado) */}
       {selectedModule && (
         <div className="w-full bg-[#e9e9e9] border-b border-gray-300 p-2 flex flex-col md:flex-row items-center justify-between shadow-sm animate-in fade-in slide-in-from-top duration-500">
           <div className="flex items-center gap-4 w-full md:w-auto">
-            {/* Perfil */}
             <div className="relative">
               <Avatar className="h-16 w-16 border-2 border-white shadow-sm bg-gray-200">
                 <AvatarImage src={userData?.imagenPerfil || `https://picsum.photos/seed/${session.usuario}/150/150`} />
@@ -146,14 +153,12 @@ export default function SeleccioneModuloAccesoPage() {
             </div>
           </div>
 
-          {/* Sección Central (Cofinanciado) */}
           <div className="hidden lg:flex flex-col items-center text-center max-w-[300px]">
             <p className="text-[9px] text-gray-500 uppercase leading-tight">Proyecto cofinanciado por</p>
             <p className="text-[10px] font-bold text-gray-600 leading-tight">Fondo Europeo de Desarrollo Regional.</p>
             <p className="text-[10px] text-gray-500 leading-tight italic">Una manera de hacer Europa</p>
           </div>
 
-          {/* Lado Derecho (Botones de Rol Individuales) */}
           <div className="flex items-center gap-4 mt-4 md:mt-0">
             <div className="flex gap-2 items-center">
               {userRoles.map((roleKey: string) => {
@@ -179,6 +184,7 @@ export default function SeleccioneModuloAccesoPage() {
                       {roleKey === 'EsCau' && <Settings className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
                       {roleKey === 'EsProfesor' && <Monitor className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
                       {roleKey === 'EsAlumno' && <UserCircle className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
+                      {roleKey === 'EsSecretaria' && <Briefcase className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
                     </div>
                     <span className={cn(
                       "text-[8px] font-bold uppercase mt-0.5 tracking-tighter",
@@ -205,7 +211,6 @@ export default function SeleccioneModuloAccesoPage() {
         </div>
       )}
 
-      {/* Segundo Header (Logo Rayuela - Solo se muestra si NO hay módulo seleccionado) */}
       {!selectedModule && (
         <div className="w-full p-6 flex items-center justify-between border-b border-gray-200 bg-white">
           <div className="flex items-center gap-4">
@@ -234,15 +239,17 @@ export default function SeleccioneModuloAccesoPage() {
         </div>
       )}
 
-      {/* Contenido Principal */}
       <div className="flex-1 flex flex-col w-full">
         {!selectedModule ? (
           <>
-            {/* Grid de Módulos */}
             <div className="flex-1 bg-[#7d7d7d] flex flex-wrap items-center justify-center content-center gap-8 md:gap-16 p-8 min-h-[400px]">
-              <ModuleBox label="Gestión" onClick={() => handleModuleClick("Gestión")} />
-              <ModuleBox label="Secretaría Virtual" onClick={() => handleModuleClick("Secretaría Virtual")} />
-              <ModuleBox label="Seguimiento" onClick={() => handleModuleClick("Seguimiento")} />
+              {canSeeGestion && <ModuleBox label="Gestión" onClick={() => handleModuleClick("Gestión")} />}
+              {canSeeSecretaria && <ModuleBox label="Secretaría Virtual" onClick={() => handleModuleClick("Secretaría Virtual")} />}
+              {canSeeSeguimiento && <ModuleBox label="Seguimiento" onClick={() => handleModuleClick("Seguimiento")} />}
+              
+              {!canSeeGestion && !canSeeSecretaria && !canSeeSeguimiento && (
+                <p className="text-white text-xl italic opacity-50">No tiene módulos asignados a su perfil</p>
+              )}
             </div>
 
             <div className="w-full p-4 bg-white text-[12px] text-black text-left border-t border-gray-200 italic px-8">
@@ -250,7 +257,6 @@ export default function SeleccioneModuloAccesoPage() {
             </div>
           </>
         ) : (
-          /* Vista de Módulo Seleccionado */
           <div className="flex-1 animate-in fade-in duration-300 relative bg-white flex flex-col w-full">
             <div className="p-8 md:p-12 flex-1 flex flex-col space-y-8 max-w-7xl mx-auto w-full">
               <div className="flex items-center justify-between border-b pb-6">
@@ -274,7 +280,11 @@ export default function SeleccioneModuloAccesoPage() {
                           ? "Entorno de gestión docente activo para el seguimiento de alumnos asignados, faltas y calificaciones." 
                           : activeRole === 'Alumno'
                           ? "Entorno de seguimiento académico activo para consulta de notas y asistencia personal."
-                          : `Entorno de gestión administrativa activa para el perfil de ${activeRole}.`}
+                          : activeRole === 'Dirección'
+                          ? "Entorno de gestión del equipo directivo para la administración del centro."
+                          : activeRole === 'Secretaría'
+                          ? "Entorno de secretaría virtual para trámites administrativos y expedientes."
+                          : `Entorno de gestión activa para el perfil de ${activeRole}.`}
                       </div>
                     </div>
                     <div className="flex justify-center pt-4">
@@ -293,7 +303,6 @@ export default function SeleccioneModuloAccesoPage() {
           </div>
         )}
 
-        {/* Footer */}
         <div className="bg-white p-6 flex justify-end items-center gap-8 border-t border-gray-100 px-8 w-full mt-auto">
           <div className="text-right text-[10px] text-gray-500 leading-relaxed font-bold uppercase">
             <p>Fondo Europeo de Desarrollo Regional</p>
