@@ -59,7 +59,10 @@ export default function SeleccioneModuloAccesoPage() {
     'horarios': false,
     'mensajeria': false,
     'miAlumnado': false,
-    'horario_profesor': false
+    'horario_profesor': false,
+    'calificaciones_root': false,
+    'evaluaciones': false,
+    'resumen': false
   });
   
   const router = useRouter();
@@ -360,6 +363,34 @@ export default function SeleccioneModuloAccesoPage() {
                                         </div>
                                       )}
                                    </div>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="flex flex-col">
+                              <SidebarHeading label="Calificaciones y nota final" expanded={expandedItems['calificaciones_root']} onClick={() => toggleExpanded('calificaciones_root')} />
+                              {expandedItems['calificaciones_root'] && (
+                                <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
+                                  <div className="flex flex-col">
+                                    <SidebarHeading label="Evaluaciones" expanded={expandedItems['evaluaciones']} onClick={() => toggleExpanded('evaluaciones')} />
+                                    {expandedItems['evaluaciones'] && (
+                                      <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
+                                        <SidebarItem color="#89a54e" label="Exámenes" isSubItem onClick={() => setActiveSubContent('Exámenes')} active={activeSubContent === 'Exámenes'} />
+                                        <SidebarItem color="#89a54e" label="Tareas" isSubItem onClick={() => setActiveSubContent('Tareas')} active={activeSubContent === 'Tareas'} />
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="flex flex-col">
+                                    <SidebarHeading label="Resumen" expanded={expandedItems['resumen']} onClick={() => toggleExpanded('resumen')} />
+                                    {expandedItems['resumen'] && (
+                                      <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
+                                        <SidebarItem color="#89a54e" label="Calificar" isSubItem onClick={() => setActiveSubContent('Calificar')} active={activeSubContent === 'Calificar'} />
+                                        {isTeacherTutor && (
+                                          <SidebarItem color="#89a54e" label="Evaluación como tutor" isSubItem onClick={() => setActiveSubContent('Evaluación como tutor')} active={activeSubContent === 'Evaluación como tutor'} />
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
                               )}
                             </div>
