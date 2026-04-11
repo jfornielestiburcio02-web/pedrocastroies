@@ -13,7 +13,8 @@ import {
   ArrowLeft, 
   CheckCircle2, 
   Search,
-  Loader2
+  Loader2,
+  ExternalLink
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -58,9 +59,10 @@ import { cn } from '@/lib/utils';
 interface MessagingViewProps {
   mode: 'inbox' | 'trash';
   usuarioId: string;
+  onNavigateToIncident?: (studentId: string) => void;
 }
 
-export function MessagingView({ mode, usuarioId }: MessagingViewProps) {
+export function MessagingView({ mode, usuarioId, onNavigateToIncident }: MessagingViewProps) {
   const db = useFirestore();
   const { toast } = useToast();
   const [isComposeOpen, setIsComposeOpen] = useState(false);
@@ -131,7 +133,6 @@ export function MessagingView({ mode, usuarioId }: MessagingViewProps) {
   return (
     <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 space-y-6 w-full font-verdana">
       <div className="bg-white border rounded-lg shadow-sm overflow-hidden min-h-[500px] flex flex-col">
-        {/* Cabecera de Mensajería */}
         <div className="bg-[#f8f9fa] border-b p-4 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             {mode === 'inbox' ? <Inbox className="h-5 w-5 text-[#fb8500]" /> : <Trash2 className="h-5 w-5 text-gray-400" />}
@@ -159,7 +160,6 @@ export function MessagingView({ mode, usuarioId }: MessagingViewProps) {
           </div>
         </div>
         
-        {/* Listado de Mensajes */}
         <div className="flex-1 flex flex-col overflow-hidden">
            {isLoading ? (
              <div className="flex-1 flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-[#fb8500]" /></div>
@@ -245,7 +245,6 @@ export function MessagingView({ mode, usuarioId }: MessagingViewProps) {
         </div>
       </div>
 
-      {/* Diálogo de Redacción */}
       <ComposeDialog 
         open={isComposeOpen} 
         onClose={() => setIsComposeOpen(false)} 
@@ -253,7 +252,6 @@ export function MessagingView({ mode, usuarioId }: MessagingViewProps) {
         users={allUsers || []} 
       />
 
-      {/* Diálogo de Lectura */}
       {viewingMessage && (
         <MessageDetailDialog 
           message={viewingMessage} 
@@ -261,6 +259,7 @@ export function MessagingView({ mode, usuarioId }: MessagingViewProps) {
           onDelete={mode === 'inbox' ? () => handleMoveToTrash(viewingMessage.id) : () => handleDeletePermanent(viewingMessage.id)}
           getUserName={getUserName}
           mode={mode}
+          onNavigateToIncident={onNavigateToIncident}
         />
       )}
     </div>
@@ -356,7 +355,29 @@ function ComposeDialog({ open, onClose, remitenteId, users }: { open: boolean, o
   );
 }
 
-function MessageDetailDialog({ message, onClose, onDelete, getUserName, mode }: { message: any, onClose: () => void, onDelete: () => void, getUserName: (id: string) => string, mode: string }) {
+function MessageDetailDialog({ message, onClose, onDelete, getUserName, mode, onNavigateToIncident }: { message: any, onClose: () => void, onDelete: () => void, getUserName: (id: string) => string, mode: string, onNavigateToIncident?: (id: string) => void }) {
+  // Lógica para detectar el enlace dinámico a la sanción
+  const renderCuerpo = () => {
+    const text = message.cuerpo || "";
+    const match = text.match(/(.*)-pulse aqui- \[REF:(.*)\]/);
+    
+    if (match && onNavigateToIncident) {
+      return (
+        <div className="space-y-4">
+          <p>{match[1]}</p>
+          <Button 
+            onClick={() => { onNavigateToIncident(match[2]); onClose(); }}
+            className="bg-red-700 hover:bg-red-800 text-white text-[11px] font-bold uppercase h-9 px-6 gap-2 animate-pulse"
+          >
+            <ExternalLink className="h-4 w-4" /> Ver sanción en Rayuela
+          </Button>
+        </div>
+      );
+    }
+    
+    return <p className="whitespace-pre-wrap">{text}</p>;
+  };
+
   return (
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl font-verdana p-0 border-none overflow-hidden">
@@ -393,8 +414,8 @@ function MessageDetailDialog({ message, onClose, onDelete, getUserName, mode }: 
 
            <div className="space-y-4">
               <Label className="text-[10px] font-bold uppercase text-gray-300 tracking-[0.2em]">Mensaje</Label>
-              <div className="text-sm text-gray-700 leading-relaxed font-medium whitespace-pre-wrap min-h-[150px]">
-                 {message.cuerpo}
+              <div className="text-sm text-gray-700 leading-relaxed font-medium min-h-[150px]">
+                 {renderCuerpo()}
               </div>
            </div>
 

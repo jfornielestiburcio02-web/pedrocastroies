@@ -59,13 +59,27 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
-export function AlumnadoIncidenteView({ profesorId }: { profesorId: string }) {
+interface AlumnadoIncidenteViewProps {
+  profesorId: string;
+  targetStudentId?: string;
+  onActionComplete?: () => void;
+}
+
+export function AlumnadoIncidenteView({ profesorId, targetStudentId, onActionComplete }: AlumnadoIncidenteViewProps) {
   const db = useFirestore();
   const { toast } = useToast();
   const [selectedCourse, setSelectedCourse] = useState<string>("TODOS");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [viewExpedienteId, setViewExpedienteId] = useState<string | null>(null);
   
+  // Efecto para abrir automáticamente el expediente si viene de una redirección
+  useEffect(() => {
+    if (targetStudentId) {
+      setViewExpedienteId(targetStudentId);
+      if (onActionComplete) onActionComplete();
+    }
+  }, [targetStudentId, onActionComplete]);
+
   const usersQuery = useMemoFirebase(() => {
     if (!db) return null;
     return query(collection(db, 'usuarios'), where('rolesUsuario', 'array-contains', 'EsAlumno'));
@@ -113,7 +127,7 @@ export function AlumnadoIncidenteView({ profesorId }: { profesorId: string }) {
     "Desobediencia a las instrucciones del profesorado"
   ];
 
-  const handleSaveIncident = () => {
+  const handleSaveIncident = async () => {
     if (!db || !formData.alumnoId || !formData.descripcion) {
       toast({ variant: "destructive", title: "Error", description: "Complete el alumno y la descripción." });
       return;
@@ -122,7 +136,12 @@ export function AlumnadoIncidenteView({ profesorId }: { profesorId: string }) {
     const student = allStudents?.find(s => s.id === formData.alumnoId);
     const studentCourse = student?.cursoAlumno;
     
-    addDocumentNonBlocking(collection(db, 'incidencias'), {
+    // Obtener nombre del profesor para el mensaje
+    const profSnap = await getDoc(doc(db, 'usuarios', profesorId));
+    const profName = profSnap.exists() ? (profSnap.data().nombrePersona || profSnap.data().usuario) : profesorId;
+
+    // Guardar incidencia y obtener referencia para el enlace
+    const incidentRef = await addDocumentNonBlocking(collection(db, 'incidencias'), {
       ...formData,
       profesorId,
       curso: studentCourse || "SIN CURSO",
@@ -130,20 +149,22 @@ export function AlumnadoIncidenteView({ profesorId }: { profesorId: string }) {
       createdAt: new Date().toISOString()
     });
 
+    if (!incidentRef) return;
+
     // Enviar notificación al tutor si existe
     if (studentCourse && studentCourse !== "SIN CURSO") {
       const tutorsQuery = query(collection(db, 'usuarios'), where('esTutor', '==', studentCourse));
-      getDocs(tutorsQuery).then(snap => {
-        snap.forEach(tutorDoc => {
-          addDocumentNonBlocking(collection(db, 'mensajes'), {
-            remitenteId: 'SISTEMA',
-            destinatarioId: tutorDoc.id,
-            asunto: 'Plataforma Rayuela: Nueva Incidencia de Alumno',
-            cuerpo: `Se ha registrado una nueva conducta ${formData.tipoIncidencia} para el alumno ${student?.nombrePersona || student?.usuario}, para verla -pulse aqui-`,
-            leido: false,
-            eliminado: false,
-            createdAt: new Date().toISOString()
-          });
+      const tutorsSnap = await getDocs(tutorsQuery);
+      
+      tutorsSnap.forEach(tutorDoc => {
+        addDocumentNonBlocking(collection(db, 'mensajes'), {
+          remitenteId: 'SISTEMA',
+          destinatarioId: tutorDoc.id,
+          asunto: 'Plataforma Rayuela: Nueva Incidencia de Alumno',
+          cuerpo: `${profName} ha registrado una nueva conducta ${formData.tipoIncidencia} para el alumno ${student?.nombrePersona || student?.usuario}, para verla -pulse aqui- [REF:${student?.id}]`,
+          leido: false,
+          eliminado: false,
+          createdAt: new Date().toISOString()
         });
       });
     }
@@ -263,11 +284,11 @@ export function AlumnadoIncidenteView({ profesorId }: { profesorId: string }) {
         </div>
       </div>
 
-      {viewExpedienteId && (
+      {(viewExpedienteId || targetStudentId) && (
         <ExpedienteDisciplinarioDialog 
-          alumnoId={viewExpedienteId} 
-          onClose={() => setViewExpedienteId(null)} 
-          incidencias={allIncidents?.filter(i => i.alumnoId === viewExpedienteId) || []}
+          alumnoId={(viewExpedienteId || targetStudentId)!} 
+          onClose={() => { setViewExpedienteId(null); if (onActionComplete) onActionComplete(); }} 
+          incidencias={allIncidents?.filter(i => i.alumnoId === (viewExpedienteId || targetStudentId)) || []}
         />
       )}
 

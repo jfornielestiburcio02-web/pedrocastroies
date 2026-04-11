@@ -57,6 +57,10 @@ export default function SeleccioneModuloAccesoPage() {
   const [activeRole, setActiveRole] = useState<string | null>(null);
   const [activeSubContent, setActiveSubContent] = useState<string | null>(null);
   const [sidebarMode, setSidebarMode] = useState<'ACADEMIC' | 'MESSAGING'>('ACADEMIC');
+  
+  // Estado para gestionar redirecciones desde mensajes
+  const [targetIncidentData, setTargetIncidentData] = useState<{ studentId: string } | null>(null);
+
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({
     'faltas': false,
     'conductas': false,
@@ -168,6 +172,11 @@ export default function SeleccioneModuloAccesoPage() {
     if (role === 'EsAlumno') return 'Alumno';
     if (role === 'EsSecretaria') return 'Secretaría';
     return role;
+  };
+
+  const handleNavigateToIncident = (studentId: string) => {
+    setActiveSubContent('Alumnado Incidente');
+    setTargetIncidentData({ studentId });
   };
 
   if (isLoading || !session) {
@@ -533,9 +542,17 @@ export default function SeleccioneModuloAccesoPage() {
                   ) : activeSubContent === 'Guardias' ? (
                     <GuardDutyView profesorId={session.usuario} />
                   ) : activeSubContent === 'Alumnado Incidente' ? (
-                    <AlumnadoIncidenteView profesorId={session.usuario} />
+                    <AlumnadoIncidenteView 
+                      profesorId={session.usuario} 
+                      targetStudentId={targetIncidentData?.studentId} 
+                      onActionComplete={() => setTargetIncidentData(null)}
+                    />
                   ) : activeSubContent === 'Mis Mensajes' ? (
-                    <MessagingView mode="inbox" usuarioId={session.usuario} />
+                    <MessagingView 
+                      mode="inbox" 
+                      usuarioId={session.usuario} 
+                      onNavigateToIncident={handleNavigateToIncident}
+                    />
                   ) : activeSubContent === 'Papelera Mensajería' ? (
                     <MessagingView mode="trash" usuarioId={session.usuario} />
                   ) : activeSubContent === 'Alumnado de mi tutoria' ? (
