@@ -1,47 +1,42 @@
-
 'use client';
 
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getAuth, Auth } from 'firebase/auth';
-import { getFirestore, initializeFirestore, Firestore } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
+import { getFirestore, Firestore } from 'firebase/firestore';
 
-// Variables de instancia para el patrón Singleton
-let app: FirebaseApp;
-let db: Firestore;
-let authentication: Auth;
-
-/**
- * Inicializa Firebase y sus servicios de forma única.
- * Garantiza que initializeFirestore solo se llame una vez para evitar errores de aserción.
- */
+// 🔥 Inicializar Firebase UNA sola vez
 export function initializeFirebase() {
-  // 1. Inicializar App
-  if (getApps().length > 0) {
-    app = getApp();
+  let firebaseApp: FirebaseApp;
+
+  if (!getApps().length) {
+    firebaseApp = initializeApp(firebaseConfig);
   } else {
-    app = initializeApp(firebaseConfig);
+    firebaseApp = getApp();
   }
 
-  // 2. Inicializar Firestore con configuración defensiva (una sola vez)
-  if (!db) {
-    db = initializeFirestore(app, {
-      experimentalForceLongPolling: true,
-    });
-  }
+  return getSdks(firebaseApp);
+}
 
-  // 3. Inicializar Auth (una sola vez)
-  if (!authentication) {
-    authentication = getAuth(app);
-  }
+// 🔥 Obtener servicios (SIN configuraciones raras)
+export function getSdks(firebaseApp: FirebaseApp): {
+  firebaseApp: FirebaseApp;
+  auth: ReturnType<typeof getAuth>;
+  firestore: Firestore;
+} {
+  const auth = getAuth(firebaseApp);
+
+  // ⚠️ IMPORTANTE: usar getFirestore normal
+  const firestore = getFirestore(firebaseApp);
 
   return {
-    firebaseApp: app,
-    firestore: db,
-    auth: authentication
+    firebaseApp,
+    auth,
+    firestore,
   };
 }
 
+// 🔁 exports tuyos
 export * from './provider';
 export * from './client-provider';
 export * from './firestore/use-collection';
