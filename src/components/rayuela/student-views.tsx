@@ -15,7 +15,8 @@ import {
   ClipboardList,
   FileText,
   Lock,
-  MessageSquare
+  MessageSquare,
+  ShieldAlert
 } from 'lucide-react';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
