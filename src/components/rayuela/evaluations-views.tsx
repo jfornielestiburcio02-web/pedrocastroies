@@ -60,6 +60,7 @@ export function EvaluationsView({ profesorId, type }: EvaluationsViewProps) {
   useEffect(() => {
     setActiveItemId(null);
     setIsCreating(false);
+    setSelectedScheduleId(null);
   }, [type]);
 
   const [formData, setFormData] = useState({
@@ -70,11 +71,13 @@ export function EvaluationsView({ profesorId, type }: EvaluationsViewProps) {
 
   const dayOfWeek = useMemo(() => {
     const days = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
-    return days[new Date(selectedDate).getDay()];
+    const date = new Date(selectedDate);
+    const dayIndex = isNaN(date.getTime()) ? 0 : date.getDay();
+    return days[dayIndex] || "Lunes";
   }, [selectedDate]);
 
   const schedulesQuery = useMemoFirebase(() => {
-    if (!db || !profesorId) return null;
+    if (!db || !profesorId || !dayOfWeek) return null;
     return query(
       collection(db, 'horarios'), 
       where('profesorId', '==', profesorId), 
@@ -86,8 +89,7 @@ export function EvaluationsView({ profesorId, type }: EvaluationsViewProps) {
   const currentSchedule = useMemo(() => schedules?.find(s => s.id === selectedScheduleId), [schedules, selectedScheduleId]);
 
   const itemsQuery = useMemoFirebase(() => {
-    if (!db || !selectedScheduleId) return null;
-    // Aseguramos que la colección sea la correcta según el tipo
+    if (!db || !selectedScheduleId || !type) return null;
     return query(
       collection(db, type === 'exam' ? 'examenes' : 'tareas'),
       where('claseId', '==', selectedScheduleId),
@@ -97,7 +99,6 @@ export function EvaluationsView({ profesorId, type }: EvaluationsViewProps) {
 
   const { data: items, isLoading: loadingItems } = useCollection(itemsQuery);
 
-  // Derivamos el elemento activo de la colección actualizada para evitar datos stale
   const activeItem = useMemo(() => items?.find(i => i.id === activeItemId), [items, activeItemId]);
 
   const usersQuery = useMemoFirebase(() => {
@@ -148,7 +149,6 @@ export function EvaluationsView({ profesorId, type }: EvaluationsViewProps) {
     const collectionName = type === 'exam' ? 'examenes' : 'tareas';
     const field = type === 'exam' ? 'notas' : 'entregas';
     
-    // Evitar guardar NaN en Firestore
     let safeValue = value;
     if (type === 'exam' && typeof value === 'number' && isNaN(value)) {
       safeValue = 0;
@@ -208,7 +208,7 @@ export function EvaluationsView({ profesorId, type }: EvaluationsViewProps) {
         <div className="lg:col-span-4 space-y-4">
           <div className="bg-white border rounded-lg overflow-hidden flex flex-col min-h-[400px]">
             <div className="bg-gray-50 border-b p-3 flex items-center justify-between">
-              <span className="text-[10px] font-bold text-gray-400 uppercase">Registros en esta sesión</span>
+              <span className="text-[10px] font-bold text-gray-400 uppercase">Registros de {type === 'exam' ? 'exámenes' : 'tareas'}</span>
               <Layout className="h-4 w-4 text-gray-300" />
             </div>
             
@@ -267,7 +267,7 @@ export function EvaluationsView({ profesorId, type }: EvaluationsViewProps) {
                     <div className="space-y-2">
                       <Label className="text-[10px] font-bold text-gray-400 uppercase">Título de la actividad</Label>
                       <Input 
-                        placeholder="Ej: Control Tema 3 - Álgebra" 
+                        placeholder="Ej: Control Tema 3" 
                         className="text-sm font-bold h-10 border-gray-300"
                         value={formData.titulo}
                         onChange={(e) => setFormData({...formData, titulo: e.target.value})}
@@ -277,7 +277,7 @@ export function EvaluationsView({ profesorId, type }: EvaluationsViewProps) {
                     {type === 'exam' && (
                       <div className="space-y-4 pt-2">
                         <div className="flex items-center justify-between">
-                          <Label className="text-[10px] font-bold text-gray-400 uppercase">Ponderación en nota final</Label>
+                          <Label className="text-[10px] font-bold text-gray-400 uppercase">Ponderación</Label>
                           <span className="text-sm font-bold text-[#89a54e]">{formData.ponderacion} / 10</span>
                         </div>
                         <Slider 
@@ -296,7 +296,7 @@ export function EvaluationsView({ profesorId, type }: EvaluationsViewProps) {
                       <div className="flex items-center justify-between p-4 bg-gray-50 border rounded-lg">
                         <div className="space-y-0.5">
                           <Label className="text-[11px] font-bold text-gray-700">Mostrar a alumno</Label>
-                          <p className="text-[9px] text-gray-400">¿Desea que el alumno vea su nota al publicarse?</p>
+                          <p className="text-[9px] text-gray-400">¿Desea que el alumno vea su nota?</p>
                         </div>
                         <Switch 
                           checked={formData.mostrarAlumno} 
@@ -306,14 +306,14 @@ export function EvaluationsView({ profesorId, type }: EvaluationsViewProps) {
                     )}
                     
                     <div className="p-4 bg-blue-50 border border-blue-100 rounded-lg text-[10px] text-blue-800 font-bold uppercase leading-relaxed">
-                      El registro se creará asociado al grupo de {currentSchedule?.asignatura || 'esta sesión'} para el día {format(new Date(selectedDate), 'd MMMM', { locale: es })}.
+                      Se asociará al grupo de {currentSchedule?.asignatura || 'esta sesión'} del día {format(new Date(selectedDate), 'd MMMM', { locale: es })}.
                     </div>
                   </div>
                 </div>
 
                 <div className="flex justify-end gap-4 pt-6 border-t">
                   <Button variant="outline" onClick={() => setIsCreating(false)} className="text-[11px] font-bold uppercase h-10 px-6">Cancelar</Button>
-                  <Button onClick={handleCreate} className="bg-[#89a54e] hover:bg-[#728a41] text-white text-[11px] font-bold uppercase h-10 px-8">Registrar en Rayuela</Button>
+                  <Button onClick={handleCreate} className="bg-[#89a54e] hover:bg-[#728a41] text-white text-[11px] font-bold uppercase h-10 px-8">Guardar registro</Button>
                 </div>
              </div>
            ) : activeItem ? (
@@ -330,21 +330,17 @@ export function EvaluationsView({ profesorId, type }: EvaluationsViewProps) {
                         </p>
                       </div>
                    </div>
-                   <div className="flex flex-col items-end gap-1">
-                      <Badge className="bg-white text-[#89a54e] font-bold text-[9px]">{students.length} ALUMNOS</Badge>
-                      <span className="text-[9px] text-white/60 font-medium">CREADO: {format(new Date(activeItem.createdAt), 'dd/MM/yy HH:mm')}</span>
-                   </div>
+                   <Badge className="bg-white text-[#89a54e] font-bold text-[9px]">{students.length} ALUMNOS</Badge>
                 </div>
 
                 <div className="p-6">
                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                       {students.map(student => {
                         const rawVal = type === 'exam' ? (activeItem.notas?.[student.id]) : (activeItem.entregas?.[student.id]);
-                        // Asegurar que nunca pasamos NaN al atributo value del input
                         const val = (rawVal === undefined || rawVal === null || (typeof rawVal === 'number' && isNaN(rawVal))) ? '' : rawVal;
                         
                         return (
-                          <div key={student.id} className="flex items-center justify-between p-3 border rounded-lg bg-gray-50/50 hover:bg-white hover:shadow-sm transition-all group">
+                          <div key={student.id} className="flex items-center justify-between p-3 border rounded-lg bg-gray-50/50 hover:bg-white transition-all group">
                              <div className="flex items-center gap-3">
                                 <Avatar className="h-8 w-8 border">
                                   <AvatarImage src={student.imagenPerfil} />
@@ -358,9 +354,7 @@ export function EvaluationsView({ profesorId, type }: EvaluationsViewProps) {
                                  <Input 
                                    type="number" 
                                    step="0.1" 
-                                   min="0" 
-                                   max="10" 
-                                   className="h-8 text-center text-xs font-bold border-gray-300 focus:border-[#89a54e] p-1"
+                                   className="h-8 text-center text-xs font-bold border-gray-300"
                                    placeholder="0.0"
                                    value={val}
                                    onChange={(e) => {
@@ -386,7 +380,7 @@ export function EvaluationsView({ profesorId, type }: EvaluationsViewProps) {
                 <div className="bg-gray-50 border-t p-4 flex items-center justify-between px-8">
                    <div className="flex items-center gap-2 text-[10px] text-gray-400 font-bold uppercase">
                      <CheckCircle2 className="h-4 w-4 text-green-500" />
-                     Los cambios se sincronizan automáticamente
+                     Sincronizado con Rayuela
                    </div>
                    <Button variant="ghost" onClick={() => setActiveItemId(null)} className="text-[10px] font-bold uppercase text-gray-500 hover:text-black gap-2">
                      <ChevronRight className="h-3 w-3" /> Cerrar edición
@@ -399,8 +393,8 @@ export function EvaluationsView({ profesorId, type }: EvaluationsViewProps) {
                   <Layout className="h-10 w-10" />
                 </div>
                 <div className="text-center">
-                  <p className="text-gray-600 font-bold uppercase text-xs">Sin selección activa</p>
-                  <p className="text-gray-400 italic text-[11px]">Cree una nueva actividad o seleccione una existente de la lista lateral.</p>
+                  <p className="text-gray-600 font-bold uppercase text-xs">Sin selección</p>
+                  <p className="text-gray-400 italic text-[11px]">Seleccione un registro lateral para editar las notas.</p>
                 </div>
              </div>
            )}
