@@ -562,12 +562,19 @@ function AttendanceBySubjectView({ profesorId }: { profesorId: string }) {
     return allUsers.filter(u => currentSchedule.alumnosIds?.includes(u.id));
   }, [currentSchedule, allUsers]);
 
-  const handleAttendanceChange = (alumnoId: string, tipo: string) => {
+  const handleCycleAttendance = (alumnoId: string) => {
     if (!db || !selectedScheduleId) return;
 
     const existing = attendances?.find(a => a.alumnoId === alumnoId);
+    const currentStatus = existing?.tipo || 'A';
+    
+    // Ciclo: A (Asiste) -> I (Injustificada) -> R (Retraso) -> A
+    let nextStatus = 'A';
+    if (currentStatus === 'A') nextStatus = 'I';
+    else if (currentStatus === 'I') nextStatus = 'R';
+    else if (currentStatus === 'R') nextStatus = 'A';
 
-    if (tipo === 'A') {
+    if (nextStatus === 'A') {
       if (existing) {
         deleteDocumentNonBlocking(doc(db, 'asistenciasInasistencias', existing.id));
       }
@@ -578,7 +585,7 @@ function AttendanceBySubjectView({ profesorId }: { profesorId: string }) {
       alumnoId,
       claseId: selectedScheduleId,
       fecha: selectedDate,
-      tipo,
+      tipo: nextStatus,
       profesorId,
       createdAt: new Date().toISOString()
     };
@@ -588,6 +595,13 @@ function AttendanceBySubjectView({ profesorId }: { profesorId: string }) {
     } else {
       addDocumentNonBlocking(collection(db, 'asistenciasInasistencias'), attendanceData);
     }
+  };
+
+  const getStatusText = (status: string) => {
+    if (status === 'A') return 'Asiste';
+    if (status === 'I') return 'Injustif.';
+    if (status === 'R') return 'Retraso';
+    return 'Asiste';
   };
 
   return (
@@ -655,35 +669,24 @@ function AttendanceBySubjectView({ profesorId }: { profesorId: string }) {
              const currentStatus = studentAttendance?.tipo || 'A';
 
              return (
-               <div key={student.id} className="itemAlumnoEnClase relative group">
+               <div key={student.id} className="itemAlumnoEnClase relative group flex flex-col items-center pt-3">
                   <Avatar className="imagenAlumnoEnClase" onClick={() => setHistoryAlumnoId(student.id)}>
                     <AvatarImage src={student.imagenPerfil} />
                     <AvatarFallback>{student.usuario?.substring(0, 2).toUpperCase()}</AvatarFallback>
                   </Avatar>
                   
-                  <div className="nombreAlumno" onClick={() => setHistoryAlumnoId(student.id)}>
+                  <div className="nombreAlumno px-2 mt-2" onClick={() => setHistoryAlumnoId(student.id)}>
                     {student.nombrePersona || student.usuario}
                   </div>
 
-                  <div className="flex mt-auto pb-4 gap-1">
+                  <div className="mt-auto w-full px-2 pb-3">
                     <button 
-                      onClick={() => handleAttendanceChange(student.id, 'A')}
-                      data-state="A"
-                      title="Asiste"
-                      className={cn("botonFalta", currentStatus === 'A' && "botonFalta-active")}
-                    >A</button>
-                    <button 
-                      onClick={() => handleAttendanceChange(student.id, 'I')}
-                      data-state="I"
-                      title="Injustificada"
-                      className={cn("botonFalta", currentStatus === 'I' && "botonFalta-active")}
-                    >I</button>
-                    <button 
-                      onClick={() => handleAttendanceChange(student.id, 'R')}
-                      data-state="R"
-                      title="Retraso"
-                      className={cn("botonFalta", currentStatus === 'R' && "botonFalta-active")}
-                    >R</button>
+                      onClick={() => handleCycleAttendance(student.id)}
+                      data-state={currentStatus}
+                      className="botonFalta w-full h-8 transition-colors active:scale-95 flex items-center justify-center font-bold"
+                    >
+                      {getStatusText(currentStatus)}
+                    </button>
                   </div>
 
                   <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
