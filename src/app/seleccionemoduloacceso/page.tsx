@@ -438,7 +438,7 @@ export default function SeleccioneModuloAccesoPage() {
                     ) : (
                       <div className="space-y-2">
                         <div className="flex flex-col">
-                          <SidebarHeading label="Usuarios" expanded={expandedItems['usuarios']} onClick={() => toggleExpanded('usuarios']} />
+                          <SidebarHeading label="Usuarios" expanded={expandedItems['usuarios']} onClick={() => toggleExpanded('usuarios')} />
                           {expandedItems['usuarios'] && (
                             <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
                               <SidebarItem color="#9c4d96" label="Creación" isSubItem onClick={() => setActiveSubContent('Creación de Usuarios')} active={activeSubContent === 'Creación de Usuarios'} />
