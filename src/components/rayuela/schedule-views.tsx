@@ -9,7 +9,8 @@ import {
   Save, 
   Plus,
   Calendar,
-  AlertCircle
+  AlertCircle,
+  Users
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -207,7 +208,6 @@ export function MyScheduleView({ profesorId }: { profesorId: string }) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {/* Aquí mostramos una versión simplificada por lista agrupada por día para mejor lectura en móvil/tablet */}
               <TableRow>
                 {days.map(day => (
                   <TableCell key={day} className="p-2 align-top border-r last:border-r-0 bg-gray-50/30">
