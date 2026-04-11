@@ -213,7 +213,7 @@ export default function SeleccioneModuloAccesoPage() {
               </span>
               <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-[11px] text-gray-500 font-medium">
                 <span className="hover:underline cursor-pointer">Documentos solicitados</span>
-                <span className="hover:underline cursor-pointer">Configuración</span>
+                <span className="hover:underline cursor-pointer" onClick={() => router.push('/configuracion')}>Configuración</span>
                 <span className="hover:underline cursor-pointer">Manuales</span>
                 <span className="hover:underline cursor-pointer" onClick={() => { setSelectedModule('SEGUIMIENTO'); setSidebarMode('MESSAGING'); setActiveSubContent('Mis Mensajes'); }}>Nuevo mensaje</span>
                 <span className="hover:underline cursor-pointer" onClick={() => { setSelectedModule('SEGUIMIENTO'); setSidebarMode('MESSAGING'); setActiveSubContent('Mis Mensajes'); }}>Mis mensajes</span>
@@ -306,9 +306,14 @@ export default function SeleccioneModuloAccesoPage() {
           
           <div className="flex flex-col items-end gap-1">
              <span className="text-[10px] text-gray-400 font-bold uppercase">JSESSIONID={session.sesion}</span>
-             <Button variant="ghost" size="sm" onClick={handleLogout} className="text-[10px] text-gray-500 hover:text-black p-0 h-auto">
-               Cerrar sesión
-             </Button>
+             <div className="flex gap-4">
+                <Button variant="ghost" size="sm" onClick={() => router.push('/configuracion')} className="text-[10px] text-gray-500 hover:text-black p-0 h-auto">
+                  Configuración
+                </Button>
+                <Button variant="ghost" size="sm" onClick={handleLogout} className="text-[10px] text-gray-500 hover:text-black p-0 h-auto">
+                  Cerrar sesión
+                </Button>
+             </div>
           </div>
         </div>
       )}
@@ -326,7 +331,7 @@ export default function SeleccioneModuloAccesoPage() {
                       <div className="p-2 bg-gray-400 rounded-sm text-white"><Video className="h-5 w-5" /></div>
                       <div className="p-2 bg-gray-400 rounded-sm text-white"><Pin className="h-5 w-5" /></div>
                       <div className="p-2 bg-gray-400 rounded-sm text-white"><Files className="h-5 w-5" /></div>
-                      <div className="p-2 bg-gray-400 rounded-sm text-white"><UserCog className="h-5 w-5" /></div>
+                      <div className="p-2 bg-gray-400 rounded-sm text-white" onClick={() => router.push('/configuracion')}><UserCog className="h-5 w-5" /></div>
                     </>
                   ) : (
                     <>
@@ -334,7 +339,7 @@ export default function SeleccioneModuloAccesoPage() {
                       <div className="p-2 bg-[#9c4d96] rounded-sm text-white"><Clock className="h-5 w-5" /></div>
                       <div className="p-2 bg-[#9c4d96] rounded-sm text-white"><Files className="h-5 w-5" /></div>
                       <div className="p-2 bg-[#9c4d96] rounded-sm text-white"><ShieldCheck className="h-5 w-5" /></div>
-                      <div className="p-2 bg-[#9c4d96] rounded-sm text-white"><UserCog className="h-5 w-5" /></div>
+                      <div className="p-2 bg-[#9c4d96] rounded-sm text-white" onClick={() => router.push('/configuracion')}><UserCog className="h-5 w-5" /></div>
                     </>
                   )}
                 </div>
