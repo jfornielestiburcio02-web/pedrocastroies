@@ -117,6 +117,20 @@
         "comunicadoFamilia": { "type": "boolean" },
         "createdAt": { "type": "string", "format": "date-time" }
       }
+    },
+    "Mensaje": {
+      "title": "Mensaje",
+      "type": "object",
+      "description": "Mensaje de comunicación interna entre usuarios de Rayuela.",
+      "properties": {
+        "remitenteId": { "type": "string" },
+        "destinatarioId": { "type": "string" },
+        "asunto": { "type": "string" },
+        "cuerpo": { "type": "string" },
+        "leido": { "type": "boolean" },
+        "eliminado": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "auth": {
@@ -154,6 +168,12 @@
         "$ref": "#/backend/entities/Incidencia"
       },
       "description": "Colección de incidencias disciplinarias."
+    },
+    "/mensajes/{mensajeId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Mensaje"
+      },
+      "description": "Colección de mensajes internos entre usuarios."
     }
   }
 }

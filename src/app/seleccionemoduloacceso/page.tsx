@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   Loader2, 
@@ -28,8 +28,8 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useFirestore } from '@/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { doc, getDoc, query, collection, where } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
 
 // Importación de componentes modulares de Rayuela
@@ -106,6 +106,20 @@ export default function SeleccioneModuloAccesoPage() {
     }
   }, [router, db]);
 
+  // Hook para contar mensajes no leídos
+  const unreadMessagesQuery = useMemoFirebase(() => {
+    if (!db || !session?.usuario) return null;
+    return query(
+      collection(db, 'mensajes'),
+      where('destinatarioId', '==', session.usuario),
+      where('leido', '==', false),
+      where('eliminado', '==', false)
+    );
+  }, [db, session?.usuario]);
+
+  const { data: unreadMessages } = useCollection(unreadMessagesQuery);
+  const unreadCount = unreadMessages?.length || 0;
+
   const handleModuleClick = (label: string) => {
     setSelectedModule(label.toUpperCase());
     setActiveSubContent(null);
@@ -167,6 +181,11 @@ export default function SeleccioneModuloAccesoPage() {
                 <AvatarImage src={userData?.imagenPerfil} />
                 <AvatarFallback>{session.usuario?.substring(0, 2).toUpperCase()}</AvatarFallback>
               </Avatar>
+              {unreadCount > 0 && (
+                <div className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold h-6 w-6 rounded-full flex items-center justify-center border-2 border-white shadow-md animate-bounce">
+                  {unreadCount}
+                </div>
+              )}
             </div>
 
             <div className="flex flex-col">
@@ -182,14 +201,14 @@ export default function SeleccioneModuloAccesoPage() {
                 <span className="hover:underline cursor-pointer">Documentos solicitados</span>
                 <span className="hover:underline cursor-pointer">Configuración</span>
                 <span className="hover:underline cursor-pointer">Manuales</span>
-                <span className="hover:underline cursor-pointer">Nuevo mensaje</span>
-                <span className="hover:underline cursor-pointer">Mis mensajes</span>
+                <span className="hover:underline cursor-pointer" onClick={() => { setSelectedModule('SEGUIMIENTO'); setSidebarMode('MESSAGING'); setActiveSubContent('Mis Mensajes'); }}>Nuevo mensaje</span>
+                <span className="hover:underline cursor-pointer" onClick={() => { setSelectedModule('SEGUIMIENTO'); setSidebarMode('MESSAGING'); setActiveSubContent('Mis Mensajes'); }}>Mis mensajes</span>
               </div>
               <div className="flex gap-4 mt-2">
                 <Clock className="h-4 w-4 text-gray-400 cursor-pointer hover:text-gray-600" />
                 <BookOpen className="h-4 w-4 text-gray-400 cursor-pointer hover:text-gray-600" />
                 <Home className="h-4 w-4 text-gray-400 cursor-pointer hover:text-gray-600" onClick={() => { setSelectedModule(null); setActiveSubContent(null); }} />
-                <MessageSquare className="h-4 w-4 text-[#fb8500] cursor-pointer" />
+                <MessageSquare className={cn("h-4 w-4 cursor-pointer", unreadCount > 0 ? "text-red-600" : "text-[#fb8500]")} onClick={() => { setSelectedModule('SEGUIMIENTO'); setSidebarMode('MESSAGING'); setActiveSubContent('Mis Mensajes'); }} />
               </div>
             </div>
           </div>
@@ -367,7 +386,7 @@ export default function SeleccioneModuloAccesoPage() {
                         </div>
 
                         <div className="flex flex-col">
-                          <SidebarHeading label="Horarios" expanded={expandedItems['horarios']} onClick={() => toggleExpanded('horarios')} />
+                          <SidebarHeading label="Horarios" expanded={expandedItems['horarios']} onClick={() => toggleExpanded('horarios']} />
                           {expandedItems['horarios'] && (
                             <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
                               <SidebarItem color="#9c4d96" label="Ver" isSubItem onClick={() => setActiveSubContent('Ver Horarios')} active={activeSubContent === 'Ver Horarios'} />
@@ -428,9 +447,9 @@ export default function SeleccioneModuloAccesoPage() {
                   ) : activeSubContent === 'Alumnado Incidente' ? (
                     <AlumnadoIncidenteView profesorId={session.usuario} />
                   ) : activeSubContent === 'Mis Mensajes' ? (
-                    <MessagingView mode="inbox" />
+                    <MessagingView mode="inbox" usuarioId={session.usuario} />
                   ) : activeSubContent === 'Papelera Mensajería' ? (
-                    <MessagingView mode="trash" />
+                    <MessagingView mode="trash" usuarioId={session.usuario} />
                   ) : activeSubContent ? (
                     <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
                        <div className="bg-white border rounded-lg p-10 shadow-sm min-h-[400px] flex flex-col items-center justify-center text-center space-y-4">
