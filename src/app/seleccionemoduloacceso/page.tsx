@@ -21,12 +21,8 @@ import {
   Pin,
   Files,
   UserCog,
-  Calendar,
-  FileText,
-  Layout,
-  Folder,
-  ClipboardList,
-  Award
+  ChevronDown,
+  ChevronRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useFirestore } from '@/firebase';
@@ -40,6 +36,9 @@ export default function SeleccioneModuloAccesoPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedModule, setSelectedModule] = useState<string | null>(null);
   const [activeRole, setActiveRole] = useState<string | null>(null);
+  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({
+    'faltas': false
+  });
   const router = useRouter();
   const db = useFirestore();
 
@@ -103,6 +102,10 @@ export default function SeleccioneModuloAccesoPage() {
     }
   };
 
+  const toggleExpanded = (id: string) => {
+    setExpandedItems(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('user_session');
     router.push('/login');
@@ -135,10 +138,10 @@ export default function SeleccioneModuloAccesoPage() {
     <div className="min-h-screen bg-white font-verdana flex flex-col w-full overflow-x-hidden">
       {selectedModule && (
         <div className="w-full bg-[#e9e9e9] border-b border-gray-300 p-2 flex flex-col md:flex-row items-center justify-between shadow-sm animate-in fade-in slide-in-from-top duration-500 z-50">
-          <div className="flex items-center gap-4 w-full md:w-auto">
+          <div className="flex items-center gap-4 w-full md:w-auto px-2">
             <div className="relative">
               <Avatar className="h-16 w-16 border-2 border-white shadow-sm bg-gray-200">
-                <AvatarImage src={userData?.imagenPerfil || `https://picsum.photos/seed/${session.usuario}/150/150`} />
+                <AvatarImage src={userData?.imagenPerfil} />
                 <AvatarFallback>{session.usuario?.substring(0, 2).toUpperCase()}</AvatarFallback>
               </Avatar>
             </div>
@@ -174,7 +177,7 @@ export default function SeleccioneModuloAccesoPage() {
             <p className="text-[10px] text-gray-500 leading-tight italic">Una manera de hacer Europa</p>
           </div>
 
-          <div className="flex items-center gap-4 mt-4 md:mt-0">
+          <div className="flex items-center gap-4 mt-4 md:mt-0 px-2">
             <div className="flex gap-2 items-center">
               {userRoles.map((roleKey: string) => {
                 const displayName = getRoleDisplayName(roleKey);
@@ -257,11 +260,11 @@ export default function SeleccioneModuloAccesoPage() {
       <div className="flex-1 flex w-full relative">
         {/* Professor Sidebar */}
         {selectedModule && activeRole === 'Profesor' && (
-          <div className="group relative z-40 bg-[#f4f4f4] border-r border-gray-300 w-[60px] hover:w-[220px] transition-all duration-300 ease-in-out flex flex-col min-h-full">
+          <div className="group relative z-40 bg-[#f4f4f4] border-r border-gray-300 w-[60px] hover:w-[250px] transition-all duration-300 ease-in-out flex flex-col min-h-full overflow-hidden">
             <div className="flex-1 flex flex-col">
-              <div className="flex">
+              <div className="flex h-full">
                 {/* Fixed Icon Strip */}
-                <div className="w-[60px] flex flex-col items-center py-4 gap-4 bg-[#f4f4f4]">
+                <div className="w-[60px] min-w-[60px] flex flex-col items-center py-4 gap-4 bg-[#f4f4f4] border-r border-gray-200/50">
                   <div className="p-2 bg-[#89a54e] rounded-sm text-white"><BookOpen className="h-5 w-5" /></div>
                   <div className="p-2 bg-[#89a54e] rounded-sm text-white"><Volume2 className="h-5 w-5" /></div>
                   <div className="p-2 bg-[#89a54e] rounded-sm text-white"><Video className="h-5 w-5" /></div>
@@ -271,15 +274,39 @@ export default function SeleccioneModuloAccesoPage() {
                 </div>
                 
                 {/* Expandable Label Panel */}
-                <div className="hidden group-hover:flex flex-col py-4 w-[160px] bg-white border-l border-gray-200 animate-in fade-in slide-in-from-left-2 duration-300">
-                  <SidebarItem label="Horario" />
-                  <SidebarItem label="Programaciones" />
-                  <SidebarItem label="Trabajos" />
-                  <SidebarItem label="Exámenes" />
-                  <SidebarItem label="Muros" />
-                  <SidebarItem label="Recursos" />
-                  <SidebarItem label="Encuestas" />
-                  <SidebarItem label="Calificaciones" />
+                <div className="hidden group-hover:flex flex-col py-4 w-full bg-white animate-in fade-in slide-in-from-left-2 duration-300 overflow-y-auto">
+                  <div className="px-2 space-y-0.5">
+                    <SidebarItem label="Horario" />
+                    
+                    {/* Faltas de asistencia Collapsible */}
+                    <div className="flex flex-col">
+                      <div 
+                        onClick={() => toggleExpanded('faltas')}
+                        className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-100 cursor-pointer group/item transition-colors"
+                      >
+                        <div className="w-3.5 h-3.5 border border-gray-400 rounded-sm bg-white flex items-center justify-center">
+                          {expandedItems['faltas'] ? <ChevronDown className="h-2.5 w-2.5 text-[#89a54e]" /> : <ChevronRight className="h-2.5 w-2.5 text-gray-400" />}
+                        </div>
+                        <span className="text-[12px] font-bold text-gray-700 whitespace-nowrap">Faltas de asistencia</span>
+                      </div>
+                      
+                      {expandedItems['faltas'] && (
+                        <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
+                          <SidebarItem label="Por materia" isSubItem />
+                          <SidebarItem label="Funcion tutorial" isSubItem />
+                          <SidebarItem label="Guardias" isSubItem />
+                        </div>
+                      )}
+                    </div>
+
+                    <SidebarItem label="Programaciones" />
+                    <SidebarItem label="Trabajos" />
+                    <SidebarItem label="Exámenes" />
+                    <SidebarItem label="Muros" />
+                    <SidebarItem label="Recursos" />
+                    <SidebarItem label="Encuestas" />
+                    <SidebarItem label="Calificaciones" />
+                  </div>
                 </div>
               </div>
             </div>
@@ -375,11 +402,23 @@ export default function SeleccioneModuloAccesoPage() {
   );
 }
 
-function SidebarItem({ label }: { label: string }) {
+function SidebarItem({ label, isSubItem = false }: { label: string; isSubItem?: boolean }) {
   return (
-    <div className="flex items-center gap-2 px-4 py-1 hover:bg-gray-100 cursor-pointer group/item transition-colors">
-      <div className="w-3 h-3 border border-gray-400 rounded-sm bg-white group-hover/item:border-[#89a54e]"></div>
-      <span className="text-[12px] text-gray-700 whitespace-nowrap">{label}</span>
+    <div className={cn(
+      "flex items-center gap-2 px-3 py-1.5 hover:bg-gray-100 cursor-pointer group/item transition-colors",
+      isSubItem ? "pl-4" : ""
+    )}>
+      <div className={cn(
+        "w-3.5 h-3.5 border border-gray-400 rounded-sm bg-white group-hover/item:border-[#89a54e] flex items-center justify-center transition-colors",
+        isSubItem ? "w-3 h-3 border-gray-300" : ""
+      )}>
+        {/* Checkmark effect simulation on hover */}
+        <div className="w-1.5 h-1.5 bg-[#89a54e] scale-0 group-hover/item:scale-100 transition-transform rounded-full" />
+      </div>
+      <span className={cn(
+        "text-[12px] text-gray-700 whitespace-nowrap",
+        isSubItem ? "text-gray-500 text-[11px]" : "font-medium"
+      )}>{label}</span>
     </div>
   );
 }
