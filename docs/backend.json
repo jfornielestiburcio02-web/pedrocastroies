@@ -138,7 +138,7 @@
         "fecha": { "type": "string", "format": "date-time" },
         "tipoIncidencia": { "type": "string", "enum": ["Contraria", "Grave"] },
         "gravedad": { "type": "number", "minimum": 1, "maximum": 5 },
-        "descripcion": { "type": "string" },
+        "description": { "type": "string" },
         "conductas": { "type": "array", "items": { "type": "string" } },
         "medidasCorrectoras": { "type": "string" },
         "observaciones": { "type": "string" },
@@ -170,6 +170,20 @@
         "abiertaProfesores": { "type": "boolean" },
         "abiertaAlumnos": { "type": "boolean" },
         "cursoEscolar": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "CalificacionFinal": {
+      "title": "CalificacionFinal",
+      "type": "object",
+      "description": "Registro de calificación final de un periodo para un alumno en una materia.",
+      "properties": {
+        "alumnoId": { "type": "string" },
+        "profesorId": { "type": "string" },
+        "claseId": { "type": "string" },
+        "periodoId": { "type": "string" },
+        "nota": { "type": "string" },
+        "observaciones": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       }
     }
@@ -233,6 +247,12 @@
         "$ref": "#/backend/entities/EvaluacionPeriodo"
       },
       "description": "Configuración de periodos de evaluación del centro."
+    },
+    "/calificacionesFinales/{calificacionId}": {
+      "schema": {
+        "$ref": "#/backend/entities/CalificacionFinal"
+      },
+      "description": "Colección de calificaciones definitivas por periodo."
     }
   }
 }

@@ -45,6 +45,7 @@ import { SidebarItem, SidebarHeading, ModuleBox } from '@/components/rayuela/sha
 import { MyTutoringStudentsView, CenterStudentsView } from '@/components/rayuela/student-management-views';
 import { EvaluationsView } from '@/components/rayuela/evaluations-views';
 import { EvaluationOpeningView, GradingStatsView } from '@/components/rayuela/management-evaluation-views';
+import { TeacherGradingView } from '@/components/rayuela/teacher-grading-view';
 
 export default function SeleccioneModuloAccesoPage() {
   const [session, setSession] = useState<any>(null);
@@ -538,6 +539,8 @@ export default function SeleccioneModuloAccesoPage() {
                     <EvaluationsView profesorId={session.usuario} type="exam" />
                   ) : activeSubContent === 'Tareas' ? (
                     <EvaluationsView profesorId={session.usuario} type="task" />
+                  ) : activeSubContent === 'Calificar' ? (
+                    <TeacherGradingView profesorId={session.usuario} />
                   ) : activeSubContent === 'Resumen (Tasas)' ? (
                     <GradingStatsView />
                   ) : activeSubContent === 'Apertura de la evaluación' ? (
