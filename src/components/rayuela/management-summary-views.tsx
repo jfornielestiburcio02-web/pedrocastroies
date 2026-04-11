@@ -55,8 +55,6 @@ export function EvaluationsSummaryView() {
   const chartData = useMemo(() => {
     if (!grades) return [];
 
-    // Agrupar por rangos de notas (0-4, 5, 6, 7, 8, 9, 10)
-    // O por etiquetas cualitativas
     const distribution: Record<string, number> = {
       "IN (0-4)": 0,
       "SU (5)": 0,
@@ -69,9 +67,9 @@ export function EvaluationsSummaryView() {
       const nota = g.nota;
       if (typeof nota === 'string') {
         if (nota === 'IN' || parseFloat(nota) < 5) distribution["IN (0-4)"]++;
-        else if (nota === 'SU' || parseFloat(nota) >= 5 && parseFloat(nota) < 6) distribution["SU (5)"]++;
-        else if (nota === 'BI' || parseFloat(nota) >= 6 && parseFloat(nota) < 7) distribution["BI (6)"]++;
-        else if (nota === 'NT' || parseFloat(nota) >= 7 && parseFloat(nota) < 9) distribution["NT (7-8)"]++;
+        else if (nota === 'SU' || (parseFloat(nota) >= 5 && parseFloat(nota) < 6)) distribution["SU (5)"]++;
+        else if (nota === 'BI' || (parseFloat(nota) >= 6 && parseFloat(nota) < 7)) distribution["BI (6)"]++;
+        else if (nota === 'NT' || (parseFloat(nota) >= 7 && parseFloat(nota) < 9)) distribution["NT (7-8)"]++;
         else if (nota === 'SB' || parseFloat(nota) >= 9) distribution["SB (9-10)"]++;
       }
     });
@@ -213,7 +211,19 @@ export function IncidentsSummaryView() {
     ];
   }, [incidents]);
 
-  const COLORS = ['#fb8500', '#ef4444'];
+  const chartConfig = {
+    value: {
+      label: "Incidencias",
+    },
+    contraria: {
+      label: "Contraria",
+      color: "#fb8500",
+    },
+    grave: {
+      label: "Grave",
+      color: "#ef4444",
+    },
+  } satisfies ChartConfig;
 
   if (isLoading) {
     return (
@@ -234,32 +244,36 @@ export function IncidentsSummaryView() {
                </div>
             </CardHeader>
             <CardContent className="flex flex-col items-center justify-center min-h-[350px] p-6">
-               <ResponsiveContainer width="100%" height={250}>
+               <ChartContainer config={chartConfig} className="mx-auto aspect-square max-h-[250px] w-full">
                   <PieChart>
+                    <ChartTooltip 
+                      cursor={false}
+                      content={<ChartTooltipContent hideLabel />} 
+                    />
                     <Pie
                       data={pieData}
+                      dataKey="value"
+                      nameKey="name"
                       cx="50%"
                       cy="50%"
                       innerRadius={60}
                       outerRadius={80}
                       paddingAngle={5}
-                      dataKey="value"
                     >
                       {pieData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.fill} />
                       ))}
                     </Pie>
-                    <ChartTooltip content={<ChartTooltipContent />} />
                   </PieChart>
-               </ResponsiveContainer>
+               </ChartContainer>
                <div className="flex gap-8 mt-4">
                   <div className="flex items-center gap-2">
                      <div className="w-3 h-3 rounded-full bg-[#fb8500]"></div>
-                     <span className="text-[10px] font-bold text-gray-500 uppercase">Contraria ({pieData[0]?.value})</span>
+                     <span className="text-[10px] font-bold text-gray-500 uppercase">Contraria ({pieData.find(d => d.name === 'Contraria')?.value || 0})</span>
                   </div>
                   <div className="flex items-center gap-2">
                      <div className="w-3 h-3 rounded-full bg-[#ef4444]"></div>
-                     <span className="text-[10px] font-bold text-gray-500 uppercase">Grave ({pieData[1]?.value})</span>
+                     <span className="text-[10px] font-bold text-gray-500 uppercase">Grave ({pieData.find(d => d.name === 'Grave')?.value || 0})</span>
                   </div>
                </div>
             </CardContent>
