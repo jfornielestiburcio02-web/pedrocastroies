@@ -5,8 +5,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 
 export const metadata: Metadata = {
-  title: 'SecureEntry - Secure Authentication',
-  description: 'A modern, secure authentication portal',
+  title: 'IES Pedro Castro (Inicio Sesion)',
+  description: 'Plataforma web ies pedro castro',
 };
 
 export default function RootLayout({
