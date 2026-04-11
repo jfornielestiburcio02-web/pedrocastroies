@@ -9,7 +9,10 @@ import {
   Users,
   Search,
   CheckCircle2,
-  Lock
+  Lock,
+  Copy,
+  ShieldCheck,
+  X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +24,14 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter
+} from "@/components/ui/dialog";
 
 /**
  * Vista de alumnos del grupo de tutoría del profesor.
@@ -30,6 +41,7 @@ export function MyTutoringStudentsView({ grupoTutorizado }: { grupoTutorizado: s
   const db = useFirestore();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
+  const [generatedPassData, setGeneratedPassData] = useState<{name: string, pass: string} | null>(null);
 
   const studentsQuery = useMemoFirebase(() => {
     if (!db || !grupoTutorizado) return null;
@@ -52,12 +64,18 @@ export function MyTutoringStudentsView({ grupoTutorizado }: { grupoTutorizado: s
     // Actualización no bloqueante en Firestore
     updateDocumentNonBlocking(docRef, { contrasena: newPassword });
     
-    // Notificación al profesor con la nueva clave para que se la entregue al alumno
-    toast({
-      title: "Nueva Contraseña Generada",
-      description: `La clave para ${studentName} ahora es: ${newPassword}`,
-      duration: 15000, // Duración extendida para que dé tiempo a anotarla
-    });
+    // Guardar para mostrar en el modal
+    setGeneratedPassData({ name: studentName, pass: newPassword });
+  };
+
+  const copyToClipboard = () => {
+    if (generatedPassData) {
+      navigator.clipboard.writeText(generatedPassData.pass);
+      toast({
+        title: "Copiado",
+        description: "Contraseña copiada al portapapeles.",
+      });
+    }
   };
 
   const filteredStudents = students?.filter(s => 
@@ -128,6 +146,55 @@ export function MyTutoringStudentsView({ grupoTutorizado }: { grupoTutorizado: s
           </div>
         </ScrollArea>
       </div>
+
+      {/* Modal de Contraseña Generada */}
+      <Dialog open={!!generatedPassData} onOpenChange={() => setGeneratedPassData(null)}>
+        <DialogContent className="max-w-md font-verdana p-0 border-none overflow-hidden shadow-2xl">
+          <DialogHeader className="bg-[#89a54e] p-6 text-white shrink-0">
+             <div className="flex items-center justify-center gap-3 mb-2">
+                <ShieldCheck className="h-6 w-6" />
+                <DialogTitle className="text-lg font-bold uppercase tracking-tight">Nueva Clave Generada</DialogTitle>
+             </div>
+             <DialogDescription className="text-white/90 text-center text-xs font-medium">
+               Entregue esta información personalmente al alumno.
+             </DialogDescription>
+          </DialogHeader>
+
+          <div className="p-8 bg-white space-y-6 text-center">
+            <div className="space-y-1">
+               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Alumno</span>
+               <p className="text-lg font-bold text-gray-800 uppercase">{generatedPassData?.name}</p>
+            </div>
+
+            <div className="bg-gray-50 border-2 border-dashed border-gray-200 p-6 rounded-xl relative group">
+               <span className="text-[10px] font-bold text-gray-400 uppercase absolute top-2 left-1/2 -translate-x-1/2">Nueva Contraseña</span>
+               <p className="text-3xl font-mono font-bold tracking-[0.2em] text-[#89a54e] mt-2">
+                 {generatedPassData?.pass}
+               </p>
+               <Button 
+                variant="ghost" 
+                size="icon" 
+                className="absolute top-2 right-2 h-8 w-8 text-gray-300 hover:text-[#89a54e]"
+                onClick={copyToClipboard}
+               >
+                 <Copy className="h-4 w-4" />
+               </Button>
+            </div>
+
+            <div className="p-4 bg-yellow-50 border border-yellow-100 rounded-lg">
+               <p className="text-[10px] text-yellow-800 font-bold leading-relaxed uppercase">
+                 AVISO: Esta clave solo se mostrará una vez. <br /> Asegúrese de anotarla correctamente.
+               </p>
+            </div>
+          </div>
+
+          <DialogFooter className="bg-gray-50 p-6 border-t shrink-0">
+             <Button onClick={() => setGeneratedPassData(null)} className="w-full bg-gray-800 hover:bg-black text-white text-[11px] font-bold uppercase h-12 shadow-md">
+               He anotado la clave / Cerrar
+             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
