@@ -11,12 +11,17 @@ import {
   BookOpen,
   MessageSquare,
   Home,
-  Monitor
+  Monitor,
+  UserCircle,
+  ShieldCheck,
+  Settings,
+  Users
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useFirestore } from '@/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { cn } from '@/lib/utils';
 
 export default function SeleccioneModuloAccesoPage() {
   const [session, setSession] = useState<any>(null);
@@ -81,22 +86,12 @@ export default function SeleccioneModuloAccesoPage() {
     router.push('/login');
   };
 
-  const getAvailableRoles = () => {
-    if (!userData?.rolesUsuario) return [];
-    return userData.rolesUsuario.map((r: string) => {
-      if (r === 'EsDireccion') return 'Dirección';
-      if (r === 'EsCau') return 'CAU';
-      if (r === 'EsProfesor') return 'Profesor';
-      if (r === 'EsAlumno') return 'Alumno';
-      return r;
-    });
-  };
-
-  const cycleRole = () => {
-    const roles = getAvailableRoles();
-    const currentIndex = roles.indexOf(activeRole!);
-    const nextIndex = (currentIndex + 1) % roles.length;
-    setActiveRole(roles[nextIndex]);
+  const getRoleDisplayName = (role: string) => {
+    if (role === 'EsDireccion') return 'Dirección';
+    if (role === 'EsCau') return 'CAU';
+    if (role === 'EsProfesor') return 'Profesor';
+    if (role === 'EsAlumno') return 'Alumno';
+    return role;
   };
 
   if (isLoading || !session) {
@@ -107,8 +102,7 @@ export default function SeleccioneModuloAccesoPage() {
     );
   }
 
-  const availableRoles = getAvailableRoles();
-  const hasMultipleRoles = availableRoles.length > 1;
+  const userRoles = userData?.rolesUsuario || [];
 
   return (
     <div className="min-h-screen bg-white font-verdana flex flex-col w-full overflow-x-hidden">
@@ -159,27 +153,45 @@ export default function SeleccioneModuloAccesoPage() {
             <p className="text-[10px] text-gray-500 leading-tight italic">Una manera de hacer Europa</p>
           </div>
 
-          {/* Lado Derecho (Banderas, Botones, Rol Switch) */}
-          <div className="flex items-center gap-6 mt-4 md:mt-0">
-            <div className="flex items-center gap-2">
-               <div className="flex flex-col items-center">
-                  <div className="w-12 h-8 border border-gray-300 relative overflow-hidden">
-                     <div className="absolute top-0 w-full h-1/3 bg-green-700"></div>
-                     <div className="absolute top-1/3 w-full h-1/3 bg-white"></div>
-                     <div className="absolute bottom-0 w-full h-1/3 bg-black"></div>
-                  </div>
-               </div>
-               <div className="w-12 h-8 bg-[#003399] flex items-center justify-center relative overflow-hidden border border-gray-300">
-                  <div className="grid grid-cols-4 gap-0.5 place-items-center p-1">
-                    {[...Array(12)].map((_, i) => (
-                      <div key={i} className="w-[1.5px] h-[1.5px] bg-yellow-400 rounded-full"></div>
-                    ))}
-                  </div>
-                  <span className="absolute bottom-0 right-0 text-[6px] text-white p-0.5 leading-none">UE</span>
-               </div>
+          {/* Lado Derecho (Botones de Rol Individuales) */}
+          <div className="flex items-center gap-4 mt-4 md:mt-0">
+            <div className="flex gap-2 items-center">
+              {userRoles.map((roleKey: string) => {
+                const displayName = getRoleDisplayName(roleKey);
+                const isActive = activeRole === displayName;
+                
+                return (
+                  <button 
+                    key={roleKey}
+                    onClick={() => setActiveRole(displayName)}
+                    className={cn(
+                      "flex flex-col items-center group transition-all p-1 rounded-sm border",
+                      isActive 
+                        ? "bg-[#fb8500] border-[#fb8500] text-white" 
+                        : "bg-white border-gray-300 text-gray-400 hover:border-[#fb8500]/50"
+                    )}
+                  >
+                    <div className={cn(
+                      "p-1 rounded-sm",
+                      isActive ? "bg-white/20" : "bg-gray-100"
+                    )}>
+                      {roleKey === 'EsDireccion' && <ShieldCheck className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
+                      {roleKey === 'EsCau' && <Settings className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
+                      {roleKey === 'EsProfesor' && <Monitor className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
+                      {roleKey === 'EsAlumno' && <UserCircle className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
+                    </div>
+                    <span className={cn(
+                      "text-[8px] font-bold uppercase mt-0.5 tracking-tighter",
+                      isActive ? "text-white" : "text-gray-500"
+                    )}>
+                      {displayName}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
 
-            <div className="flex flex-col items-center gap-2">
+            <div className="flex flex-col gap-1 border-l pl-4 border-gray-300">
                <div className="flex gap-1">
                   <Button variant="ghost" size="icon" className="h-6 w-6 rounded-none bg-gray-500 text-white hover:bg-gray-600" onClick={() => setSelectedModule(null)}>
                     <Home className="h-3 w-3" />
@@ -188,22 +200,6 @@ export default function SeleccioneModuloAccesoPage() {
                     <X className="h-3 w-3" />
                   </Button>
                </div>
-               
-               {hasMultipleRoles ? (
-                 <div className="flex flex-col items-center group cursor-pointer" onClick={cycleRole}>
-                    <div className="bg-[#fb8500] p-1 rounded-sm shadow-sm transition-transform group-hover:scale-105">
-                      <Monitor className="h-6 w-6 text-white" />
-                    </div>
-                    <span className="text-[9px] font-bold text-[#fb8500] uppercase mt-0.5 tracking-tighter">Cambiar perfil</span>
-                 </div>
-               ) : (
-                 <div className="flex flex-col items-center opacity-50 grayscale">
-                    <div className="bg-gray-400 p-1 rounded-sm">
-                      <Monitor className="h-6 w-6 text-white" />
-                    </div>
-                    <span className="text-[9px] font-bold text-gray-500 uppercase mt-0.5 tracking-tighter">Ciudadano</span>
-                 </div>
-               )}
             </div>
           </div>
         </div>
