@@ -14,7 +14,7 @@
         "contrasena": {
           "type": "string",
           "description": "Contraseña en texto plano."
-"        },
+        },
         "email": {
           "type": "string",
           "format": "email"
@@ -77,6 +77,19 @@
         "profesorId": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       }
+    },
+    "Comportamiento": {
+      "title": "Comportamiento",
+      "type": "object",
+      "description": "Registro de conducta (positivo/negativo) de un alumno por sesión.",
+      "properties": {
+        "alumnoId": { "type": "string" },
+        "claseId": { "type": "string" },
+        "fecha": { "type": "string" },
+        "tipo": { "type": "string", "enum": ["Positivo", "Negativo"] },
+        "profesorId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "auth": {
@@ -102,6 +115,12 @@
         "$ref": "#/backend/entities/Asistencia"
       },
       "description": "Colección de faltas de asistencia y retrasos."
+    },
+    "/comportamientos/{comportamientoId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Comportamiento"
+      },
+      "description": "Colección de registros de comportamiento."
     }
   }
 }

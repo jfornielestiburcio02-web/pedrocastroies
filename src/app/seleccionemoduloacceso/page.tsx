@@ -33,7 +33,9 @@ import {
   History,
   AlertTriangle,
   ExternalLink,
-  Check
+  Check,
+  ThumbsUp,
+  ThumbsDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -691,7 +693,7 @@ function GuardDutyView({ profesorId }: { profesorId: string }) {
 
 /**
  * Vista de Faltas por Materia para Profesores.
- * Refactorizada para soportar modo manual (Guardia).
+ * Refactorizada para soportar modo manual (Guardia) y Comportamiento.
  */
 function AttendanceBySubjectView({ profesorId, manualScheduleId }: { profesorId: string, manualScheduleId?: string }) {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
@@ -738,6 +740,17 @@ function AttendanceBySubjectView({ profesorId, manualScheduleId }: { profesorId:
 
   const { data: attendances } = useCollection(attendanceQuery);
 
+  const behaviorQuery = useMemoFirebase(() => {
+    if (!db || !selectedScheduleId) return null;
+    return query(
+      collection(db, 'comportamientos'),
+      where('claseId', '==', selectedScheduleId),
+      where('fecha', '==', selectedDate)
+    );
+  }, [db, selectedScheduleId, selectedDate]);
+
+  const { data: behaviors } = useCollection(behaviorQuery);
+
   const usersQuery = useMemoFirebase(() => {
     if (!db) return null;
     return collection(db, 'usuarios');
@@ -782,6 +795,34 @@ function AttendanceBySubjectView({ profesorId, manualScheduleId }: { profesorId:
       setDocumentNonBlocking(doc(db, 'asistenciasInasistencias', existing.id), attendanceData, { merge: true });
     } else {
       addDocumentNonBlocking(collection(db, 'asistenciasInasistencias'), attendanceData);
+    }
+  };
+
+  const handleToggleBehavior = (alumnoId: string, tipo: 'Positivo' | 'Negativo') => {
+    if (!db || !selectedScheduleId) return;
+
+    const existing = behaviors?.find(b => b.alumnoId === alumnoId);
+    
+    // Si ya existe uno del mismo tipo, lo quitamos (toggle off)
+    if (existing && existing.tipo === tipo) {
+      deleteDocumentNonBlocking(doc(db, 'comportamientos', existing.id));
+      return;
+    }
+
+    const behaviorData = {
+      alumnoId,
+      claseId: selectedScheduleId,
+      fecha: selectedDate,
+      tipo: tipo,
+      profesorId,
+      createdAt: new Date().toISOString()
+    };
+
+    // Si ya existe pero es de otro tipo, lo actualizamos (solo uno por hora)
+    if (existing) {
+      setDocumentNonBlocking(doc(db, 'comportamientos', existing.id), behaviorData, { merge: true });
+    } else {
+      addDocumentNonBlocking(collection(db, 'comportamientos'), behaviorData);
     }
   };
 
@@ -866,9 +907,13 @@ function AttendanceBySubjectView({ profesorId, manualScheduleId }: { profesorId:
            {students.map(student => {
              const studentAttendance = attendances?.find(a => a.alumnoId === student.id);
              const currentStatus = studentAttendance?.tipo || 'A';
+             const studentBehavior = behaviors?.find(b => b.alumnoId === student.id);
+             
+             // Injustificada (I) y Justificada (J) bloquean comportamiento
+             const behaviorDisabled = currentStatus === 'I' || currentStatus === 'J';
 
              return (
-               <div key={student.id} className="itemAlumnoEnClase relative group flex flex-col items-center pt-3">
+               <div key={student.id} className="itemAlumnoEnClase relative group flex flex-col items-center pt-3 h-[210px]">
                   <Avatar className="imagenAlumnoEnClase" onClick={() => setHistoryAlumnoId(student.id)}>
                     <AvatarImage src={student.imagenPerfil} />
                     <AvatarFallback>{student.usuario?.substring(0, 2).toUpperCase()}</AvatarFallback>
@@ -878,7 +923,7 @@ function AttendanceBySubjectView({ profesorId, manualScheduleId }: { profesorId:
                     {student.nombrePersona || student.usuario}
                   </div>
 
-                  <div className="mt-auto w-full px-2 pb-3">
+                  <div className="w-full px-2 mt-1">
                     <button 
                       onClick={() => currentStatus !== 'J' && handleCycleAttendance(student.id)}
                       data-state={currentStatus}
@@ -889,6 +934,29 @@ function AttendanceBySubjectView({ profesorId, manualScheduleId }: { profesorId:
                     >
                       {getStatusText(currentStatus)}
                     </button>
+                  </div>
+
+                  <div className="flex items-center justify-center gap-4 mt-2 w-full px-4">
+                     <button 
+                       disabled={behaviorDisabled}
+                       onClick={() => handleToggleBehavior(student.id, 'Positivo')}
+                       className={cn(
+                         "iconoComPos transition-transform hover:scale-110 disabled:opacity-30 disabled:grayscale",
+                         studentBehavior?.tipo === 'Positivo' ? "text-green-600 scale-125" : "text-gray-300"
+                       )}
+                     >
+                       <ThumbsUp className={cn("h-5 w-5", studentBehavior?.tipo === 'Positivo' ? "fill-current" : "")} />
+                     </button>
+                     <button 
+                       disabled={behaviorDisabled}
+                       onClick={() => handleToggleBehavior(student.id, 'Negativo')}
+                       className={cn(
+                         "iconoComNeg transition-transform hover:scale-110 disabled:opacity-30 disabled:grayscale",
+                         studentBehavior?.tipo === 'Negativo' ? "text-red-600 scale-125" : "text-gray-300"
+                       )}
+                     >
+                       <ThumbsDown className={cn("h-5 w-5", studentBehavior?.tipo === 'Negativo' ? "fill-current" : "")} />
+                     </button>
                   </div>
 
                   <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
