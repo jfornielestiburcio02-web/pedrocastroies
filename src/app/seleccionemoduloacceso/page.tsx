@@ -51,13 +51,13 @@ export default function SeleccioneModuloAccesoPage() {
   const [activeSubContent, setActiveSubContent] = useState<string | null>(null);
   const [sidebarMode, setSidebarMode] = useState<'ACADEMIC' | 'MESSAGING'>('ACADEMIC');
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({
-    'faltas': true,
+    'faltas': false,
     'conductas': false,
     'graves': false,
-    'usuarios': true,
-    'horarios': true,
-    'mensajeria': true,
-    'miAlumnado': true
+    'usuarios': false,
+    'horarios': false,
+    'mensajeria': false,
+    'miAlumnado': false
   });
   
   const router = useRouter();
