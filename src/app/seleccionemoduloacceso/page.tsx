@@ -27,7 +27,8 @@ import {
   Plus,
   Trash2,
   Save,
-  CheckCircle2
+  CheckCircle2,
+  Calendar as CalendarIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,12 +41,21 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { doc, getDoc, collection, addDoc, query, where, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, collection, query, orderBy, serverTimestamp } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 export default function SeleccioneModuloAccesoPage() {
   const [session, setSession] = useState<any>(null);
@@ -413,6 +423,8 @@ export default function SeleccioneModuloAccesoPage() {
                 <div className="flex-1">
                   {activeSubContent === 'Modificar / crear Horarios' ? (
                     <ScheduleCreationView />
+                  ) : activeSubContent === 'Ver Horarios' ? (
+                    <ScheduleListView />
                   ) : activeSubContent ? (
                     <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
                        <div className="bg-white border rounded-lg p-10 shadow-sm min-h-[400px] flex flex-col items-center justify-center text-center space-y-4">
@@ -475,6 +487,131 @@ export default function SeleccioneModuloAccesoPage() {
                <span className="text-[10px] font-bold text-[#003399] uppercase tracking-wider">Unión Europea</span>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Vista de visualización de horarios para Dirección.
+ */
+function ScheduleListView() {
+  const db = useFirestore();
+  const { toast } = useToast();
+
+  const horariosQuery = useMemoFirebase(() => {
+    if (!db) return null;
+    return query(collection(db, 'horarios'), orderBy('dia'), orderBy('horaInicio'));
+  }, [db]);
+
+  const { data: schedules, isLoading: loadingSchedules } = useCollection(horariosQuery);
+
+  const usersQuery = useMemoFirebase(() => {
+    if (!db) return null;
+    return collection(db, 'usuarios');
+  }, [db]);
+
+  const { data: allUsers } = useCollection(usersQuery);
+
+  const getUserName = (id: string) => {
+    const user = allUsers?.find(u => u.id === id);
+    return user ? (user.nombrePersona || user.usuario) : id;
+  };
+
+  const handleDelete = (id: string) => {
+    if (!db) return;
+    const docRef = doc(db, 'horarios', id);
+    deleteDocumentNonBlocking(docRef);
+    toast({
+      title: "Horario eliminado",
+      description: "El registro ha sido borrado correctamente de Rayuela.",
+    });
+  };
+
+  if (loadingSchedules) {
+    return (
+      <div className="flex justify-center p-20">
+        <Loader2 className="h-8 w-8 animate-spin text-[#9c4d96]" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 max-w-6xl mx-auto w-full">
+      <div className="bg-white border rounded-xl shadow-sm overflow-hidden">
+        <div className="bg-[#9c4d96] p-4 text-white flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Clock className="h-5 w-5" />
+            <h2 className="font-bold text-lg uppercase tracking-tight">Listado General de Horarios</h2>
+          </div>
+          <span className="text-[10px] font-bold uppercase bg-white/20 px-3 py-1 rounded">
+            {schedules?.length || 0} Registros activos
+          </span>
+        </div>
+
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader className="bg-gray-50">
+              <TableRow>
+                <TableHead className="font-bold text-[#9c4d96] uppercase text-[10px]">Día</TableHead>
+                <TableHead className="font-bold text-[#9c4d96] uppercase text-[10px]">Tramo Horario</TableHead>
+                <TableHead className="font-bold text-[#9c4d96] uppercase text-[10px]">Profesor</TableHead>
+                <TableHead className="font-bold text-[#9c4d96] uppercase text-[10px]">Asignatura / Actividad</TableHead>
+                <TableHead className="font-bold text-[#9c4d96] uppercase text-[10px]">Alumnos</TableHead>
+                <TableHead className="text-right font-bold text-[#9c4d96] uppercase text-[10px]">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {schedules && schedules.length > 0 ? (
+                schedules.map((item) => (
+                  <TableRow key={item.id} className="hover:bg-gray-50/50 transition-colors">
+                    <TableCell className="font-bold text-gray-700 text-xs">{item.dia}</TableCell>
+                    <TableCell className="text-xs text-gray-600 font-mono">
+                      {item.horaInicio} - {item.horaFin}
+                    </TableCell>
+                    <TableCell className="text-xs font-medium">{getUserName(item.profesorId)}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {item.esGuardia ? (
+                          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 text-[9px] font-bold">GUARDIA</Badge>
+                        ) : (
+                          <span className="text-xs font-semibold text-gray-800">{item.asignatura}</span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className="text-[10px] bg-blue-50 text-blue-700 border-blue-100 font-bold">
+                        {item.alumnosIds?.length || 0} PERS.
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => handleDelete(item.id)}
+                        className="h-8 w-8 p-0 text-gray-400 hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={6} className="h-40 text-center text-muted-foreground italic text-sm">
+                    No hay horarios registrados en la plataforma.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+      <div className="mt-4 flex justify-center">
+        <div className="flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-full text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+           <CalendarIcon className="h-3 w-3" />
+           Consulta en tiempo real vía Firestore
         </div>
       </div>
     </div>
