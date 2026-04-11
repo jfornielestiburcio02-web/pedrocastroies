@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { 
   Loader2, 
   Calendar, 
@@ -19,10 +19,12 @@ import {
   ShieldAlert,
   Pencil,
   Trash2,
-  Send
+  Send,
+  Check,
+  Search
 } from 'lucide-react';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, orderBy, doc } from 'firebase/firestore';
+import { collection, query, where, orderBy, doc, getDocs } from 'firebase/firestore';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -30,6 +32,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import { 
   Dialog, 
   DialogContent, 
@@ -41,7 +44,7 @@ import {
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { updateDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { useToast } from '@/hooks/use-toast';
 
 /**
@@ -50,9 +53,25 @@ import { useToast } from '@/hooks/use-toast';
 export function StudentAttendanceView({ studentId, onlyUnjustified = false }: { studentId: string, onlyUnjustified?: boolean }) {
   const db = useFirestore();
   const { toast } = useToast();
+  
+  // Estado para el listado (Mis Faltas)
   const [justifyingId, setJustifyingId] = useState<string | null>(null);
   const [tempMotivo, setMotivo] = useState("");
 
+  // Estado para el formulario proactivo (Justificar)
+  const [formData, setFormData] = useState({
+    fecha: new Date().toISOString().split('T')[0],
+    titulo: '',
+    descripcion: '',
+    sesionesSeleccionadas: [] as string[]
+  });
+
+  const dayOfWeek = useMemo(() => {
+    const days = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+    return days[new Date(formData.fecha).getDay()];
+  }, [formData.fecha]);
+
+  // Queries para Mis Faltas
   const attendanceQuery = useMemoFirebase(() => {
     if (!db || !studentId) return null;
     return query(
@@ -64,17 +83,29 @@ export function StudentAttendanceView({ studentId, onlyUnjustified = false }: { 
 
   const { data: rawAttendances, isLoading: loadingAttendance } = useCollection(attendanceQuery);
 
+  // Queries para Justificar (Horario del día seleccionado)
+  const schedulesQuery = useMemoFirebase(() => {
+    if (!db || !studentId) return null;
+    return query(
+      collection(db, 'horarios'),
+      where('alumnosIds', 'array-contains', studentId),
+      where('dia', '==', dayOfWeek)
+    );
+  }, [db, studentId, dayOfWeek]);
+
+  const { data: daySchedules, isLoading: loadingSchedules } = useCollection(schedulesQuery);
+
   const attendances = useMemo(() => {
     if (!rawAttendances) return [];
-    if (onlyUnjustified) return rawAttendances.filter(a => !a.motivo && (a.tipo === 'I' || a.tipo === 'R'));
+    if (onlyUnjustified) return []; // No se usa en modo proactivo
     return rawAttendances;
   }, [rawAttendances, onlyUnjustified]);
 
-  const schedulesQuery = useMemoFirebase(() => {
+  const allSchedulesQuery = useMemoFirebase(() => {
     if (!db) return null;
     return collection(db, 'horarios');
   }, [db]);
-  const { data: allSchedules } = useCollection(schedulesQuery);
+  const { data: allSchedules } = useCollection(allSchedulesQuery);
 
   const getAsignatura = (claseId: string) => {
     const s = allSchedules?.find(sch => sch.id === claseId);
@@ -100,28 +131,178 @@ export function StudentAttendanceView({ studentId, onlyUnjustified = false }: { 
     toast({ title: "Justificación eliminada", description: "Se ha borrado el motivo del registro." });
   };
 
+  const handleProactiveSave = async () => {
+    if (!db || !formData.fecha || !formData.descripcion || formData.sesionesSeleccionadas.length === 0) {
+      toast({ variant: "destructive", title: "Formulario incompleto", description: "Debe indicar el motivo y seleccionar al menos una clase." });
+      return;
+    }
+
+    // Para cada sesión seleccionada, crear o actualizar el registro de asistencia como Justificado
+    formData.sesionesSeleccionadas.forEach(claseId => {
+      const schedule = daySchedules?.find(s => s.id === claseId);
+      const gradeId = `${studentId}_${claseId}_${formData.fecha}`; // ID determinista para evitar duplicados
+      const docRef = doc(db, 'asistenciasInasistencias', gradeId);
+
+      setDocumentNonBlocking(docRef, {
+        alumnoId: studentId,
+        claseId: claseId,
+        fecha: formData.fecha,
+        tipo: 'J',
+        motivo: `${formData.titulo ? formData.titulo + ': ' : ''}${formData.descripcion}`,
+        profesorId: schedule?.profesorId || 'SISTEMA',
+        createdAt: new Date().toISOString()
+      }, { merge: true });
+    });
+
+    toast({ 
+      title: "Justificaciones Enviadas", 
+      description: `Se ha notificado a los profesores de las ${formData.sesionesSeleccionadas.length} sesiones seleccionadas.` 
+    });
+
+    setFormData({ ...formData, titulo: '', descripcion: '', sesionesSeleccionadas: [] });
+  };
+
+  const toggleSession = (id: string) => {
+    setFormData(prev => ({
+      ...prev,
+      sesionesSeleccionadas: prev.sesionesSeleccionadas.includes(id)
+        ? prev.sesionesSeleccionadas.filter(s => s !== id)
+        : [...prev.sesionesSeleccionadas, id]
+    }));
+  };
+
   if (loadingAttendance) {
     return <div className="flex justify-center p-20"><Loader2 className="h-8 w-8 animate-spin text-[#89a54e]" /></div>;
   }
 
+  // MODO JUSTIFICAR (PROACTIVO)
+  if (onlyUnjustified) {
+    return (
+      <div className="animate-in fade-in duration-500 space-y-6 max-w-4xl mx-auto w-full">
+        <div className="bg-white border rounded-xl shadow-lg overflow-hidden">
+          <div className="bg-[#fb8500] p-6 text-white flex items-center gap-4">
+            <div className="bg-white/20 p-3 rounded-lg"><Send className="h-6 w-6" /></div>
+            <div>
+              <h2 className="text-lg font-bold uppercase tracking-tight">Formulario de Justificación Oficial</h2>
+              <p className="text-white/80 text-[10px] font-bold uppercase">Notifique sus ausencias al centro educativo</p>
+            </div>
+          </div>
+
+          <div className="p-8 space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold text-gray-400 uppercase">1. Seleccione la fecha de la ausencia</Label>
+                  <Input 
+                    type="date" 
+                    value={formData.fecha} 
+                    onChange={(e) => setFormData({...formData, fecha: e.target.value, sesionesSeleccionadas: []})}
+                    className="h-12 border-gray-300 font-bold"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold text-gray-400 uppercase">2. Título / Asunto (Opcional)</Label>
+                  <Input 
+                    placeholder="Ej: Cita Médica, Trámite DNI..." 
+                    value={formData.titulo}
+                    onChange={(e) => setFormData({...formData, titulo: e.target.value})}
+                    className="border-gray-300 h-10 text-sm"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold text-gray-400 uppercase">3. Descripción del motivo</Label>
+                  <Textarea 
+                    placeholder="Detalle brevemente el motivo de su falta..." 
+                    className="min-h-[120px] border-gray-300 resize-none text-sm"
+                    value={formData.descripcion}
+                    onChange={(e) => setFormData({...formData, descripcion: e.target.value})}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <Label className="text-[10px] font-bold text-gray-400 uppercase flex justify-between">
+                  <span>4. Seleccione las sesiones afectadas</span>
+                  <span className="text-primary">{formData.sesionesSeleccionadas.length} seleccionadas</span>
+                </Label>
+                
+                <div className="bg-gray-50 border rounded-xl p-4 min-h-[300px]">
+                  {loadingSchedules ? (
+                    <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-gray-300" /></div>
+                  ) : !daySchedules || daySchedules.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-20 text-center space-y-2 opacity-40">
+                       <Calendar className="h-8 w-8 text-gray-400" />
+                       <p className="text-xs italic">No tiene clases asignadas para el día {format(new Date(formData.fecha), 'eeee d', { locale: es })}</p>
+                    </div>
+                  ) : (
+                    <ScrollArea className="h-[300px] pr-2">
+                      <div className="space-y-2">
+                        {daySchedules.sort((a,b) => a.horaInicio.localeCompare(b.horaInicio)).map(session => (
+                          <div 
+                            key={session.id} 
+                            onClick={() => toggleSession(session.id)}
+                            className={cn(
+                              "flex items-center justify-between p-3 rounded-lg border transition-all cursor-pointer",
+                              formData.sesionesSeleccionadas.includes(session.id)
+                                ? "bg-white border-[#fb8500] shadow-sm"
+                                : "bg-transparent border-transparent hover:bg-white hover:border-gray-200"
+                            )}
+                          >
+                            <div className="flex items-center gap-3">
+                               <Checkbox checked={formData.sesionesSeleccionadas.includes(session.id)} onCheckedChange={() => {}} />
+                               <div className="flex flex-col">
+                                  <span className="text-[9px] font-bold text-gray-400 uppercase">{session.horaInicio} - {session.horaFin}</span>
+                                  <span className="text-xs font-bold text-gray-700 uppercase">{session.asignatura}</span>
+                               </div>
+                            </div>
+                            <div className={cn(
+                              "w-2 h-2 rounded-full",
+                              formData.sesionesSeleccionadas.includes(session.id) ? "bg-[#fb8500]" : "bg-gray-200"
+                            )}></div>
+                          </div>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  )}
+                </div>
+                <p className="text-[9px] text-gray-400 italic text-center">Solo los profesores de las clases marcadas recibirán la notificación.</p>
+              </div>
+            </div>
+
+            <div className="pt-8 border-t flex items-center justify-between">
+               <div className="bg-blue-50 border border-blue-100 p-3 rounded-lg flex items-center gap-3 max-w-md">
+                  <ShieldAlert className="h-5 w-5 text-blue-600 shrink-0" />
+                  <p className="text-[10px] text-blue-800 font-bold leading-relaxed uppercase">
+                    Esta justificación quedará registrada en su expediente digital. El centro podrá requerir un justificante en papel si fuera necesario.
+                  </p>
+               </div>
+               <Button 
+                onClick={handleProactiveSave}
+                className="bg-[#fb8500] hover:bg-[#e07600] text-white px-10 h-12 text-[11px] font-bold uppercase tracking-widest gap-2 shadow-lg"
+               >
+                 <CheckCircle2 className="h-4 w-4" /> Enviar Justificaciones
+               </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // MODO MIS FALTAS (LISTADO)
   return (
     <div className="animate-in fade-in duration-500 space-y-6 max-w-4xl mx-auto w-full">
       <div className="bg-white border rounded-xl shadow-sm overflow-hidden">
-        <div className={cn(
-          "p-4 text-white flex items-center gap-2",
-          onlyUnjustified ? "bg-[#fb8500]" : "bg-[#89a54e]"
-        )}>
+        <div className="bg-[#89a54e] p-4 text-white flex items-center gap-2">
           <Clock className="h-5 w-5" />
-          <h2 className="font-bold text-sm uppercase tracking-tight">
-            {onlyUnjustified ? 'Pendiente de Justificar' : 'Mi Registro de Asistencia'}
-          </h2>
+          <h2 className="font-bold text-sm uppercase tracking-tight">Mi Registro de Asistencia</h2>
         </div>
         
         <div className="p-0">
           {attendances?.length === 0 ? (
-            <div className="p-20 text-center text-gray-400 italic text-sm">
-              {onlyUnjustified ? 'No tiene faltas pendientes de justificar.' : 'No constan faltas ni retrasos registrados.'}
-            </div>
+            <div className="p-20 text-center text-gray-400 italic text-sm">No constan faltas ni retrasos registrados.</div>
           ) : (
             <table className="w-full text-left border-collapse">
               <thead className="bg-gray-50 border-b">
