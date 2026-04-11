@@ -31,7 +31,8 @@ import {
   TrendingUp,
   ShieldAlert,
   ClipboardList,
-  AlertCircle
+  AlertCircle,
+  Bell
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -54,6 +55,7 @@ import { TeacherGradingView } from '@/components/rayuela/teacher-grading-view';
 import { TutoringGradesView } from '@/components/rayuela/tutoring-grades-view';
 import { UserCreationView, UserManagementListView } from '@/components/rayuela/user-management-views';
 import { EvaluationsSummaryView, IncidentsSummaryView } from '@/components/rayuela/management-summary-views';
+import { TeacherNotificationsView } from '@/components/rayuela/teacher-notifications-view';
 
 // Componentes del Alumno
 import { 
@@ -93,7 +95,8 @@ export default function SeleccioneModuloAccesoPage() {
     'resumenes_root': false,
     'faltas_alum': false,
     'comportamiento_alum': false,
-    'evaluaciones_alum': false
+    'evaluaciones_alum': false,
+    'notificaciones_root': false
   });
   
   const router = useRouter();
@@ -456,6 +459,18 @@ export default function SeleccioneModuloAccesoPage() {
                                 </div>
                               )}
                             </div>
+
+                            <div className="flex flex-col">
+                              <SidebarHeading label="Notificaciones" expanded={expandedItems['notificaciones_root']} onClick={() => toggleExpanded('notificaciones_root')} />
+                              {expandedItems['notificaciones_root'] && (
+                                <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
+                                  <SidebarItem color="#89a54e" label="De Mis Alumnos" isSubItem onClick={() => setActiveSubContent('De Mis Alumnos')} active={activeSubContent === 'De Mis Alumnos'} />
+                                  {isTeacherTutor && (
+                                    <SidebarItem color="#89a54e" label="De mi tutoría" isSubItem onClick={() => setActiveSubContent('De mi tutoría')} active={activeSubContent === 'De mi tutoría'} />
+                                  )}
+                                </div>
+                              )}
+                            </div>
                           </>
                         ) : (
                           <div className="flex flex-col">
@@ -655,6 +670,10 @@ export default function SeleccioneModuloAccesoPage() {
                     <EvaluationsSummaryView />
                   ) : activeSubContent === 'Resumen Conductas' ? (
                     <IncidentsSummaryView />
+                  ) : activeSubContent === 'De Mis Alumnos' ? (
+                    <TeacherNotificationsView profesorId={session.usuario} mode="my-students" />
+                  ) : activeSubContent === 'De mi tutoría' ? (
+                    <TeacherNotificationsView profesorId={session.usuario} mode="tutoring" grupoTutorizado={userData?.esTutor} />
                   ) : activeSubContent === 'Mis faltas' ? (
                     <StudentAttendanceView studentId={session.usuario} />
                   ) : activeSubContent === 'Justificar' ? (
