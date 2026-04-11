@@ -53,7 +53,7 @@ export function EvaluationsView({ profesorId, type }: EvaluationsViewProps) {
   const { toast } = useToast();
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(null);
-  const [activeItem, setActiveItem] = useState<any>(null); // Examen o Tarea seleccionada
+  const [activeItemId, setActiveItemId] = useState<string | null>(null); 
   const [isCreating, setIsCreating] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -89,6 +89,9 @@ export function EvaluationsView({ profesorId, type }: EvaluationsViewProps) {
   }, [db, selectedScheduleId, type]);
 
   const { data: items, isLoading: loadingItems } = useCollection(itemsQuery);
+
+  // Derivamos el elemento activo de la colección actualizada para evitar datos stale
+  const activeItem = useMemo(() => items?.find(i => i.id === activeItemId), [items, activeItemId]);
 
   const usersQuery = useMemoFirebase(() => {
     if (!db) return null;
@@ -145,12 +148,11 @@ export function EvaluationsView({ profesorId, type }: EvaluationsViewProps) {
     if (!db) return;
     deleteDocumentNonBlocking(doc(db, type === 'exam' ? 'examenes' : 'tareas', id));
     toast({ title: "Registro eliminado", description: "Se ha borrado de Rayuela correctamente." });
-    if (activeItem?.id === id) setActiveItem(null);
+    if (activeItemId === id) setActiveItemId(null);
   };
 
   return (
     <div className="animate-in fade-in duration-500 space-y-6 max-w-7xl mx-auto w-full font-verdana">
-      {/* Controles de Selección */}
       <div className="bg-[#f2f2f2] border p-4 flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm rounded-lg">
         <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
           <div className="flex items-center gap-2">
@@ -158,14 +160,14 @@ export function EvaluationsView({ profesorId, type }: EvaluationsViewProps) {
             <Input 
               type="date" 
               value={selectedDate} 
-              onChange={(e) => { setSelectedDate(e.target.value); setSelectedScheduleId(null); setActiveItem(null); }}
+              onChange={(e) => { setSelectedDate(e.target.value); setSelectedScheduleId(null); setActiveItemId(null); }}
               className="h-8 border-gray-300 w-[150px] text-[11px] font-bold"
             />
           </div>
 
           <div className="flex items-center gap-2 min-w-[280px]">
             <Label className="text-[11px] font-bold text-gray-600 uppercase">Clase:</Label>
-            <Select onValueChange={(val) => { setSelectedScheduleId(val); setActiveItem(null); }} value={selectedScheduleId || ""}>
+            <Select onValueChange={(val) => { setSelectedScheduleId(val); setActiveItemId(null); }} value={selectedScheduleId || ""}>
               <SelectTrigger className="h-8 border-gray-300 text-[11px] font-bold">
                 <SelectValue placeholder="Seleccione sesión de su horario..." />
               </SelectTrigger>
@@ -188,7 +190,6 @@ export function EvaluationsView({ profesorId, type }: EvaluationsViewProps) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Listado de Exámenes/Tareas */}
         <div className="lg:col-span-4 space-y-4">
           <div className="bg-white border rounded-lg overflow-hidden flex flex-col min-h-[400px]">
             <div className="bg-gray-50 border-b p-3 flex items-center justify-between">
@@ -206,10 +207,10 @@ export function EvaluationsView({ profesorId, type }: EvaluationsViewProps) {
                   {items?.map((item) => (
                     <div 
                       key={item.id} 
-                      onClick={() => setActiveItem(item)}
+                      onClick={() => setActiveItemId(item.id)}
                       className={cn(
                         "p-4 border-b cursor-pointer transition-all flex items-center justify-between group",
-                        activeItem?.id === item.id ? "bg-blue-50 border-l-4 border-l-[#89a54e]" : "hover:bg-gray-50"
+                        activeItemId === item.id ? "bg-blue-50 border-l-4 border-l-[#89a54e]" : "hover:bg-gray-50"
                       )}
                     >
                       <div className="flex flex-col gap-1 min-w-0">
@@ -238,7 +239,6 @@ export function EvaluationsView({ profesorId, type }: EvaluationsViewProps) {
           </div>
         </div>
 
-        {/* Panel de Calificación */}
         <div className="lg:col-span-8">
            {isCreating ? (
              <div className="bg-white border rounded-lg p-8 space-y-8 animate-in slide-in-from-right-2 duration-300">
@@ -346,7 +346,7 @@ export function EvaluationsView({ profesorId, type }: EvaluationsViewProps) {
                                    className="h-8 text-center text-xs font-bold border-gray-300 focus:border-[#89a54e] p-1"
                                    placeholder="0.0"
                                    value={val}
-                                   onChange={(e) => handleUpdateStudent(student.id, parseFloat(e.target.value) || 0)}
+                                   onChange={(e) => handleUpdateStudent(student.id, parseFloat(e.target.value))}
                                  />
                                ) : (
                                  <div className="flex justify-center">
@@ -368,7 +368,7 @@ export function EvaluationsView({ profesorId, type }: EvaluationsViewProps) {
                      <CheckCircle2 className="h-4 w-4 text-green-500" />
                      Los cambios se sincronizan automáticamente
                    </div>
-                   <Button variant="ghost" onClick={() => setActiveItem(null)} className="text-[10px] font-bold uppercase text-gray-500 hover:text-black gap-2">
+                   <Button variant="ghost" onClick={() => setActiveItemId(null)} className="text-[10px] font-bold uppercase text-gray-500 hover:text-black gap-2">
                      <ChevronRight className="h-3 w-3" /> Cerrar edición
                    </Button>
                 </div>
