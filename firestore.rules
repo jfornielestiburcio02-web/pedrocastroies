@@ -1,9 +1,9 @@
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // REGLAS PÚBLICAS TOTALES - FORZADO DE DESPLIEGUE FINAL: 2026-04-11_1000
-    // Estas reglas permiten acceso absoluto para desarrollo.
+    // REGLAS PÚBLICAS TOTALES - FORZADO DE DESPLIEGUE FINAL: 2026-04-11_1005
+    // Permite acceso absoluto para desarrollo. 
+    // Si persiste el error de permisos, refresque la página para sincronizar con el Singleton.
     match /{document=**} {
       allow read, write: if true;
     }
