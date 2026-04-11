@@ -36,8 +36,9 @@ export default function SeleccioneModuloAccesoPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedModule, setSelectedModule] = useState<string | null>(null);
   const [activeRole, setActiveRole] = useState<string | null>(null);
+  const [activeSubContent, setActiveSubContent] = useState<string | null>(null);
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({
-    'faltas': false
+    'faltas': true
   });
   const router = useRouter();
   const db = useFirestore();
@@ -89,6 +90,7 @@ export default function SeleccioneModuloAccesoPage() {
 
   const handleModuleClick = (label: string) => {
     setSelectedModule(label.toUpperCase());
+    setActiveSubContent(null);
     const roles = userData?.rolesUsuario || [];
     if (label === "Seguimiento") {
       if (roles.includes('EsProfesor')) setActiveRole('Profesor');
@@ -165,7 +167,7 @@ export default function SeleccioneModuloAccesoPage() {
               <div className="flex gap-4 mt-2">
                 <Clock className="h-4 w-4 text-gray-400 cursor-pointer hover:text-gray-600" />
                 <BookOpen className="h-4 w-4 text-gray-400 cursor-pointer hover:text-gray-600" />
-                <Home className="h-4 w-4 text-gray-400 cursor-pointer hover:text-gray-600" onClick={() => setSelectedModule(null)} />
+                <Home className="h-4 w-4 text-gray-400 cursor-pointer hover:text-gray-600" onClick={() => { setSelectedModule(null); setActiveSubContent(null); }} />
                 <MessageSquare className="h-4 w-4 text-[#fb8500] cursor-pointer" />
               </div>
             </div>
@@ -186,7 +188,7 @@ export default function SeleccioneModuloAccesoPage() {
                 return (
                   <button 
                     key={roleKey}
-                    onClick={() => setActiveRole(displayName)}
+                    onClick={() => { setActiveRole(displayName); setActiveSubContent(null); }}
                     className={cn(
                       "flex flex-col items-center group transition-all p-1 rounded-sm border",
                       isActive 
@@ -217,7 +219,7 @@ export default function SeleccioneModuloAccesoPage() {
 
             <div className="flex flex-col gap-1 border-l pl-4 border-gray-300">
                <div className="flex gap-1">
-                  <Button variant="ghost" size="icon" className="h-6 w-6 rounded-none bg-gray-500 text-white hover:bg-gray-600" onClick={() => setSelectedModule(null)}>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 rounded-none bg-gray-500 text-white hover:bg-gray-600" onClick={() => { setSelectedModule(null); setActiveSubContent(null); }}>
                     <Home className="h-3 w-3" />
                   </Button>
                   <Button variant="ghost" size="icon" onClick={handleLogout} className="h-6 w-6 rounded-none bg-gray-700 text-white hover:bg-black">
@@ -276,8 +278,6 @@ export default function SeleccioneModuloAccesoPage() {
                 {/* Expandable Label Panel */}
                 <div className="hidden group-hover:flex flex-col py-4 w-full bg-white animate-in fade-in slide-in-from-left-2 duration-300 overflow-y-auto">
                   <div className="px-2 space-y-0.5">
-                    <SidebarItem label="Horario" />
-                    
                     {/* Faltas de asistencia Collapsible */}
                     <div className="flex flex-col">
                       <div 
@@ -292,20 +292,12 @@ export default function SeleccioneModuloAccesoPage() {
                       
                       {expandedItems['faltas'] && (
                         <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
-                          <SidebarItem label="Por materia" isSubItem />
-                          <SidebarItem label="Funcion tutorial" isSubItem />
-                          <SidebarItem label="Guardias" isSubItem />
+                          <SidebarItem label="Por materia" isSubItem onClick={() => setActiveSubContent('Por materia')} active={activeSubContent === 'Por materia'} />
+                          <SidebarItem label="Funcion tutorial" isSubItem onClick={() => setActiveSubContent('Funcion tutorial')} active={activeSubContent === 'Funcion tutorial'} />
+                          <SidebarItem label="Guardias" isSubItem onClick={() => setActiveSubContent('Guardias')} active={activeSubContent === 'Guardias'} />
                         </div>
                       )}
                     </div>
-
-                    <SidebarItem label="Programaciones" />
-                    <SidebarItem label="Trabajos" />
-                    <SidebarItem label="Exámenes" />
-                    <SidebarItem label="Muros" />
-                    <SidebarItem label="Recursos" />
-                    <SidebarItem label="Encuestas" />
-                    <SidebarItem label="Calificaciones" />
                   </div>
                 </div>
               </div>
@@ -332,51 +324,66 @@ export default function SeleccioneModuloAccesoPage() {
               </div>
             </>
           ) : (
-            <div className="flex-1 animate-in fade-in duration-300 relative bg-white flex flex-col w-full">
-              <div className="p-8 md:p-12 flex-1 flex flex-col space-y-8 max-w-7xl mx-auto w-full">
-                <div className="flex items-center justify-between border-b pb-6">
-                  <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-3 uppercase tracking-tight">
-                    {selectedModule === 'CAU' ? 'CENTRO ATENCIÓN DE USUARIOS' : `MODULO SELECCIONADO = ${selectedModule}`}
-                    <span className="text-lg font-normal text-muted-foreground italic">
-                      ({activeRole})
-                    </span>
+            <div className="flex-1 animate-in fade-in duration-300 relative bg-white flex flex-col w-full p-4 md:p-8">
+               <div className="max-w-7xl mx-auto w-full flex-1 flex flex-col">
+                <div className="flex items-center justify-between border-b pb-4 mb-6">
+                  <h1 className="text-lg md:text-xl font-bold text-gray-800 uppercase tracking-tight flex items-center gap-2">
+                    {activeSubContent ? activeSubContent : (selectedModule === 'CAU' ? 'CENTRO ATENCIÓN DE USUARIOS' : selectedModule)}
                   </h1>
-                  <Button variant="ghost" onClick={() => setSelectedModule(null)} className="gap-2 text-gray-500 hover:text-primary transition-colors text-xs font-bold uppercase tracking-[0.2em]">
-                    <ArrowLeft className="h-4 w-4" /> Volver al menú
+                  <Button variant="ghost" onClick={() => { setSelectedModule(null); setActiveSubContent(null); }} className="gap-2 text-gray-500 hover:text-primary transition-colors text-[10px] font-bold uppercase tracking-widest">
+                    <ArrowLeft className="h-3 w-3" /> Volver al menú
                   </Button>
                 </div>
 
-                <div className="flex-1 flex flex-col items-center justify-center">
-                   <div className="p-16 border-2 border-gray-100 bg-gray-50/30 rounded-3xl w-full text-center space-y-8 shadow-inner">
-                      <div className="space-y-6">
-                        <p className="text-2xl text-gray-600">Acceso activo como <span className="font-bold text-primary">{activeRole}</span></p>
-                        <div className="bg-white p-10 rounded-xl border border-gray-200 text-lg text-gray-700 italic leading-relaxed shadow-sm max-w-3xl mx-auto">
-                          {activeRole === 'Profesor' 
-                            ? "Entorno de gestión docente activo para el seguimiento de alumnos asignados, faltas y calificaciones." 
-                            : activeRole === 'Alumno'
-                            ? "Entorno de seguimiento académico activo para consulta de notas y asistencia personal."
-                            : activeRole === 'Dirección'
-                            ? "Entorno de gestión del equipo directivo para la administración del centro."
-                            : activeRole === 'Secretaría'
-                            ? "Entorno de secretaría virtual para trámites administrativos y expedientes."
-                            : activeRole === 'CAU'
-                            ? "Entorno de soporte técnico y atención de usuarios activo para la resolución de incidencias."
-                            : `Entorno de gestión activa para el perfil de ${activeRole}.`}
-                        </div>
+                <div className="flex-1">
+                  {activeSubContent ? (
+                    <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
+                       <div className="bg-white border rounded-lg p-10 shadow-sm min-h-[400px] flex flex-col items-center justify-center text-center space-y-4">
+                          <div className="w-16 h-16 bg-[#89a54e]/10 rounded-full flex items-center justify-center text-[#89a54e]">
+                             <Files className="h-8 w-8" />
+                          </div>
+                          <h2 className="text-2xl font-bold text-gray-800 uppercase tracking-tight">{activeSubContent}</h2>
+                          <p className="text-gray-500 italic max-w-md">
+                            Contenido del módulo de seguimiento académico para la sección de {activeSubContent.toLowerCase()}.
+                          </p>
+                          <div className="pt-8 grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-2xl">
+                             {[1, 2, 3].map(i => (
+                               <div key={i} className="border-2 border-dashed border-gray-200 rounded-lg p-6 flex flex-col items-center gap-2">
+                                  <div className="h-2 w-12 bg-gray-100 rounded"></div>
+                                  <div className="h-2 w-full bg-gray-50 rounded"></div>
+                               </div>
+                             ))}
+                          </div>
+                       </div>
+                    </div>
+                  ) : (
+                    <div className="flex-1 flex flex-col items-center justify-center">
+                      <div className="p-12 border-2 border-gray-100 bg-gray-50/30 rounded-3xl w-full text-center space-y-6 shadow-inner">
+                          <p className="text-xl text-gray-600">Acceso activo como <span className="font-bold text-primary">{activeRole}</span></p>
+                          <div className="bg-white p-8 rounded-xl border border-gray-200 text-base text-gray-700 italic leading-relaxed shadow-sm max-w-3xl mx-auto">
+                            {activeRole === 'Profesor' 
+                              ? "Seleccione una opción del menú lateral para comenzar el seguimiento de sus alumnos." 
+                              : activeRole === 'Alumno'
+                              ? "Entorno de seguimiento académico activo para consulta de notas y asistencia personal."
+                              : activeRole === 'Dirección'
+                              ? "Entorno de gestión del equipo directivo para la administración del centro."
+                              : activeRole === 'Secretaría'
+                              ? "Entorno de secretaría virtual para trámites administrativos y expedientes."
+                              : activeRole === 'CAU'
+                              ? "Entorno de soporte técnico y atención de usuarios activo."
+                              : `Entorno de gestión activa para el perfil de ${activeRole}.`}
+                          </div>
+                          <div className="flex justify-center pt-2">
+                            <div className="flex items-center gap-2 px-3 py-1.5 bg-green-100 text-green-800 rounded-full text-[10px] font-bold uppercase tracking-wider">
+                              <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
+                              Sesión OK
+                            </div>
+                          </div>
                       </div>
-                      <div className="flex justify-center pt-4">
-                        <div className="flex items-center gap-2 px-4 py-2 bg-green-100 text-green-800 rounded-full text-xs font-bold uppercase tracking-wider">
-                          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                          Sesión Verificada
-                        </div>
-                      </div>
-                   </div>
+                    </div>
+                  )}
                 </div>
-              </div>
-              
-              <div className="bg-gray-50 border-t border-gray-100 p-4 flex items-center justify-center gap-4">
-                <span className="text-[10px] text-gray-400 uppercase tracking-[0.3em] font-bold">Servicio Conectado (Firestore SESION OK)</span>
-              </div>
+               </div>
             </div>
           )}
 
@@ -402,22 +409,30 @@ export default function SeleccioneModuloAccesoPage() {
   );
 }
 
-function SidebarItem({ label, isSubItem = false }: { label: string; isSubItem?: boolean }) {
+function SidebarItem({ label, isSubItem = false, onClick, active = false }: { label: string; isSubItem?: boolean; onClick?: () => void; active?: boolean }) {
   return (
-    <div className={cn(
-      "flex items-center gap-2 px-3 py-1.5 hover:bg-gray-100 cursor-pointer group/item transition-colors",
-      isSubItem ? "pl-4" : ""
-    )}>
+    <div 
+      onClick={onClick}
+      className={cn(
+        "flex items-center gap-2 px-3 py-1.5 hover:bg-gray-100 cursor-pointer group/item transition-colors",
+        isSubItem ? "pl-4" : "",
+        active ? "bg-gray-50" : ""
+      )}
+    >
       <div className={cn(
         "w-3.5 h-3.5 border border-gray-400 rounded-sm bg-white group-hover/item:border-[#89a54e] flex items-center justify-center transition-colors",
-        isSubItem ? "w-3 h-3 border-gray-300" : ""
+        isSubItem ? "w-3 h-3 border-gray-300" : "",
+        active ? "border-[#89a54e]" : ""
       )}>
-        {/* Checkmark effect simulation on hover */}
-        <div className="w-1.5 h-1.5 bg-[#89a54e] scale-0 group-hover/item:scale-100 transition-transform rounded-full" />
+        <div className={cn(
+          "w-1.5 h-1.5 bg-[#89a54e] transition-transform rounded-full",
+          active ? "scale-100" : "scale-0 group-hover/item:scale-100"
+        )} />
       </div>
       <span className={cn(
         "text-[12px] text-gray-700 whitespace-nowrap",
-        isSubItem ? "text-gray-500 text-[11px]" : "font-medium"
+        isSubItem ? "text-gray-500 text-[11px]" : "font-medium",
+        active ? "text-[#89a54e] font-bold" : ""
       )}>{label}</span>
     </div>
   );
