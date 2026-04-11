@@ -29,7 +29,9 @@ import {
   GraduationCap,
   BarChart2,
   TrendingUp,
-  ShieldAlert
+  ShieldAlert,
+  ClipboardList,
+  AlertCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -52,6 +54,15 @@ import { TeacherGradingView } from '@/components/rayuela/teacher-grading-view';
 import { TutoringGradesView } from '@/components/rayuela/tutoring-grades-view';
 import { UserCreationView, UserManagementListView } from '@/components/rayuela/user-management-views';
 import { EvaluationsSummaryView, IncidentsSummaryView } from '@/components/rayuela/management-summary-views';
+
+// Componentes del Alumno
+import { 
+  StudentAttendanceView, 
+  StudentBehaviorView, 
+  StudentGradesView, 
+  StudentEvaluationsListView, 
+  StudentScheduleView 
+} from '@/components/rayuela/student-views';
 
 export default function SeleccioneModuloAccesoPage() {
   const [session, setSession] = useState<any>(null);
@@ -79,7 +90,10 @@ export default function SeleccioneModuloAccesoPage() {
     'resumen': false,
     'evaluaciones_dir': false,
     'apertura_root': false,
-    'resumenes_root': false
+    'resumenes_root': false,
+    'faltas_alum': false,
+    'comportamiento_alum': false,
+    'evaluaciones_alum': false
   });
   
   const router = useRouter();
@@ -334,12 +348,12 @@ export default function SeleccioneModuloAccesoPage() {
       )}
 
       <div className="flex-1 flex w-full relative">
-        {selectedModule && (activeRole === 'Profesor' || activeRole === 'Dirección') && (
+        {selectedModule && (activeRole === 'Profesor' || activeRole === 'Dirección' || activeRole === 'Alumno') && (
           <div className="group relative z-40 bg-[#f4f4f4] border-r border-gray-300 w-[60px] hover:w-[250px] transition-all duration-300 ease-in-out flex flex-col min-h-full overflow-hidden">
             <div className="flex-1 flex flex-col">
               <div className="flex h-full">
                 <div className="w-[60px] min-w-[60px] flex flex-col items-center py-4 gap-4 bg-[#f4f4f4] border-r border-gray-200/50">
-                  {activeRole === 'Profesor' ? (
+                  {(activeRole === 'Profesor' || activeRole === 'Alumno') ? (
                     <>
                       <div className={cn("p-2 rounded-sm text-white cursor-pointer transition-colors", sidebarMode === 'ACADEMIC' ? "bg-[#89a54e]" : "bg-gray-400")} onClick={() => setSidebarMode('ACADEMIC')}><BookOpen className="h-5 w-5" /></div>
                       <div className={cn("p-2 rounded-sm text-white cursor-pointer transition-colors", sidebarMode === 'MESSAGING' ? "bg-[#fb8500]" : "bg-gray-400")} onClick={() => setSidebarMode('MESSAGING')}><Megaphone className="h-5 w-5" /></div>
@@ -442,6 +456,55 @@ export default function SeleccioneModuloAccesoPage() {
                                 </div>
                               )}
                             </div>
+                          </>
+                        ) : (
+                          <div className="flex flex-col">
+                            <SidebarHeading label="Mensajería" expanded={expandedItems['mensajeria']} onClick={() => toggleExpanded('mensajeria')} />
+                            {expandedItems['mensajeria'] && (
+                              <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
+                                <SidebarItem color="#fb8500" label="Mis Mensajes" isSubItem onClick={() => setActiveSubContent('Mis Mensajes')} active={activeSubContent === 'Mis Mensajes'} />
+                                <SidebarItem color="#fb8500" label="Papelera" isSubItem onClick={() => setActiveSubContent('Papelera Mensajería')} active={activeSubContent === 'Papelera Mensajería'} />
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ) : activeRole === 'Alumno' ? (
+                      <div className="flex flex-col space-y-2">
+                        {sidebarMode === 'ACADEMIC' ? (
+                          <>
+                            <div className="flex flex-col">
+                              <SidebarHeading label="Faltas de asistencia" expanded={expandedItems['faltas_alum']} onClick={() => toggleExpanded('faltas_alum')} />
+                              {expandedItems['faltas_alum'] && (
+                                <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
+                                  <SidebarItem color="#89a54e" label="Mis faltas" isSubItem onClick={() => setActiveSubContent('Mis faltas')} active={activeSubContent === 'Mis faltas'} />
+                                  <SidebarItem color="#89a54e" label="Justificar" isSubItem onClick={() => setActiveSubContent('Justificar')} active={activeSubContent === 'Justificar'} />
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="flex flex-col">
+                              <SidebarHeading label="Comportamiento" expanded={expandedItems['comportamiento_alum']} onClick={() => toggleExpanded('comportamiento_alum')} />
+                              {expandedItems['comportamiento_alum'] && (
+                                <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
+                                  <SidebarItem color="#89a54e" label="Negativos / Positivos" isSubItem onClick={() => setActiveSubContent('Negativos / Positivos')} active={activeSubContent === 'Negativos / Positivos'} />
+                                  <SidebarItem color="#89a54e" label="Amonestaciones" isSubItem onClick={() => setActiveSubContent('Amonestaciones Alumno')} active={activeSubContent === 'Amonestaciones Alumno'} />
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="flex flex-col">
+                              <SidebarHeading label="Evaluaciones" expanded={expandedItems['evaluaciones_alum']} onClick={() => toggleExpanded('evaluaciones_alum')} />
+                              {expandedItems['evaluaciones_alum'] && (
+                                <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
+                                  <SidebarItem color="#89a54e" label="Calificaciones y nota final" isSubItem onClick={() => setActiveSubContent('Calificaciones y nota final')} active={activeSubContent === 'Calificaciones y nota final'} />
+                                </div>
+                              )}
+                            </div>
+
+                            <SidebarItem color="#89a54e" label="Tareas" onClick={() => setActiveSubContent('Mis Tareas')} active={activeSubContent === 'Mis Tareas'} />
+                            <SidebarItem color="#89a54e" label="Exámenes" onClick={() => setActiveSubContent('Mis Exámenes')} active={activeSubContent === 'Mis Exámenes'} />
+                            <SidebarItem color="#89a54e" label="Mi horario" onClick={() => setActiveSubContent('Mi Horario Alumno')} active={activeSubContent === 'Mi Horario Alumno'} />
                           </>
                         ) : (
                           <div className="flex flex-col">
@@ -592,12 +655,32 @@ export default function SeleccioneModuloAccesoPage() {
                     <EvaluationsSummaryView />
                   ) : activeSubContent === 'Resumen Conductas' ? (
                     <IncidentsSummaryView />
+                  ) : activeSubContent === 'Mis faltas' ? (
+                    <StudentAttendanceView studentId={session.usuario} />
+                  ) : activeSubContent === 'Justificar' ? (
+                    <div className="p-8 text-center bg-gray-50 border rounded-xl opacity-60">
+                       <AlertCircle className="h-12 w-12 mx-auto mb-4 text-blue-600" />
+                       <h2 className="text-xl font-bold uppercase">Módulo de Justificaciones</h2>
+                       <p className="text-sm italic">Para justificar una falta, el tutor legal debe presentar el documento oficial en Secretaría o contactar con el tutor mediante Mensajería Rayuela.</p>
+                    </div>
+                  ) : activeSubContent === 'Negativos / Positivos' ? (
+                    <StudentBehaviorView studentId={session.usuario} />
+                  ) : activeSubContent === 'Amonestaciones Alumno' ? (
+                    <StudentBehaviorView studentId={session.usuario} onlyIncidents />
+                  ) : activeSubContent === 'Calificaciones y nota final' ? (
+                    <StudentGradesView studentId={session.usuario} />
+                  ) : activeSubContent === 'Mis Tareas' ? (
+                    <StudentEvaluationsListView studentId={session.usuario} type="task" />
+                  ) : activeSubContent === 'Mis Exámenes' ? (
+                    <StudentEvaluationsListView studentId={session.usuario} type="exam" />
+                  ) : activeSubContent === 'Mi Horario Alumno' ? (
+                    <StudentScheduleView studentId={session.usuario} />
                   ) : activeSubContent ? (
                     <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
                        <div className="bg-white border rounded-lg p-10 shadow-sm min-h-[400px] flex flex-col items-center justify-center text-center space-y-4">
                           <div className={cn(
                             "w-16 h-16 rounded-full flex items-center justify-center",
-                            activeRole === 'Profesor' ? "bg-[#89a54e]/10 text-[#89a54e]" : "bg-[#9c4d96]/10 text-[#9c4d96]"
+                            (activeRole === 'Profesor' || activeRole === 'Alumno') ? "bg-[#89a54e]/10 text-[#89a54e]" : "bg-[#9c4d96]/10 text-[#9c4d96]"
                           )}>
                              <Files className="h-8 w-8" />
                           </div>

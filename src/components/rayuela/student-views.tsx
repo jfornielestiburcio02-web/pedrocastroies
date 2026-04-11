@@ -1,0 +1,463 @@
+
+"use client";
+
+import React, { useMemo } from 'react';
+import { 
+  Loader2, 
+  Calendar, 
+  Clock, 
+  BookOpen, 
+  AlertTriangle, 
+  CheckCircle2, 
+  ThumbsUp, 
+  ThumbsDown,
+  GraduationCap,
+  ClipboardList,
+  FileText,
+  Lock,
+  MessageSquare
+} from 'lucide-react';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where, orderBy } from 'firebase/firestore';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
+
+/**
+ * Vista de Faltas para el Alumno
+ */
+export function StudentAttendanceView({ studentId }: { studentId: string }) {
+  const db = useFirestore();
+
+  const attendanceQuery = useMemoFirebase(() => {
+    if (!db || !studentId) return null;
+    return query(
+      collection(db, 'asistenciasInasistencias'),
+      where('alumnoId', '==', studentId),
+      orderBy('fecha', 'desc')
+    );
+  }, [db, studentId]);
+
+  const { data: attendances, isLoading: loadingAttendance } = useCollection(attendanceQuery);
+
+  const schedulesQuery = useMemoFirebase(() => {
+    if (!db) return null;
+    return collection(db, 'horarios');
+  }, [db]);
+  const { data: allSchedules } = useCollection(schedulesQuery);
+
+  const getAsignatura = (claseId: string) => {
+    const s = allSchedules?.find(sch => sch.id === claseId);
+    return s?.asignatura || "Materia";
+  };
+
+  if (loadingAttendance) {
+    return <div className="flex justify-center p-20"><Loader2 className="h-8 w-8 animate-spin text-[#89a54e]" /></div>;
+  }
+
+  return (
+    <div className="animate-in fade-in duration-500 space-y-6 max-w-4xl mx-auto w-full">
+      <div className="bg-white border rounded-xl shadow-sm overflow-hidden">
+        <div className="bg-[#89a54e] p-4 text-white flex items-center gap-2">
+          <Clock className="h-5 w-5" />
+          <h2 className="font-bold text-sm uppercase tracking-tight">Mi Registro de Asistencia</h2>
+        </div>
+        
+        <div className="p-0">
+          {attendances?.length === 0 ? (
+            <div className="p-20 text-center text-gray-400 italic text-sm">No constan faltas ni retrasos registrados.</div>
+          ) : (
+            <table className="w-full text-left border-collapse">
+              <thead className="bg-gray-50 border-b">
+                <tr>
+                  <th className="p-4 text-[10px] font-bold text-gray-400 uppercase">Fecha</th>
+                  <th className="p-4 text-[10px] font-bold text-gray-400 uppercase">Materia</th>
+                  <th className="p-4 text-[10px] font-bold text-gray-400 uppercase text-center">Tipo</th>
+                  <th className="p-4 text-[10px] font-bold text-gray-400 uppercase">Justificación</th>
+                </tr>
+              </thead>
+              <tbody>
+                {attendances?.map((att) => (
+                  <tr key={att.id} className="border-b hover:bg-gray-50 transition-colors">
+                    <td className="p-4">
+                      <div className="flex flex-col">
+                        <span className="text-xs font-bold text-gray-700">{format(new Date(att.fecha), 'dd/MM/yyyy')}</span>
+                        <span className="text-[9px] text-gray-400 uppercase">{format(new Date(att.fecha), 'EEEE', { locale: es })}</span>
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <span className="text-xs font-medium text-gray-600 uppercase">{getAsignatura(att.claseId)}</span>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex justify-center">
+                        <Badge className={cn(
+                          "text-[9px] font-bold px-2 py-0.5 border-none",
+                          att.tipo === 'I' ? "bg-orange-100 text-orange-700" : 
+                          att.tipo === 'R' ? "bg-yellow-100 text-yellow-700" : 
+                          "bg-green-100 text-green-700"
+                        )}>
+                          {att.tipo === 'I' ? 'INJUSTIFICADA' : att.tipo === 'R' ? 'RETRASO' : 'JUSTIFICADA'}
+                        </Badge>
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <span className="text-[10px] text-gray-500 italic">{att.motivo || "-"}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Vista de Comportamiento para el Alumno
+ */
+export function StudentBehaviorView({ studentId, onlyIncidents = false }: { studentId: string, onlyIncidents?: boolean }) {
+  const db = useFirestore();
+
+  const behaviorQuery = useMemoFirebase(() => {
+    if (!db || !studentId) return null;
+    return query(collection(db, 'comportamientos'), where('alumnoId', '==', studentId), orderBy('fecha', 'desc'));
+  }, [db, studentId]);
+
+  const incidentsQuery = useMemoFirebase(() => {
+    if (!db || !studentId) return null;
+    return query(collection(db, 'incidencias'), where('alumnoId', '==', studentId), orderBy('fecha', 'desc'));
+  }, [db, studentId]);
+
+  const { data: behaviors } = useCollection(behaviorQuery);
+  const { data: incidents, isLoading: loadingIncidents } = useCollection(incidentsQuery);
+
+  if (loadingIncidents) return <div className="flex justify-center p-20"><Loader2 className="h-8 w-8 animate-spin text-[#89a54e]" /></div>;
+
+  return (
+    <div className="animate-in fade-in duration-500 space-y-8 max-w-5xl mx-auto w-full">
+      {!onlyIncidents && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card className="shadow-sm border-green-100 bg-green-50/20">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-bold uppercase text-green-700">Puntos Positivos</CardTitle>
+                <ThumbsUp className="h-5 w-5 text-green-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold text-green-700">{behaviors?.filter(b => b.tipo === 'Positivo').length || 0}</p>
+              <p className="text-[10px] text-green-600 font-bold uppercase mt-1">Reconocimientos de actitud</p>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-sm border-red-100 bg-red-50/20">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-bold uppercase text-red-700">Puntos Negativos</CardTitle>
+                <ThumbsDown className="h-5 w-5 text-red-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold text-red-700">{behaviors?.filter(b => b.tipo === 'Negativo').length || 0}</p>
+              <p className="text-[10px] text-red-600 font-bold uppercase mt-1">Avisos de conducta contraria</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      <div className="bg-white border rounded-xl shadow-sm overflow-hidden">
+        <div className="bg-[#e63946] p-4 text-white flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <ShieldAlert className="h-5 w-5" />
+            <h2 className="font-bold text-sm uppercase tracking-tight">Expediente Disciplinario (Amonestaciones)</h2>
+          </div>
+          <Badge className="bg-white text-red-600 font-bold">{incidents?.length || 0} REGISTROS</Badge>
+        </div>
+
+        <div className="p-6">
+          {incidents?.length === 0 ? (
+            <div className="py-10 text-center text-gray-400 italic text-sm">No constan amonestaciones en su expediente. ¡Buen trabajo!</div>
+          ) : (
+            <div className="space-y-4">
+              {incidents?.map((inc) => (
+                <div key={inc.id} className="p-4 border rounded-lg bg-gray-50 flex flex-col md:flex-row gap-4 justify-between group">
+                  <div className="space-y-2 flex-1">
+                    <div className="flex items-center gap-3">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase">{format(new Date(inc.fecha), 'd MMMM yyyy', { locale: es })}</span>
+                      <Badge variant="outline" className={cn(
+                        "text-[8px] font-bold uppercase border-none",
+                        inc.tipoIncidencia === 'Grave' ? "bg-red-100 text-red-700" : "bg-orange-100 text-orange-700"
+                      )}>
+                        {inc.tipoIncidencia}
+                      </Badge>
+                    </div>
+                    <p className="text-sm font-bold text-gray-700 leading-snug">{inc.descripcion}</p>
+                    <div className="flex flex-wrap gap-1">
+                      {inc.conductas?.map((c: string) => (
+                        <span key={c} className="text-[9px] bg-white border px-2 py-0.5 rounded text-gray-500 font-medium uppercase">{c}</span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="md:w-48 flex flex-col justify-between items-end border-t md:border-t-0 md:border-l pt-4 md:pt-0 md:pl-4 border-gray-200">
+                    <div className="text-right">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase">Gravedad</p>
+                      <p className="text-sm font-bold text-red-600">{inc.gravedad} / 5</p>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-[9px] font-bold text-blue-600 uppercase mt-2">
+                      {inc.comunicadoFamilia ? <CheckCircle2 className="h-3 w-3" /> : <div className="w-3 h-3 border rounded-full" />}
+                      {inc.comunicadoFamilia ? "Familia informada" : "Pendiente comunicar"}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Vista de Calificaciones Finales para el Alumno
+ */
+export function StudentGradesView({ studentId }: { studentId: string }) {
+  const db = useFirestore();
+
+  // Obtener periodos abiertos para alumnos
+  const periodosQuery = useMemoFirebase(() => {
+    if (!db) return null;
+    return query(collection(db, 'evaluacionesPeriodos'), where('abiertaAlumnos', '==', true));
+  }, [db]);
+
+  const { data: periodos, isLoading: loadingPeriodos } = useCollection(periodosQuery);
+  const activePeriodo = periodos?.[0];
+
+  const gradesQuery = useMemoFirebase(() => {
+    if (!db || !studentId || !activePeriodo) return null;
+    return query(collection(db, 'calificacionesFinales'), where('alumnoId', '==', studentId), where('periodoId', '==', activePeriodo.id));
+  }, [db, studentId, activePeriodo]);
+
+  const { data: grades } = useCollection(gradesQuery);
+
+  const schedulesQuery = useMemoFirebase(() => {
+    if (!db) return null;
+    return collection(db, 'horarios');
+  }, [db]);
+  const { data: allSchedules } = useCollection(schedulesQuery);
+
+  const getAsignatura = (claseId: string) => {
+    const s = allSchedules?.find(sch => sch.id === claseId);
+    return s?.asignatura || "Materia";
+  };
+
+  if (loadingPeriodos) return <div className="flex justify-center p-20"><Loader2 className="h-8 w-8 animate-spin text-[#89a54e]" /></div>;
+
+  if (!activePeriodo) {
+    return (
+      <div className="py-20 text-center space-y-4 opacity-50">
+        <Lock className="h-16 w-16 mx-auto text-gray-300" />
+        <h2 className="text-xl font-bold uppercase text-gray-400">Consultas de evaluación cerradas</h2>
+        <p className="text-sm italic">Dirección aún no ha habilitado la visualización de notas para este periodo.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="animate-in fade-in duration-500 space-y-6 max-w-4xl mx-auto w-full">
+      <div className="bg-white border rounded-xl shadow-sm overflow-hidden">
+        <div className="bg-[#89a54e] p-6 text-white flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="bg-white/20 p-3 rounded-lg"><GraduationCap className="h-6 w-6" /></div>
+            <div>
+              <h2 className="text-lg font-bold uppercase tracking-tight">Boletín: {activePeriodo.periodo}ª EVALUACIÓN</h2>
+              <p className="text-white/80 text-[10px] font-bold uppercase">Curso Escolar: {activePeriodo.cursoEscolar}</p>
+            </div>
+          </div>
+          <Badge className="bg-white text-[#89a54e] font-bold uppercase">Oficial</Badge>
+        </div>
+
+        <div className="p-0">
+          <table className="w-full text-left border-collapse">
+            <thead className="bg-gray-50 border-b">
+              <tr>
+                <th className="p-4 text-[10px] font-bold text-gray-400 uppercase">Asignatura</th>
+                <th className="p-4 text-[10px] font-bold text-gray-400 uppercase text-center">Calificación</th>
+                <th className="p-4 text-[10px] font-bold text-gray-400 uppercase">Observaciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {grades?.length === 0 ? (
+                <tr><td colSpan={3} className="p-10 text-center text-gray-400 italic text-sm">No constan notas registradas en este periodo.</td></tr>
+              ) : (
+                grades?.map((g) => (
+                  <tr key={g.id} className="border-b hover:bg-gray-50/50 transition-colors">
+                    <td className="p-4">
+                      <span className="text-xs font-bold text-gray-700 uppercase">{getAsignatura(g.claseId)}</span>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex justify-center">
+                        <Badge className={cn(
+                          "text-[11px] font-bold px-3 py-0.5 border-none",
+                          g.nota === 'IN' || parseFloat(g.nota) < 5 ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"
+                        )}>
+                          {g.nota}
+                        </Badge>
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex items-start gap-2 text-[10px] text-gray-500 italic">
+                        <MessageSquare className="h-3 w-3 mt-0.5 shrink-0" />
+                        <span>{g.observaciones || "Sin observaciones."}</span>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Vista de Listado de Evaluaciones (Exámenes o Tareas) para el Alumno
+ */
+export function StudentEvaluationsListView({ studentId, type }: { studentId: string, type: 'exam' | 'task' }) {
+  const db = useFirestore();
+
+  const itemsQuery = useMemoFirebase(() => {
+    if (!db) return null;
+    return query(collection(db, type === 'exam' ? 'examenes' : 'tareas'), orderBy('fecha', 'desc'));
+  }, [db, type]);
+
+  const { data: items, isLoading } = useCollection(itemsQuery);
+
+  // Filtrar solo aquellos que tengan nota para este alumno
+  const myItems = useMemo(() => {
+    if (!items) return [];
+    return items.filter(item => {
+      const field = type === 'exam' ? 'notas' : 'entregas';
+      return item[field] && item[field][studentId] !== undefined;
+    });
+  }, [items, studentId, type]);
+
+  if (isLoading) return <div className="flex justify-center p-20"><Loader2 className="h-8 w-8 animate-spin text-[#89a54e]" /></div>;
+
+  return (
+    <div className="animate-in fade-in duration-500 space-y-6 max-w-4xl mx-auto w-full">
+      <div className="bg-white border rounded-xl shadow-sm overflow-hidden">
+        <div className="bg-[#89a54e] p-4 text-white flex items-center gap-2">
+          {type === 'exam' ? <GraduationCap className="h-5 w-5" /> : <ClipboardList className="h-5 w-5" />}
+          <h2 className="font-bold text-sm uppercase tracking-tight">Seguimiento de {type === 'exam' ? 'Exámenes' : 'Tareas'}</h2>
+        </div>
+
+        <div className="p-0">
+          {myItems.length === 0 ? (
+            <div className="p-20 text-center text-gray-400 italic text-sm">No constan registros de {type === 'exam' ? 'exámenes' : 'tareas'} evaluados.</div>
+          ) : (
+            <table className="w-full text-left border-collapse">
+              <thead className="bg-gray-50 border-b">
+                <tr>
+                  <th className="p-4 text-[10px] font-bold text-gray-400 uppercase">Fecha</th>
+                  <th className="p-4 text-[10px] font-bold text-gray-400 uppercase">Título Actividad</th>
+                  <th className="p-4 text-[10px] font-bold text-gray-400 uppercase text-center">{type === 'exam' ? 'Nota' : 'Estado'}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {myItems.map((item) => {
+                  const val = type === 'exam' ? item.notas[studentId] : item.entregas[studentId];
+                  return (
+                    <tr key={item.id} className="border-b hover:bg-gray-50 transition-colors">
+                      <td className="p-4 text-xs text-gray-500">{format(new Date(item.fecha), 'dd/MM/yyyy')}</td>
+                      <td className="p-4">
+                        <span className="text-xs font-bold text-gray-700 uppercase">{item.titulo}</span>
+                      </td>
+                      <td className="p-4">
+                        <div className="flex justify-center">
+                          {type === 'exam' ? (
+                            <Badge className={cn("text-[10px] font-bold", parseFloat(val) < 5 ? "bg-red-50 text-red-700 border-red-100" : "bg-blue-50 text-blue-700 border-blue-100")}>
+                              {val}
+                            </Badge>
+                          ) : (
+                            <Badge className={cn("text-[9px] font-bold uppercase", val ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700")}>
+                              {val ? 'ENTREGADA' : 'NO ENTREGADA'}
+                            </Badge>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Vista de Horario para el Alumno
+ */
+export function StudentScheduleView({ studentId }: { studentId: string }) {
+  const db = useFirestore();
+
+  const schedulesQuery = useMemoFirebase(() => {
+    if (!db || !studentId) return null;
+    return query(collection(db, 'horarios'), where('alumnosIds', 'array-contains', studentId));
+  }, [db, studentId]);
+
+  const { data: schedules, isLoading } = useCollection(schedulesQuery);
+
+  const days = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"];
+
+  if (isLoading) return <div className="flex justify-center p-20"><Loader2 className="h-8 w-8 animate-spin text-[#89a54e]" /></div>;
+
+  return (
+    <div className="animate-in fade-in duration-500 max-w-6xl mx-auto w-full">
+      <div className="bg-white border rounded-xl shadow-sm overflow-hidden">
+        <div className="bg-[#89a54e] p-4 text-white flex items-center gap-2">
+          <Calendar className="h-5 w-5" />
+          <h2 className="font-bold text-sm uppercase tracking-tight">Mi Horario Escolar</h2>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse table-fixed">
+            <thead className="bg-gray-50 border-b">
+              <tr>
+                {days.map(day => (
+                  <th key={day} className="p-3 text-center text-[10px] font-bold text-[#89a54e] uppercase border-r last:border-r-0">{day}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                {days.map(day => (
+                  <td key={day} className="p-2 align-top border-r last:border-r-0 bg-gray-50/20 h-[500px]">
+                    <div className="space-y-2">
+                      {schedules?.filter(s => s.dia === day).sort((a, b) => a.horaInicio.localeCompare(b.horaInicio)).map(session => (
+                        <div key={session.id} className="bg-white p-3 rounded-lg border shadow-sm border-gray-100 flex flex-col gap-1">
+                          <span className="text-[9px] font-bold text-gray-400 uppercase">{session.horaInicio} - {session.horaFin}</span>
+                          <span className="text-[11px] font-bold text-gray-800 uppercase leading-tight">{session.asignatura}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </td>
+                ))}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
