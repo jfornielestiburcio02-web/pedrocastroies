@@ -26,7 +26,10 @@ import {
   Users,
   Megaphone,
   Calendar,
-  GraduationCap
+  GraduationCap,
+  BarChart2,
+  TrendingUp,
+  ShieldAlert
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -44,10 +47,11 @@ import { ScheduleListView, ScheduleCreationView, MyScheduleView } from '@/compon
 import { SidebarItem, SidebarHeading, ModuleBox } from '@/components/rayuela/shared-components';
 import { MyTutoringStudentsView, CenterStudentsView } from '@/components/rayuela/student-management-views';
 import { EvaluationsView } from '@/components/rayuela/evaluations-views';
-import { EvaluationOpeningView, GradingStatsView } from '@/components/rayuela/management-evaluation-views';
+import { EvaluationOpeningView } from '@/components/rayuela/management-evaluation-views';
 import { TeacherGradingView } from '@/components/rayuela/teacher-grading-view';
 import { TutoringGradesView } from '@/components/rayuela/tutoring-grades-view';
 import { UserCreationView, UserManagementListView } from '@/components/rayuela/user-management-views';
+import { EvaluationsSummaryView, IncidentsSummaryView } from '@/components/rayuela/management-summary-views';
 
 export default function SeleccioneModuloAccesoPage() {
   const [session, setSession] = useState<any>(null);
@@ -74,7 +78,8 @@ export default function SeleccioneModuloAccesoPage() {
     'evaluaciones': false,
     'resumen': false,
     'evaluaciones_dir': false,
-    'apertura_root': false
+    'apertura_root': false,
+    'resumenes_root': false
   });
   
   const router = useRouter();
@@ -489,6 +494,16 @@ export default function SeleccioneModuloAccesoPage() {
                             </div>
                           )}
                         </div>
+
+                        <div className="flex flex-col">
+                          <SidebarHeading label="Resumenes" expanded={expandedItems['resumenes_root']} onClick={() => toggleExpanded('resumenes_root')} />
+                          {expandedItems['resumenes_root'] && (
+                            <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
+                              <SidebarItem color="#9c4d96" label="Evaluaciones (Gráficas)" isSubItem onClick={() => setActiveSubContent('Evaluaciones (Gráficas)')} active={activeSubContent === 'Evaluaciones (Gráficas)'} />
+                              <SidebarItem color="#9c4d96" label="Conductas contrarias y graves" isSubItem onClick={() => setActiveSubContent('Resumen Conductas')} active={activeSubContent === 'Resumen Conductas'} />
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -571,6 +586,12 @@ export default function SeleccioneModuloAccesoPage() {
                     <UserCreationView />
                   ) : activeSubContent === 'Visualización de Usuarios' ? (
                     <UserManagementListView />
+                  ) : activeSubContent === 'Apertura de la evaluación' ? (
+                    <EvaluationOpeningView />
+                  ) : activeSubContent === 'Evaluaciones (Gráficas)' ? (
+                    <EvaluationsSummaryView />
+                  ) : activeSubContent === 'Resumen Conductas' ? (
+                    <IncidentsSummaryView />
                   ) : activeSubContent ? (
                     <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
                        <div className="bg-white border rounded-lg p-10 shadow-sm min-h-[400px] flex flex-col items-center justify-center text-center space-y-4">
@@ -590,7 +611,7 @@ export default function SeleccioneModuloAccesoPage() {
                     <div className="flex-1 flex flex-col items-center justify-center">
                       <div className="p-12 border-2 border-gray-100 bg-gray-50/30 rounded-3xl w-full text-center space-y-6 shadow-inner">
                           <p className="text-xl text-gray-600">Acceso activo como <span className="font-bold text-primary">{activeRole}</span></p>
-                          <div className="bg-white p-8 rounded-xl border border-gray-200 text-base text-gray-700 italic leading-relaxed shadow-sm max-w-3xl mx-auto">
+                          <div className="bg-white p-8 rounded-xl border border-200 text-base text-gray-700 italic leading-relaxed shadow-sm max-w-3xl mx-auto">
                             {activeRole === 'Profesor' 
                               ? "Seleccione una opción del menú lateral para comenzar el seguimiento de sus alumnos." 
                               : activeRole === 'Alumno'
