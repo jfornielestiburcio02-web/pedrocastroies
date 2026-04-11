@@ -386,7 +386,7 @@ export default function SeleccioneModuloAccesoPage() {
                         </div>
 
                         <div className="flex flex-col">
-                          <SidebarHeading label="Horarios" expanded={expandedItems['horarios']} onClick={() => toggleExpanded('horarios']} />
+                          <SidebarHeading label="Horarios" expanded={expandedItems['horarios']} onClick={() => toggleExpanded('horarios')} />
                           {expandedItems['horarios'] && (
                             <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
                               <SidebarItem color="#9c4d96" label="Ver" isSubItem onClick={() => setActiveSubContent('Ver Horarios')} active={activeSubContent === 'Ver Horarios'} />
