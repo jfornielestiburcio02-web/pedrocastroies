@@ -1,30 +1,44 @@
+
 'use client';
 
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore, initializeFirestore, terminate } from 'firebase/firestore'
+import { getAuth, Auth } from 'firebase/auth';
+import { getFirestore, initializeFirestore, Firestore } from 'firebase/firestore';
 
-// Inicialización de Firebase optimizada para entornos de proxy/workstation
+// Variables de instancia para el patrón Singleton
+let app: FirebaseApp;
+let db: Firestore;
+let authentication: Auth;
+
+/**
+ * Inicializa Firebase y sus servicios de forma única.
+ * Garantiza que initializeFirestore solo se llame una vez para evitar errores de aserción.
+ */
 export function initializeFirebase() {
-  if (!getApps().length) {
-    const firebaseApp = initializeApp(firebaseConfig);
-    return getSdks(firebaseApp);
+  // 1. Inicializar App
+  if (getApps().length > 0) {
+    app = getApp();
+  } else {
+    app = initializeApp(firebaseConfig);
   }
-  return getSdks(getApp());
-}
 
-export function getSdks(firebaseApp: FirebaseApp) {
-  // Inicialización de Firestore con configuraciones para evitar el error "Assertion Failed"
-  const firestore = initializeFirestore(firebaseApp, {
-    experimentalForceLongPolling: true,
-    experimentalAutoDetectLongPolling: false, // Desactivamos autodetección para evitar cambios de estado bruscos
-  });
+  // 2. Inicializar Firestore con configuración defensiva (una sola vez)
+  if (!db) {
+    db = initializeFirestore(app, {
+      experimentalForceLongPolling: true,
+    });
+  }
+
+  // 3. Inicializar Auth (una sola vez)
+  if (!authentication) {
+    authentication = getAuth(app);
+  }
 
   return {
-    firebaseApp,
-    auth: getAuth(firebaseApp),
-    firestore
+    firebaseApp: app,
+    firestore: db,
+    auth: authentication
   };
 }
 

@@ -1,8 +1,9 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // REGLAS PÚBLICAS TOTALES - FORZADO DE DESPLIEGUE: 2026-04-11_0940
-    // Esta regla permite el acceso total sin restricciones para desarrollo.
+    // REGLAS PÚBLICAS TOTALES - FORZADO DE DESPLIEGUE FINAL: 2026-04-11_1000
+    // Estas reglas permiten acceso absoluto para desarrollo.
     match /{document=**} {
       allow read, write: if true;
     }
