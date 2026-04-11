@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -52,7 +51,7 @@ export default function LoginPage() {
           localStorage.setItem('user_session', JSON.stringify({
             usuario: usuarioInput,
             sesion: jsessionid,
-            displayName: userData.nombreCompleto || usuarioInput
+            displayName: userData.nombrePersona || userData.usuario
           }));
 
           toast({
@@ -103,9 +102,6 @@ export default function LoginPage() {
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Entrar"}
               </Button>
-              <div className="text-center text-sm">
-                <Link href="/register" className="text-primary hover:underline">Registrarse</Link>
-              </div>
             </CardFooter>
           </form>
         </Card>
