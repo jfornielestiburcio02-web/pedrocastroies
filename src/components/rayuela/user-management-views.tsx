@@ -263,15 +263,23 @@ export function UserManagementListView() {
   };
 
   const handleAssignTutor = (userId: string, curso: string) => {
-    updateDocumentNonBlocking(doc(db!, 'usuarios', userId), { esTutor: curso });
-    toast({ title: "Tutoría Asignada", description: `Profesor designado como tutor de ${curso}` });
+    // Radix UI Select no permite "" como valor de Item, por lo que usamos "NONE" para resetear
+    const cursoToSave = curso === "NONE" ? "" : curso;
+    
+    updateDocumentNonBlocking(doc(db!, 'usuarios', userId), { esTutor: cursoToSave });
+    
+    if (curso === "NONE") {
+      toast({ title: "Tutoría Revocada", description: "Se ha eliminado la asignación de grupo." });
+    } else {
+      toast({ title: "Tutoría Asignada", description: `Profesor designado como tutor de ${curso}` });
+    }
     setDesignatingTutorId(null);
   };
 
   const handleDeleteUser = (userId: string) => {
     if (confirm("¿Está seguro de eliminar este usuario? Esta acción es irreversible.")) {
       deleteDocumentNonBlocking(doc(db!, 'usuarios', userId));
-      toast({ title: "Usuario Eliminado", description: "El registro ha sido borrado de la plataforma." });
+      toast({ title: "Usuario Eliminar", description: "El registro ha sido borrado de la plataforma." });
     }
   };
 
@@ -429,7 +437,7 @@ export function UserManagementListView() {
                     <SelectValue placeholder="Elija un grupo del centro..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="" className="text-red-600 italic">-- Eliminar Tutoría --</SelectItem>
+                    <SelectItem value="NONE" className="text-red-600 italic">-- Eliminar Tutoría --</SelectItem>
                     {existingCourses.map(c => (
                       <SelectItem key={c} value={c} className="font-bold">{c}</SelectItem>
                     ))}
