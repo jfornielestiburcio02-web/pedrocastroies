@@ -11,7 +11,8 @@ import {
   Check, 
   Trash2,
   AlertCircle,
-  X
+  X,
+  CheckCircle2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -58,8 +59,9 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(manualScheduleId || null);
   const [historyAlumnoId, setHistoryAlumnoId] = useState<string | null>(null);
-  const [viewingReason, setViewingReason] = useState<{name: string, reason: string} | null>(null);
+  const [viewingReason, setViewingReason] = useState<{name: string, reason: string, alumnoId: string} | null>(null);
   const db = useFirestore();
+  const { toast } = useToast();
 
   const dayOfWeek = useMemo(() => {
     const days = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
@@ -181,6 +183,19 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
     }
   };
 
+  const handleJustifyAbsence = () => {
+    if (!db || !viewingReason) return;
+    const existing = attendances?.find(a => a.alumnoId === viewingReason.alumnoId);
+    if (existing) {
+      updateDocumentNonBlocking(doc(db, 'asistenciasInasistencias', existing.id), {
+        tipo: 'J',
+        justifiedAt: new Date().toISOString()
+      });
+      toast({ title: "Falta Justificada", description: "Se ha validado el motivo del alumno." });
+      setViewingReason(null);
+    }
+  };
+
   const getStatusText = (status: string) => {
     if (status === 'A') return 'Asiste';
     if (status === 'I') return 'Injustif.';
@@ -276,7 +291,7 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
                     
                     {hasJustification && (
                       <button 
-                        onClick={() => setViewingReason({ name: student.nombrePersona || student.usuario, reason: studentAttendance.motivo })}
+                        onClick={() => setViewingReason({ name: student.nombrePersona || student.usuario, reason: studentAttendance.motivo, alumnoId: student.id })}
                         className="absolute -top-1 -right-1 bg-red-600 text-white rounded-full h-6 w-6 border-2 border-white flex items-center justify-center shadow-lg hover:scale-110 transition-transform animate-pulse"
                       >
                         <AlertCircle className="h-3.5 w-3.5" />
@@ -367,8 +382,14 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
                 </p>
              </div>
           </div>
-          <DialogFooter className="bg-gray-50 p-3 border-t">
-             <Button onClick={() => setViewingReason(null)} className="w-full bg-gray-800 hover:bg-black text-white text-[10px] font-bold uppercase h-8 shadow-sm">Cerrar</Button>
+          <DialogFooter className="bg-gray-50 p-3 border-t flex gap-2">
+             <Button 
+              onClick={handleJustifyAbsence} 
+              className="flex-1 bg-green-600 hover:bg-green-700 text-white text-[10px] font-bold uppercase h-8 shadow-sm gap-2"
+             >
+               <CheckCircle2 className="h-3 w-3" /> Validar y Justificar
+             </Button>
+             <Button variant="outline" onClick={() => setViewingReason(null)} className="flex-1 text-[10px] font-bold uppercase h-8">Cerrar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

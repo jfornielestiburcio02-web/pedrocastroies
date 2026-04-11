@@ -137,7 +137,8 @@ export function StudentAttendanceView({ studentId, onlyUnjustified = false }: { 
       return;
     }
 
-    // Para cada sesión seleccionada, crear o actualizar el registro de asistencia como Justificado
+    // Para cada sesión seleccionada, crear o actualizar el registro de asistencia
+    // IMPORTANTE: Se queda como 'I' (Injustificada) hasta que el profe la valide
     formData.sesionesSeleccionadas.forEach(claseId => {
       const schedule = daySchedules?.find(s => s.id === claseId);
       const gradeId = `${studentId}_${claseId}_${formData.fecha}`; // ID determinista para evitar duplicados
@@ -147,7 +148,7 @@ export function StudentAttendanceView({ studentId, onlyUnjustified = false }: { 
         alumnoId: studentId,
         claseId: claseId,
         fecha: formData.fecha,
-        tipo: 'J',
+        tipo: 'I', // Se mantiene como Injustificada para que el profe la vea y decida
         motivo: `${formData.titulo ? formData.titulo + ': ' : ''}${formData.descripcion}`,
         profesorId: schedule?.profesorId || 'SISTEMA',
         createdAt: new Date().toISOString()
@@ -155,8 +156,8 @@ export function StudentAttendanceView({ studentId, onlyUnjustified = false }: { 
     });
 
     toast({ 
-      title: "Justificaciones Enviadas", 
-      description: `Se ha notificado a los profesores de las ${formData.sesionesSeleccionadas.length} sesiones seleccionadas.` 
+      title: "Notificaciones Enviadas", 
+      description: `Se ha avisado a los profesores de las ${formData.sesionesSeleccionadas.length} sesiones. El docente deberá validar la falta.` 
     });
 
     setFormData({ ...formData, titulo: '', descripcion: '', sesionesSeleccionadas: [] });
@@ -267,7 +268,7 @@ export function StudentAttendanceView({ studentId, onlyUnjustified = false }: { 
                     </ScrollArea>
                   )}
                 </div>
-                <p className="text-[9px] text-gray-400 italic text-center">Solo los profesores de las clases marcadas recibirán la notificación.</p>
+                <p className="text-[9px] text-gray-400 italic text-center">Los profesores recibirán una notificación de su ausencia.</p>
               </div>
             </div>
 
@@ -275,14 +276,14 @@ export function StudentAttendanceView({ studentId, onlyUnjustified = false }: { 
                <div className="bg-blue-50 border border-blue-100 p-3 rounded-lg flex items-center gap-3 max-w-md">
                   <ShieldAlert className="h-5 w-5 text-blue-600 shrink-0" />
                   <p className="text-[10px] text-blue-800 font-bold leading-relaxed uppercase">
-                    Esta justificación quedará registrada en su expediente digital. El centro podrá requerir un justificante en papel si fuera necesario.
+                    Esta notificación no justifica automáticamente la falta. El profesorado deberá validar el motivo para cambiar el estado a "Justificada".
                   </p>
                </div>
                <Button 
                 onClick={handleProactiveSave}
                 className="bg-[#fb8500] hover:bg-[#e07600] text-white px-10 h-12 text-[11px] font-bold uppercase tracking-widest gap-2 shadow-lg"
                >
-                 <CheckCircle2 className="h-4 w-4" /> Enviar Justificaciones
+                 <Send className="h-4 w-4" /> Enviar Notificación
                </Button>
             </div>
           </div>
@@ -365,7 +366,7 @@ export function StudentAttendanceView({ studentId, onlyUnjustified = false }: { 
                           onClick={() => handleOpenJustify(att)}
                           className="h-7 text-[9px] font-bold uppercase border-blue-200 text-blue-700 hover:bg-blue-50 gap-1"
                         >
-                          <Send className="h-3 w-3" /> Justificar
+                          <Send className="h-3 w-3" /> Notificar motivo
                         </Button>
                       )}
                     </td>
@@ -395,11 +396,11 @@ export function StudentAttendanceView({ studentId, onlyUnjustified = false }: { 
                   onChange={(e) => setMotivo(e.target.value)}
                 />
              </div>
-             <p className="text-[9px] text-gray-400 italic">Esta información será visible para el profesorado de la materia y su tutor.</p>
+             <p className="text-[9px] text-gray-400 italic">Esta información será visible para el profesorado. El docente deberá validar el motivo para oficializar la justificación.</p>
           </div>
           <DialogFooter className="bg-gray-50 p-4 border-t gap-3">
              <Button variant="outline" onClick={() => setJustifyingId(null)} className="text-[10px] font-bold uppercase h-9">Cancelar</Button>
-             <Button onClick={handleSaveJustification} className="bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold uppercase h-9 shadow-md">Guardar Motivo</Button>
+             <Button onClick={handleSaveJustification} className="bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold uppercase h-9 shadow-md">Enviar Notificación</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
