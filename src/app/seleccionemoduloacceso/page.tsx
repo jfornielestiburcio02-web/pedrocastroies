@@ -16,7 +16,8 @@ import {
   ShieldCheck,
   Settings,
   Users,
-  Briefcase
+  Briefcase,
+  LifeBuoy
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useFirestore } from '@/firebase';
@@ -58,13 +59,13 @@ export default function SeleccioneModuloAccesoPage() {
             const data = userSnap.data();
             setUserData(data);
             
-            // Prioridad inicial de rol para la cabecera basada en los roles disponibles
+            // Prioridad inicial de rol para la cabecera
             const roles = data.rolesUsuario || [];
             if (roles.includes('EsDireccion')) setActiveRole('Dirección');
+            else if (roles.includes('EsCau')) setActiveRole('CAU');
             else if (roles.includes('EsProfesor')) setActiveRole('Profesor');
             else if (roles.includes('EsAlumno')) setActiveRole('Alumno');
             else if (roles.includes('EsSecretaria')) setActiveRole('Secretaría');
-            else if (roles.includes('EsCau')) setActiveRole('CAU');
           }
         } catch (error) {
           console.error("Error validando sesión:", error);
@@ -82,7 +83,7 @@ export default function SeleccioneModuloAccesoPage() {
   const handleModuleClick = (label: string) => {
     setSelectedModule(label.toUpperCase());
     
-    // Al entrar en un módulo, ajustamos el rol activo según la prioridad solicitada
+    // Al entrar en un módulo, ajustamos el rol activo según la prioridad
     const roles = userData?.rolesUsuario || [];
     if (label === "Seguimiento") {
       if (roles.includes('EsProfesor')) setActiveRole('Profesor');
@@ -91,6 +92,8 @@ export default function SeleccioneModuloAccesoPage() {
       setActiveRole('Dirección');
     } else if (label === "Secretaría Virtual") {
       setActiveRole('Secretaría');
+    } else if (label.startsWith("CAU")) {
+      setActiveRole('CAU');
     }
   };
 
@@ -118,10 +121,11 @@ export default function SeleccioneModuloAccesoPage() {
 
   const userRoles = userData?.rolesUsuario || [];
 
-  // Lógica de visibilidad de módulos solicitada
+  // Lógica de visibilidad de módulos
   const canSeeSeguimiento = userRoles.includes('EsProfesor') || userRoles.includes('EsAlumno');
   const canSeeGestion = userRoles.includes('EsDireccion');
   const canSeeSecretaria = userRoles.includes('EsSecretaria');
+  const canSeeCau = userRoles.includes('EsCau');
 
   return (
     <div className="min-h-screen bg-white font-verdana flex flex-col w-full overflow-x-hidden">
@@ -192,7 +196,7 @@ export default function SeleccioneModuloAccesoPage() {
                       isActive ? "bg-white/20" : "bg-gray-100"
                     )}>
                       {roleKey === 'EsDireccion' && <ShieldCheck className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
-                      {roleKey === 'EsCau' && <Settings className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
+                      {roleKey === 'EsCau' && <LifeBuoy className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
                       {roleKey === 'EsProfesor' && <Monitor className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
                       {roleKey === 'EsAlumno' && <UserCircle className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
                       {roleKey === 'EsSecretaria' && <Briefcase className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
@@ -257,8 +261,9 @@ export default function SeleccioneModuloAccesoPage() {
               {canSeeGestion && <ModuleBox label="Gestión" onClick={() => handleModuleClick("Gestión")} />}
               {canSeeSecretaria && <ModuleBox label="Secretaría Virtual" onClick={() => handleModuleClick("Secretaría Virtual")} />}
               {canSeeSeguimiento && <ModuleBox label="Seguimiento" onClick={() => handleModuleClick("Seguimiento")} />}
+              {canSeeCau && <ModuleBox label="CAU (Centro Atención de Usuarios)" onClick={() => handleModuleClick("CAU")} />}
               
-              {!canSeeGestion && !canSeeSecretaria && !canSeeSeguimiento && (
+              {!canSeeGestion && !canSeeSecretaria && !canSeeSeguimiento && !canSeeCau && (
                 <p className="text-white text-xl italic opacity-50">No tiene módulos asignados a su perfil</p>
               )}
             </div>
@@ -295,6 +300,8 @@ export default function SeleccioneModuloAccesoPage() {
                           ? "Entorno de gestión del equipo directivo para la administración del centro."
                           : activeRole === 'Secretaría'
                           ? "Entorno de secretaría virtual para trámites administrativos y expedientes."
+                          : activeRole === 'CAU'
+                          ? "Entorno de soporte técnico y atención de usuarios activo para la resolución de incidencias."
                           : `Entorno de gestión activa para el perfil de ${activeRole}.`}
                       </div>
                     </div>
@@ -336,12 +343,23 @@ export default function SeleccioneModuloAccesoPage() {
 }
 
 function ModuleBox({ label, onClick }: { label: string; onClick: () => void }) {
+  const isCau = label.startsWith("CAU");
+  
   return (
     <button 
       onClick={onClick}
-      className="w-40 h-40 md:w-56 md:h-56 border-4 border-white/30 bg-transparent flex items-center justify-center p-8 text-white text-xl md:text-2xl font-bold hover:bg-white/10 hover:border-white/50 transition-all text-center leading-tight shadow-lg active:scale-95 group"
+      className="w-40 h-40 md:w-56 md:h-56 border-4 border-white/30 bg-transparent flex flex-col items-center justify-center p-4 md:p-8 text-white font-bold hover:bg-white/10 hover:border-white/50 transition-all text-center leading-tight shadow-lg active:scale-95 group"
     >
-      <span className="group-hover:scale-110 transition-transform">{label}</span>
+      {isCau ? (
+        <div className="flex flex-col items-center gap-2">
+           <span className="text-2xl md:text-3xl">CAU</span>
+           <span className="text-[10px] md:text-sm font-normal opacity-90 leading-tight">
+             (Centro Atención de Usuarios)
+           </span>
+        </div>
+      ) : (
+        <span className="text-xl md:text-2xl group-hover:scale-110 transition-transform">{label}</span>
+      )}
     </button>
   );
 }
