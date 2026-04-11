@@ -72,6 +72,34 @@
         "createdAt": { "type": "string", "format": "date-time" }
       }
     },
+    "Examen": {
+      "title": "Examen",
+      "type": "object",
+      "description": "Registro de un examen con calificaciones por alumno.",
+      "properties": {
+        "profesorId": { "type": "string" },
+        "claseId": { "type": "string" },
+        "titulo": { "type": "string" },
+        "fecha": { "type": "string" },
+        "mostrarAlumno": { "type": "boolean" },
+        "ponderacion": { "type": "number" },
+        "notas": { "type": "object", "additionalProperties": { "type": "number" } },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Tarea": {
+      "title": "Tarea",
+      "type": "object",
+      "description": "Registro de una tarea con seguimiento de entrega por alumno.",
+      "properties": {
+        "profesorId": { "type": "string" },
+        "claseId": { "type": "string" },
+        "titulo": { "type": "string" },
+        "fecha": { "type": "string" },
+        "entregas": { "type": "object", "additionalProperties": { "type": "boolean" } },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
     "Asistencia": {
       "title": "Asistencia",
       "type": "object",
@@ -150,6 +178,18 @@
         "$ref": "#/backend/entities/Horario"
       },
       "description": "Colección global de horarios lectivos y guardias."
+    },
+    "/examenes/{examenId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Examen"
+      },
+      "description": "Colección de exámenes realizados."
+    },
+    "/tareas/{tareaId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Tarea"
+      },
+      "description": "Colección de tareas asignadas."
     },
     "/asistenciasInasistencias/{asistenciaId}": {
       "schema": {

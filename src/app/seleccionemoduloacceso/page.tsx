@@ -25,7 +25,8 @@ import {
   ChevronRight,
   Users,
   Megaphone,
-  Calendar
+  Calendar,
+  GraduationCap
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -42,6 +43,7 @@ import { TutorialFunctionView } from '@/components/rayuela/tutorial-function-vie
 import { ScheduleListView, ScheduleCreationView, MyScheduleView } from '@/components/rayuela/schedule-views';
 import { SidebarItem, SidebarHeading, ModuleBox } from '@/components/rayuela/shared-components';
 import { MyTutoringStudentsView, CenterStudentsView } from '@/components/rayuela/student-management-views';
+import { EvaluationsView } from '@/components/rayuela/evaluations-views';
 
 export default function SeleccioneModuloAccesoPage() {
   const [session, setSession] = useState<any>(null);
@@ -213,7 +215,7 @@ export default function SeleccioneModuloAccesoPage() {
               </div>
               <div className="flex gap-4 mt-2">
                 <Clock className="h-4 w-4 text-gray-400 cursor-pointer hover:text-gray-600" />
-                <BookOpen className="h-4 w-4 text-gray-400 cursor-pointer hover:text-gray-600" />
+                <BookOpen className="h-4 w-4 text-gray-400 cursor-pointer hover:text-gray-600" onClick={() => { setSelectedModule(null); setActiveSubContent(null); }} />
                 <Home className="h-4 w-4 text-gray-400 cursor-pointer hover:text-gray-600" onClick={() => { setSelectedModule(null); setActiveSubContent(null); }} />
                 <MessageSquare className={cn("h-4 w-4 cursor-pointer", unreadCount > 0 ? "text-red-600" : "text-[#fb8500]")} onClick={() => { setSelectedModule('SEGUIMIENTO'); setSidebarMode('MESSAGING'); setActiveSubContent('Mis Mensajes'); }} />
               </div>
@@ -512,6 +514,10 @@ export default function SeleccioneModuloAccesoPage() {
                     <MyTutoringStudentsView grupoTutorizado={userData?.esTutor} />
                   ) : activeSubContent === 'Alumnado del centro' ? (
                     <CenterStudentsView />
+                  ) : activeSubContent === 'Exámenes' ? (
+                    <EvaluationsView profesorId={session.usuario} type="exam" />
+                  ) : activeSubContent === 'Tareas' ? (
+                    <EvaluationsView profesorId={session.usuario} type="task" />
                   ) : activeSubContent ? (
                     <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
                        <div className="bg-white border rounded-lg p-10 shadow-sm min-h-[400px] flex flex-col items-center justify-center text-center space-y-4">
