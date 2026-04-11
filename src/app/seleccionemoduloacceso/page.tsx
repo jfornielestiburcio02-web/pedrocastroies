@@ -47,6 +47,7 @@ import { EvaluationsView } from '@/components/rayuela/evaluations-views';
 import { EvaluationOpeningView, GradingStatsView } from '@/components/rayuela/management-evaluation-views';
 import { TeacherGradingView } from '@/components/rayuela/teacher-grading-view';
 import { TutoringGradesView } from '@/components/rayuela/tutoring-grades-view';
+import { UserCreationView, UserManagementListView } from '@/components/rayuela/user-management-views';
 
 export default function SeleccioneModuloAccesoPage() {
   const [session, setSession] = useState<any>(null);
@@ -447,8 +448,8 @@ export default function SeleccioneModuloAccesoPage() {
                           {expandedItems['usuarios'] && (
                             <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
                               <SidebarItem color="#9c4d96" label="Creación" isSubItem onClick={() => setActiveSubContent('Creación de Usuarios')} active={activeSubContent === 'Creación de Usuarios'} />
-                              <SidebarItem color="#9c4d96" label="Eliminación" isSubItem onClick={() => setActiveSubContent('Eliminación de Usuarios')} active={activeSubContent === 'Eliminación de Usuarios'} />
                               <SidebarItem color="#9c4d96" label="Visualización" isSubItem onClick={() => setActiveSubContent('Visualización de Usuarios')} active={activeSubContent === 'Visualización de Usuarios'} />
+                              <SidebarItem color="#9c4d96" label="Eliminación" isSubItem onClick={() => setActiveSubContent('Visualización de Usuarios')} active={activeSubContent === 'Eliminación de Usuarios'} />
                             </div>
                           )}
                         </div>
@@ -549,6 +550,10 @@ export default function SeleccioneModuloAccesoPage() {
                     <TeacherGradingView profesorId={session.usuario} />
                   ) : activeSubContent === 'Evaluación como tutor' ? (
                     <TutoringGradesView grupoTutorizado={userData?.esTutor} />
+                  ) : activeSubContent === 'Creación de Usuarios' ? (
+                    <UserCreationView />
+                  ) : activeSubContent === 'Visualización de Usuarios' ? (
+                    <UserManagementListView />
                   ) : activeSubContent ? (
                     <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
                        <div className="bg-white border rounded-lg p-10 shadow-sm min-h-[400px] flex flex-col items-center justify-center text-center space-y-4">
