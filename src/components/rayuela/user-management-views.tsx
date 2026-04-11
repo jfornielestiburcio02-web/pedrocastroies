@@ -76,8 +76,24 @@ export function UserCreationView() {
 
     setIsSaving(true);
     
-    // Generar ID de usuario amigable: p.ej "juan.perez"
-    const usuarioId = `${formData.nombre.toLowerCase().replace(/\s/g, '')}.${formData.apellidos.toLowerCase().split(' ')[0]}`;
+    // Nueva Lógica de Generación de Usuario: 
+    // 1a letra nombre + 1er apellido (quita tildes) + 1a letra del 2o apellido
+    const normalize = (str: string) => 
+      str.normalize("NFD")
+         .replace(/[\u0300-\u036f]/g, "")
+         .toLowerCase()
+         .trim();
+
+    const nombreLimpio = normalize(formData.nombre);
+    const apellidosLimpio = normalize(formData.apellidos);
+    const apellidosArr = apellidosLimpio.split(/\s+/);
+    
+    const primeraLetraNombre = nombreLimpio[0] || "";
+    const primerApellido = apellidosArr[0] || "";
+    const primeraLetraSegundoApellido = apellidosArr.length > 1 ? apellidosArr[1][0] : "";
+
+    const usuarioId = `${primeraLetraNombre}${primerApellido}${primeraLetraSegundoApellido}`;
+    
     const userRef = doc(db, 'usuarios', usuarioId);
 
     const defaultImage = "https://rayuela.educarex.es/secvir/cec/alumnos/fotoAlumnoServlet?dniEmpleado=xImagenEmpleadox";
@@ -376,7 +392,7 @@ export function UserManagementListView() {
                           variant="ghost" 
                           size="sm" 
                           onClick={() => handleDeleteUser(user.id)}
-                          className="h-8 w-8 p-0 text-gray-300 hover:text-red-600"
+                          className="h-8 w-8 p-0 text-gray-400 hover:text-destructive hover:bg-destructive/10"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
