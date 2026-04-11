@@ -14,10 +14,8 @@ import {
   Monitor,
   UserCircle,
   ShieldCheck,
-  Settings,
-  Users,
-  Briefcase,
-  LifeBuoy
+  LifeBuoy,
+  Briefcase
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useFirestore } from '@/firebase';
@@ -139,9 +137,6 @@ export default function SeleccioneModuloAccesoPage() {
                 <AvatarImage src={userData?.imagenPerfil || `https://picsum.photos/seed/${session.usuario}/150/150`} />
                 <AvatarFallback>{session.usuario?.substring(0, 2).toUpperCase()}</AvatarFallback>
               </Avatar>
-              <div className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold h-5 w-5 rounded-full flex items-center justify-center border-2 border-[#e9e9e9]">
-                70
-              </div>
             </div>
 
             <div className="flex flex-col">
@@ -151,7 +146,7 @@ export default function SeleccioneModuloAccesoPage() {
                 </span>
               </div>
               <span className="text-[11px] text-gray-600">
-                06007031 - I.E.S. - Eugenio Hermoso (Fregenal de la Sierra)
+                I.E.S Pedro Castro (Com. Madrid)
               </span>
               <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-[11px] text-gray-500 font-medium">
                 <span className="hover:underline cursor-pointer">Documentos solicitados</span>
@@ -302,7 +297,7 @@ export default function SeleccioneModuloAccesoPage() {
                           : activeRole === 'Secretaría'
                           ? "Entorno de secretaría virtual para trámites administrativos y expedientes."
                           : activeRole === 'CAU'
-                          ? "Entorno de soporte técnico y atención de usuarios activo para la resolución de incidencias."
+                          ? "Entorno de soporte técnico y atención de usuarios activo para la resolución de ignorancia."
                           : `Entorno de gestión activa para el perfil de ${activeRole}.`}
                       </div>
                     </div>
