@@ -658,11 +658,7 @@ export default function SeleccioneModuloAccesoPage() {
                   ) : activeSubContent === 'Mis faltas' ? (
                     <StudentAttendanceView studentId={session.usuario} />
                   ) : activeSubContent === 'Justificar' ? (
-                    <div className="p-8 text-center bg-gray-50 border rounded-xl opacity-60">
-                       <AlertCircle className="h-12 w-12 mx-auto mb-4 text-blue-600" />
-                       <h2 className="text-xl font-bold uppercase">Módulo de Justificaciones</h2>
-                       <p className="text-sm italic">Para justificar una falta, el tutor legal debe presentar el documento oficial en Secretaría o contactar con el tutor mediante Mensajería Rayuela.</p>
-                    </div>
+                    <StudentAttendanceView studentId={session.usuario} onlyUnjustified />
                   ) : activeSubContent === 'Negativos / Positivos' ? (
                     <StudentBehaviorView studentId={session.usuario} />
                   ) : activeSubContent === 'Amonestaciones Alumno' ? (

@@ -9,7 +9,9 @@ import {
   ThumbsUp, 
   ThumbsDown, 
   Check, 
-  Trash2 
+  Trash2,
+  AlertCircle,
+  X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,7 +30,8 @@ import {
   DialogContent, 
   DialogDescription, 
   DialogHeader, 
-  DialogTitle 
+  DialogTitle,
+  DialogFooter
 } from "@/components/ui/dialog";
 import { Textarea } from '@/components/ui/textarea';
 import { useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
@@ -55,6 +58,7 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(manualScheduleId || null);
   const [historyAlumnoId, setHistoryAlumnoId] = useState<string | null>(null);
+  const [viewingReason, setViewingReason] = useState<{name: string, reason: string} | null>(null);
   const db = useFirestore();
 
   const dayOfWeek = useMemo(() => {
@@ -260,13 +264,25 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
              const currentStatus = studentAttendance?.tipo || 'A';
              const studentBehavior = behaviors?.find(b => b.alumnoId === student.id);
              const behaviorDisabled = currentStatus === 'I' || currentStatus === 'J';
+             const hasJustification = !!studentAttendance?.motivo;
 
              return (
                <div key={student.id} className="itemAlumnoEnClase relative group flex flex-col items-center pt-3 h-[210px]">
-                  <Avatar className="imagenAlumnoEnClase" onClick={() => setHistoryAlumnoId(student.id)}>
-                    <AvatarImage src={student.imagenPerfil} />
-                    <AvatarFallback>{student.usuario?.substring(0, 2).toUpperCase()}</AvatarFallback>
-                  </Avatar>
+                  <div className="relative">
+                    <Avatar className="imagenAlumnoEnClase" onClick={() => setHistoryAlumnoId(student.id)}>
+                      <AvatarImage src={student.imagenPerfil} />
+                      <AvatarFallback>{student.usuario?.substring(0, 2).toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    
+                    {hasJustification && (
+                      <button 
+                        onClick={() => setViewingReason({ name: student.nombrePersona || student.usuario, reason: studentAttendance.motivo })}
+                        className="absolute -top-1 -right-1 bg-red-600 text-white rounded-full h-6 w-6 border-2 border-white flex items-center justify-center shadow-lg hover:scale-110 transition-transform animate-pulse"
+                      >
+                        <AlertCircle className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
                   
                   <div className="nombreAlumno px-2 mt-2" onClick={() => setHistoryAlumnoId(student.id)}>
                     {student.nombrePersona || student.usuario}
@@ -331,6 +347,31 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
           onClose={() => setHistoryAlumnoId(null)} 
         />
       )}
+
+      <Dialog open={!!viewingReason} onOpenChange={() => setViewingReason(null)}>
+        <DialogContent className="max-w-sm font-verdana p-0 border-none overflow-hidden">
+          <DialogHeader className="bg-red-600 p-4 text-white text-center">
+             <DialogTitle className="text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2">
+               <AlertCircle className="h-4 w-4" /> Justificación Recibida
+             </DialogTitle>
+          </DialogHeader>
+          <div className="p-6 bg-white space-y-4">
+             <div className="space-y-1 text-center">
+                <span className="text-[10px] font-bold text-gray-400 uppercase">Alumno</span>
+                <p className="text-sm font-bold text-gray-800 uppercase">{viewingReason?.name}</p>
+             </div>
+             <div className="bg-gray-50 p-4 rounded-lg border border-dashed border-gray-200">
+                <span className="text-[10px] font-bold text-gray-400 uppercase block mb-2">Motivo alegado:</span>
+                <p className="text-xs font-medium text-gray-600 italic leading-relaxed">
+                  "{viewingReason?.reason}"
+                </p>
+             </div>
+          </div>
+          <DialogFooter className="bg-gray-50 p-3 border-t">
+             <Button onClick={() => setViewingReason(null)} className="w-full bg-gray-800 hover:bg-black text-white text-[10px] font-bold uppercase h-8 shadow-sm">Cerrar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -412,7 +453,7 @@ function AttendanceHistoryDialog({ alumnoId, claseId, onClose }: { alumnoId: str
                     </Badge>
                   </div>
 
-                  {item.tipo === 'J' && item.motivo && (
+                  {item.motivo && (
                     <div className="p-2 bg-white rounded border border-gray-100 text-[10px] italic text-gray-600">
                       <strong>Motivo:</strong> {item.motivo}
                     </div>
@@ -422,20 +463,20 @@ function AttendanceHistoryDialog({ alumnoId, claseId, onClose }: { alumnoId: str
                     {item.tipo !== 'J' && justifyingId !== item.id && (
                       <Button 
                         variant="ghost" 
-                        size="sm" 
+                        size="icon" 
                         onClick={() => setJustifyingId(item.id)}
-                        className="h-6 px-2 text-[9px] font-bold text-[#008D88] hover:bg-[#008D88]/10 gap-1 uppercase"
+                        className="h-7 w-7 text-[#008D88] hover:bg-[#008D88]/10"
                       >
-                        <Check className="h-3 w-3" /> Justificar
+                        <Check className="h-4 w-4" />
                       </Button>
                     )}
                     <Button 
                       variant="ghost" 
-                      size="sm" 
+                      size="icon" 
                       onClick={() => handleDelete(item.id)}
-                      className="h-6 px-2 text-[9px] font-bold text-destructive hover:bg-destructive/10 gap-1 uppercase"
+                      className="h-7 w-7 text-destructive hover:bg-destructive/10"
                     >
-                      <Trash2 className="h-3 w-3" /> Eliminar
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
 

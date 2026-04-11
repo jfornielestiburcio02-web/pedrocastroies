@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { 
   Loader2, 
   Calendar, 
@@ -16,22 +16,42 @@ import {
   FileText,
   Lock,
   MessageSquare,
-  ShieldAlert
+  ShieldAlert,
+  Pencil,
+  Trash2,
+  Send
 } from 'lucide-react';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, orderBy } from 'firebase/firestore';
+import { collection, query, where, orderBy, doc } from 'firebase/firestore';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogHeader, 
+  DialogTitle,
+  DialogFooter 
+} from "@/components/ui/dialog";
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { useToast } from '@/hooks/use-toast';
 
 /**
  * Vista de Faltas para el Alumno
  */
-export function StudentAttendanceView({ studentId }: { studentId: string }) {
+export function StudentAttendanceView({ studentId, onlyUnjustified = false }: { studentId: string, onlyUnjustified?: boolean }) {
   const db = useFirestore();
+  const { toast } = useToast();
+  const [justifyingId, setJustifyingId] = useState<string | null>(null);
+  const [tempMotivo, setMotivo] = useState("");
 
   const attendanceQuery = useMemoFirebase(() => {
     if (!db || !studentId) return null;
@@ -42,7 +62,13 @@ export function StudentAttendanceView({ studentId }: { studentId: string }) {
     );
   }, [db, studentId]);
 
-  const { data: attendances, isLoading: loadingAttendance } = useCollection(attendanceQuery);
+  const { data: rawAttendances, isLoading: loadingAttendance } = useCollection(attendanceQuery);
+
+  const attendances = useMemo(() => {
+    if (!rawAttendances) return [];
+    if (onlyUnjustified) return rawAttendances.filter(a => !a.motivo && (a.tipo === 'I' || a.tipo === 'R'));
+    return rawAttendances;
+  }, [rawAttendances, onlyUnjustified]);
 
   const schedulesQuery = useMemoFirebase(() => {
     if (!db) return null;
@@ -55,6 +81,25 @@ export function StudentAttendanceView({ studentId }: { studentId: string }) {
     return s?.asignatura || "Materia";
   };
 
+  const handleOpenJustify = (att: any) => {
+    setJustifyingId(att.id);
+    setMotivo(att.motivo || "");
+  };
+
+  const handleSaveJustification = () => {
+    if (!db || !justifyingId) return;
+    const docRef = doc(db, 'asistenciasInasistencias', justifyingId);
+    updateDocumentNonBlocking(docRef, { motivo: tempMotivo });
+    toast({ title: "Justificación enviada", description: "El profesor recibirá una notificación del motivo." });
+    setJustifyingId(null);
+  };
+
+  const handleDeleteJustification = (id: string) => {
+    if (!db) return;
+    updateDocumentNonBlocking(doc(db, 'asistenciasInasistencias', id), { motivo: "" });
+    toast({ title: "Justificación eliminada", description: "Se ha borrado el motivo del registro." });
+  };
+
   if (loadingAttendance) {
     return <div className="flex justify-center p-20"><Loader2 className="h-8 w-8 animate-spin text-[#89a54e]" /></div>;
   }
@@ -62,14 +107,21 @@ export function StudentAttendanceView({ studentId }: { studentId: string }) {
   return (
     <div className="animate-in fade-in duration-500 space-y-6 max-w-4xl mx-auto w-full">
       <div className="bg-white border rounded-xl shadow-sm overflow-hidden">
-        <div className="bg-[#89a54e] p-4 text-white flex items-center gap-2">
+        <div className={cn(
+          "p-4 text-white flex items-center gap-2",
+          onlyUnjustified ? "bg-[#fb8500]" : "bg-[#89a54e]"
+        )}>
           <Clock className="h-5 w-5" />
-          <h2 className="font-bold text-sm uppercase tracking-tight">Mi Registro de Asistencia</h2>
+          <h2 className="font-bold text-sm uppercase tracking-tight">
+            {onlyUnjustified ? 'Pendiente de Justificar' : 'Mi Registro de Asistencia'}
+          </h2>
         </div>
         
         <div className="p-0">
           {attendances?.length === 0 ? (
-            <div className="p-20 text-center text-gray-400 italic text-sm">No constan faltas ni retrasos registrados.</div>
+            <div className="p-20 text-center text-gray-400 italic text-sm">
+              {onlyUnjustified ? 'No tiene faltas pendientes de justificar.' : 'No constan faltas ni retrasos registrados.'}
+            </div>
           ) : (
             <table className="w-full text-left border-collapse">
               <thead className="bg-gray-50 border-b">
@@ -77,7 +129,7 @@ export function StudentAttendanceView({ studentId }: { studentId: string }) {
                   <th className="p-4 text-[10px] font-bold text-gray-400 uppercase">Fecha</th>
                   <th className="p-4 text-[10px] font-bold text-gray-400 uppercase">Materia</th>
                   <th className="p-4 text-[10px] font-bold text-gray-400 uppercase text-center">Tipo</th>
-                  <th className="p-4 text-[10px] font-bold text-gray-400 uppercase">Justificación</th>
+                  <th className="p-4 text-[10px] font-bold text-gray-400 uppercase text-right">Acción / Motivo</th>
                 </tr>
               </thead>
               <tbody>
@@ -104,8 +156,37 @@ export function StudentAttendanceView({ studentId }: { studentId: string }) {
                         </Badge>
                       </div>
                     </td>
-                    <td className="p-4">
-                      <span className="text-[10px] text-gray-500 italic">{att.motivo || "-"}</span>
+                    <td className="p-4 text-right">
+                      {att.motivo ? (
+                        <div className="flex items-center justify-end gap-2 group">
+                           <span className="text-[10px] text-gray-500 italic max-w-[150px] truncate">{att.motivo}</span>
+                           <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-7 w-7 text-blue-600 hover:bg-blue-50 opacity-0 group-hover:opacity-100"
+                            onClick={() => handleOpenJustify(att)}
+                           >
+                             <Pencil className="h-3 w-3" />
+                           </Button>
+                           <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-7 w-7 text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100"
+                            onClick={() => handleDeleteJustification(att.id)}
+                           >
+                             <Trash2 className="h-3 w-3" />
+                           </Button>
+                        </div>
+                      ) : (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => handleOpenJustify(att)}
+                          className="h-7 text-[9px] font-bold uppercase border-blue-200 text-blue-700 hover:bg-blue-50 gap-1"
+                        >
+                          <Send className="h-3 w-3" /> Justificar
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -114,6 +195,33 @@ export function StudentAttendanceView({ studentId }: { studentId: string }) {
           )}
         </div>
       </div>
+
+      <Dialog open={!!justifyingId} onOpenChange={() => setJustifyingId(null)}>
+        <DialogContent className="max-w-md font-verdana p-0 border-none overflow-hidden">
+          <DialogHeader className="bg-blue-600 p-6 text-white shrink-0">
+             <DialogTitle className="text-sm font-bold uppercase tracking-widest flex items-center gap-2">
+               <MessageSquare className="h-4 w-4" /> Justificación de Ausencia
+             </DialogTitle>
+             <DialogDescription className="text-white/80 text-[10px] font-bold uppercase">I.E.S Pedro Castro - Secretaría Digital</DialogDescription>
+          </DialogHeader>
+          <div className="p-6 bg-white space-y-4">
+             <div className="space-y-2">
+                <Label className="text-[10px] font-bold text-gray-400 uppercase">Motivo de la Falta / Retraso</Label>
+                <Textarea 
+                  placeholder="Ej: Cita médica, Problema de transporte..." 
+                  className="min-h-[120px] text-sm font-medium border-gray-300"
+                  value={tempMotivo}
+                  onChange={(e) => setMotivo(e.target.value)}
+                />
+             </div>
+             <p className="text-[9px] text-gray-400 italic">Esta información será visible para el profesorado de la materia y su tutor.</p>
+          </div>
+          <DialogFooter className="bg-gray-50 p-4 border-t gap-3">
+             <Button variant="outline" onClick={() => setJustifyingId(null)} className="text-[10px] font-bold uppercase h-9">Cancelar</Button>
+             <Button onClick={handleSaveJustification} className="bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold uppercase h-9 shadow-md">Guardar Motivo</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
