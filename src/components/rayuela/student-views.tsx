@@ -97,7 +97,7 @@ export function StudentAttendanceView({ studentId, onlyUnjustified = false }: { 
 
   const attendances = useMemo(() => {
     if (!rawAttendances) return [];
-    if (onlyUnjustified) return []; // No se usa en modo proactivo
+    if (onlyUnjustified) return []; 
     return rawAttendances;
   }, [rawAttendances, onlyUnjustified]);
 
@@ -138,17 +138,17 @@ export function StudentAttendanceView({ studentId, onlyUnjustified = false }: { 
     }
 
     // Para cada sesión seleccionada, crear o actualizar el registro de asistencia
-    // IMPORTANTE: Se queda como 'I' (Injustificada) hasta que el profe la valide
+    // CRÍTICO: El 'tipo' se queda VACÍO. No es falta aún, solo es una NOTIFICACIÓN.
     formData.sesionesSeleccionadas.forEach(claseId => {
       const schedule = daySchedules?.find(s => s.id === claseId);
-      const gradeId = `${studentId}_${claseId}_${formData.fecha}`; // ID determinista para evitar duplicados
-      const docRef = doc(db, 'asistenciasInasistencias', gradeId);
+      const notificationId = `${studentId}_${claseId}_${formData.fecha}`;
+      const docRef = doc(db, 'asistenciasInasistencias', notificationId);
 
       setDocumentNonBlocking(docRef, {
         alumnoId: studentId,
         claseId: claseId,
         fecha: formData.fecha,
-        tipo: 'I', // Se mantiene como Injustificada para que el profe la vea y decida
+        tipo: '', // SIN ESTADO - Solo notificación de motivo
         motivo: `${formData.titulo ? formData.titulo + ': ' : ''}${formData.descripcion}`,
         profesorId: schedule?.profesorId || 'SISTEMA',
         createdAt: new Date().toISOString()
@@ -156,8 +156,8 @@ export function StudentAttendanceView({ studentId, onlyUnjustified = false }: { 
     });
 
     toast({ 
-      title: "Notificaciones Enviadas", 
-      description: `Se ha avisado a los profesores de las ${formData.sesionesSeleccionadas.length} sesiones. El docente deberá validar la falta.` 
+      title: "Notificación Enviada", 
+      description: `Se ha avisado a los profesores de las ${formData.sesionesSeleccionadas.length} sesiones. El docente podrá ver el aviso en su lista.` 
     });
 
     setFormData({ ...formData, titulo: '', descripcion: '', sesionesSeleccionadas: [] });
@@ -184,8 +184,8 @@ export function StudentAttendanceView({ studentId, onlyUnjustified = false }: { 
           <div className="bg-[#fb8500] p-6 text-white flex items-center gap-4">
             <div className="bg-white/20 p-3 rounded-lg"><Send className="h-6 w-6" /></div>
             <div>
-              <h2 className="text-lg font-bold uppercase tracking-tight">Formulario de Justificación Oficial</h2>
-              <p className="text-white/80 text-[10px] font-bold uppercase">Notifique sus ausencias al centro educativo</p>
+              <h2 className="text-lg font-bold uppercase tracking-tight">Notificar Ausencia / Justificación</h2>
+              <p className="text-white/80 text-[10px] font-bold uppercase">Envíe un aviso previo a sus profesores</p>
             </div>
           </div>
 
@@ -193,7 +193,7 @@ export function StudentAttendanceView({ studentId, onlyUnjustified = false }: { 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
               <div className="space-y-6">
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-bold text-gray-400 uppercase">1. Seleccione la fecha de la ausencia</Label>
+                  <Label className="text-[10px] font-bold text-gray-400 uppercase">1. Seleccione la fecha</Label>
                   <Input 
                     type="date" 
                     value={formData.fecha} 
@@ -203,9 +203,9 @@ export function StudentAttendanceView({ studentId, onlyUnjustified = false }: { 
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-bold text-gray-400 uppercase">2. Título / Asunto (Opcional)</Label>
+                  <Label className="text-[10px] font-bold text-gray-400 uppercase">2. Título / Asunto</Label>
                   <Input 
-                    placeholder="Ej: Cita Médica, Trámite DNI..." 
+                    placeholder="Ej: Cita Médica..." 
                     value={formData.titulo}
                     onChange={(e) => setFormData({...formData, titulo: e.target.value})}
                     className="border-gray-300 h-10 text-sm"
@@ -215,7 +215,7 @@ export function StudentAttendanceView({ studentId, onlyUnjustified = false }: { 
                 <div className="space-y-2">
                   <Label className="text-[10px] font-bold text-gray-400 uppercase">3. Descripción del motivo</Label>
                   <Textarea 
-                    placeholder="Detalle brevemente el motivo de su falta..." 
+                    placeholder="Escriba aquí la razón de su ausencia..." 
                     className="min-h-[120px] border-gray-300 resize-none text-sm"
                     value={formData.descripcion}
                     onChange={(e) => setFormData({...formData, descripcion: e.target.value})}
@@ -225,7 +225,7 @@ export function StudentAttendanceView({ studentId, onlyUnjustified = false }: { 
 
               <div className="space-y-4">
                 <Label className="text-[10px] font-bold text-gray-400 uppercase flex justify-between">
-                  <span>4. Seleccione las sesiones afectadas</span>
+                  <span>4. Seleccione las materias</span>
                   <span className="text-primary">{formData.sesionesSeleccionadas.length} seleccionadas</span>
                 </Label>
                 
@@ -235,7 +235,7 @@ export function StudentAttendanceView({ studentId, onlyUnjustified = false }: { 
                   ) : !daySchedules || daySchedules.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-20 text-center space-y-2 opacity-40">
                        <Calendar className="h-8 w-8 text-gray-400" />
-                       <p className="text-xs italic">No tiene clases asignadas para el día {format(new Date(formData.fecha), 'eeee d', { locale: es })}</p>
+                       <p className="text-xs italic">No tiene clases asignadas para este día.</p>
                     </div>
                   ) : (
                     <ScrollArea className="h-[300px] pr-2">
@@ -258,17 +258,12 @@ export function StudentAttendanceView({ studentId, onlyUnjustified = false }: { 
                                   <span className="text-xs font-bold text-gray-700 uppercase">{session.asignatura}</span>
                                </div>
                             </div>
-                            <div className={cn(
-                              "w-2 h-2 rounded-full",
-                              formData.sesionesSeleccionadas.includes(session.id) ? "bg-[#fb8500]" : "bg-gray-200"
-                            )}></div>
                           </div>
                         ))}
                       </div>
                     </ScrollArea>
                   )}
                 </div>
-                <p className="text-[9px] text-gray-400 italic text-center">Los profesores recibirán una notificación de su ausencia.</p>
               </div>
             </div>
 
@@ -276,14 +271,14 @@ export function StudentAttendanceView({ studentId, onlyUnjustified = false }: { 
                <div className="bg-blue-50 border border-blue-100 p-3 rounded-lg flex items-center gap-3 max-w-md">
                   <ShieldAlert className="h-5 w-5 text-blue-600 shrink-0" />
                   <p className="text-[10px] text-blue-800 font-bold leading-relaxed uppercase">
-                    Esta notificación no justifica automáticamente la falta. El profesorado deberá validar el motivo para cambiar el estado a "Justificada".
+                    Este envío es solo una notificación. El profesor deberá validar su mensaje para marcar la falta como Justificada.
                   </p>
                </div>
                <Button 
                 onClick={handleProactiveSave}
                 className="bg-[#fb8500] hover:bg-[#e07600] text-white px-10 h-12 text-[11px] font-bold uppercase tracking-widest gap-2 shadow-lg"
                >
-                 <Send className="h-4 w-4" /> Enviar Notificación
+                 <Send className="h-4 w-4" /> Enviar Aviso
                </Button>
             </div>
           </div>
@@ -332,9 +327,10 @@ export function StudentAttendanceView({ studentId, onlyUnjustified = false }: { 
                           "text-[9px] font-bold px-2 py-0.5 border-none",
                           att.tipo === 'I' ? "bg-orange-100 text-orange-700" : 
                           att.tipo === 'R' ? "bg-yellow-100 text-yellow-700" : 
-                          "bg-green-100 text-green-700"
+                          att.tipo === 'J' ? "bg-green-100 text-green-700" :
+                          "bg-blue-50 text-blue-600"
                         )}>
-                          {att.tipo === 'I' ? 'INJUSTIFICADA' : att.tipo === 'R' ? 'RETRASO' : 'JUSTIFICADA'}
+                          {att.tipo === 'I' ? 'INJUSTIFICADA' : att.tipo === 'R' ? 'RETRASO' : att.tipo === 'J' ? 'JUSTIFICADA' : 'NOTIFICADA'}
                         </Badge>
                       </div>
                     </td>
@@ -396,7 +392,7 @@ export function StudentAttendanceView({ studentId, onlyUnjustified = false }: { 
                   onChange={(e) => setMotivo(e.target.value)}
                 />
              </div>
-             <p className="text-[9px] text-gray-400 italic">Esta información será visible para el profesorado. El docente deberá validar el motivo para oficializar la justificación.</p>
+             <p className="text-[9px] text-gray-400 italic">Esta información será visible para el profesorado. El docente decidirá si justifica la falta en base a este motivo.</p>
           </div>
           <DialogFooter className="bg-gray-50 p-4 border-t gap-3">
              <Button variant="outline" onClick={() => setJustifyingId(null)} className="text-[10px] font-bold uppercase h-9">Cancelar</Button>

@@ -130,12 +130,16 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
     const currentStatus = existing?.tipo || 'A';
     
     let nextStatus = 'A';
-    if (currentStatus === 'A') nextStatus = 'I';
+    // Ciclo: Asiste -> Injustificada -> Retraso -> Asiste
+    if (currentStatus === 'A' || currentStatus === '') nextStatus = 'I';
     else if (currentStatus === 'I') nextStatus = 'R';
     else if (currentStatus === 'R') nextStatus = 'A';
 
     if (nextStatus === 'A') {
-      if (existing) {
+      // Si el registro solo tiene motivo pero no tipo, lo mantenemos para no perder la notificación
+      if (existing?.motivo) {
+        updateDocumentNonBlocking(doc(db, 'asistenciasInasistencias', existing.id), { tipo: '' });
+      } else if (existing) {
         deleteDocumentNonBlocking(doc(db, 'asistenciasInasistencias', existing.id));
       }
       return;
@@ -147,7 +151,7 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
       fecha: selectedDate,
       tipo: nextStatus,
       profesorId,
-      createdAt: new Date().toISOString()
+      createdAt: existing?.createdAt || new Date().toISOString()
     };
 
     if (existing) {
@@ -193,11 +197,24 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
       });
       toast({ title: "Falta Justificada", description: "Se ha validado el motivo del alumno." });
       setViewingReason(null);
+    } else {
+      // Caso raro donde hay motivo pero se borró el doc, lo recreamos como J
+      addDocumentNonBlocking(collection(db, 'asistenciasInasistencias'), {
+        alumnoId: viewingReason.alumnoId,
+        claseId: selectedScheduleId,
+        fecha: selectedDate,
+        tipo: 'J',
+        motivo: viewingReason.reason,
+        profesorId,
+        justifiedAt: new Date().toISOString(),
+        createdAt: new Date().toISOString()
+      });
+      setViewingReason(null);
     }
   };
 
   const getStatusText = (status: string) => {
-    if (status === 'A') return 'Asiste';
+    if (status === 'A' || status === '') return 'Asiste';
     if (status === 'I') return 'Injustif.';
     if (status === 'R') return 'Retraso';
     if (status === 'J') return 'Justif.';
@@ -306,7 +323,7 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
                   <div className="w-full px-2 mt-1">
                     <button 
                       onClick={() => currentStatus !== 'J' && handleCycleAttendance(student.id)}
-                      data-state={currentStatus}
+                      data-state={currentStatus || 'A'}
                       className={cn(
                         "botonFalta w-full h-8 transition-colors flex items-center justify-center font-bold text-black",
                         currentStatus === 'J' ? "bg-[#78B64E] border-[#78B64E] cursor-default" : "active:scale-95"
@@ -367,7 +384,7 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
         <DialogContent className="max-w-sm font-verdana p-0 border-none overflow-hidden">
           <DialogHeader className="bg-red-600 p-4 text-white text-center">
              <DialogTitle className="text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2">
-               <AlertCircle className="h-4 w-4" /> Justificación Recibida
+               <AlertCircle className="h-4 w-4" /> Notificación del Alumno
              </DialogTitle>
           </DialogHeader>
           <div className="p-6 bg-white space-y-4">
@@ -376,7 +393,7 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
                 <p className="text-sm font-bold text-gray-800 uppercase">{viewingReason?.name}</p>
              </div>
              <div className="bg-gray-50 p-4 rounded-lg border border-dashed border-gray-200">
-                <span className="text-[10px] font-bold text-gray-400 uppercase block mb-2">Motivo alegado:</span>
+                <span className="text-[10px] font-bold text-gray-400 uppercase block mb-2">Motivo enviado:</span>
                 <p className="text-xs font-medium text-gray-600 italic leading-relaxed">
                   "{viewingReason?.reason}"
                 </p>
@@ -468,9 +485,10 @@ function AttendanceHistoryDialog({ alumnoId, claseId, onClose }: { alumnoId: str
                       "text-[10px] font-bold px-3 border-none",
                       item.tipo === 'I' ? "bg-[#EB8A5F] text-white" : 
                       item.tipo === 'R' ? "bg-[#FFCD2D] text-gray-800" :
-                      "bg-[#78B64E] text-white"
+                      item.tipo === 'J' ? "bg-[#78B64E] text-white" :
+                      "bg-blue-50 text-blue-600"
                     )}>
-                      {item.tipo === 'I' ? 'INJUSTIFICADA' : item.tipo === 'R' ? 'RETRASO' : 'JUSTIFICADA'}
+                      {item.tipo === 'I' ? 'INJUSTIFICADA' : item.tipo === 'R' ? 'RETRASO' : item.tipo === 'J' ? 'JUSTIFICADA' : 'NOTIFICADA'}
                     </Badge>
                   </div>
 
@@ -531,7 +549,7 @@ function AttendanceHistoryDialog({ alumnoId, claseId, onClose }: { alumnoId: str
             </div>
           ) : (
             <div className="text-center py-10 text-gray-400 italic text-sm">
-              No constan incidencias de asistencia para este alumno en este horario.
+              No constan registros para este alumno en este horario.
             </div>
           )}
           <div className="mt-6 flex justify-center">
