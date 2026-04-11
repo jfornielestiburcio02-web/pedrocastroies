@@ -34,6 +34,10 @@
             "enum": ["EsProfesor", "EsAlumno", "EsDireccion", "EsCau", "EsSecretaria"]
           }
         },
+        "cursoAlumno": {
+          "type": "string",
+          "description": "Curso asignado al alumno (ej: 4º ESO A)."
+        },
         "sesion": {
           "type": "string",
           "description": "Identificador de sesión (JSESSIONID)."
@@ -90,6 +94,25 @@
         "profesorId": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       }
+    },
+    "Incidencia": {
+      "title": "Incidencia",
+      "type": "object",
+      "description": "Registro disciplinario detallado de un alumno.",
+      "properties": {
+        "alumnoId": { "type": "string" },
+        "profesorId": { "type": "string" },
+        "curso": { "type": "string" },
+        "fecha": { "type": "string", "format": "date-time" },
+        "tipoIncidencia": { "type": "string", "enum": ["Contraria", "Grave"] },
+        "gravedad": { "type": "number", "minimum": 1, "maximum": 5 },
+        "descripcion": { "type": "string" },
+        "conductas": { "type": "array", "items": { "type": "string" } },
+        "medidasCorrectoras": { "type": "string" },
+        "observaciones": { "type": "string" },
+        "comunicadoFamilia": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "auth": {
@@ -121,6 +144,12 @@
         "$ref": "#/backend/entities/Comportamiento"
       },
       "description": "Colección de registros de comportamiento."
+    },
+    "/incidencias/{incidenciaId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Incidencia"
+      },
+      "description": "Colección de incidencias disciplinarias."
     }
   }
 }

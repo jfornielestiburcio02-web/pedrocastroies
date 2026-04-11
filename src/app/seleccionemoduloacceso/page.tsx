@@ -37,7 +37,9 @@ import {
   ThumbsUp,
   ThumbsDown,
   AlertCircle,
-  FileText
+  FileText,
+  Filter,
+  ShieldAlert
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -83,8 +85,10 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogFooter
 } from "@/components/ui/dialog";
 import { Textarea } from '@/components/ui/textarea';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 export default function SeleccioneModuloAccesoPage() {
   const [session, setSession] = useState<any>(null);
@@ -371,7 +375,6 @@ export default function SeleccioneModuloAccesoPage() {
                           )}
                         </div>
 
-                        {/* Nueva Sección: Conductas contrarias */}
                         <div className="flex flex-col">
                            <div 
                             onClick={() => toggleExpanded('conductas')}
@@ -492,7 +495,7 @@ export default function SeleccioneModuloAccesoPage() {
                   ) : activeSubContent === 'Guardias' ? (
                     <GuardDutyView profesorId={session.usuario} />
                   ) : activeSubContent === 'Alumnado Incidente' ? (
-                    <AlumnadoIncidenteView />
+                    <AlumnadoIncidenteView profesorId={session.usuario} />
                   ) : activeSubContent ? (
                     <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
                        <div className="bg-white border rounded-lg p-10 shadow-sm min-h-[400px] flex flex-col items-center justify-center text-center space-y-4">
@@ -564,17 +567,94 @@ export default function SeleccioneModuloAccesoPage() {
 /**
  * Vista de Alumnado Incidente (Módulo de Conductas Contrarias).
  */
-function AlumnadoIncidenteView() {
+function AlumnadoIncidenteView({ profesorId }: { profesorId: string }) {
   const db = useFirestore();
+  const { toast } = useToast();
+  const [selectedCourse, setSelectedCourse] = useState<string>("TODOS");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   
   const usersQuery = useMemoFirebase(() => {
     if (!db) return null;
     return query(collection(db, 'usuarios'), where('rolesUsuario', 'array-contains', 'EsAlumno'));
   }, [db]);
 
-  const { data: students, isLoading } = useCollection(usersQuery);
+  const { data: allStudents, isLoading: loadingStudents } = useCollection(usersQuery);
 
-  if (isLoading) {
+  const incidentsQuery = useMemoFirebase(() => {
+    if (!db) return null;
+    return collection(db, 'incidencias');
+  }, [db]);
+
+  const { data: allIncidents } = useCollection(incidentsQuery);
+
+  const courses = useMemo(() => {
+    if (!allStudents) return [];
+    const unique = Array.from(new Set(allStudents.map(s => s.cursoAlumno || "SIN CURSO")));
+    return ["TODOS", ...unique];
+  }, [allStudents]);
+
+  const filteredStudents = useMemo(() => {
+    if (!allStudents) return [];
+    if (selectedCourse === "TODOS") return allStudents;
+    return allStudents.filter(s => (s.cursoAlumno || "SIN CURSO") === selectedCourse);
+  }, [allStudents, selectedCourse]);
+
+  const [formData, setFormData] = useState({
+    alumnoId: '',
+    tipoIncidencia: 'Contraria',
+    gravedad: 1,
+    descripcion: '',
+    conductas: [] as string[],
+    medidasCorrectoras: '',
+    observaciones: '',
+    comunicadoFamilia: false
+  });
+
+  const conductList = [
+    "Perturbación del normal desarrollo de las clases",
+    "Falta de colaboración sistemática",
+    "Uso de teléfonos móviles o dispositivos electrónicos",
+    "Incumplimiento de normas de vestimenta",
+    "Faltas injustificadas de puntualidad",
+    "Deterioro leve de instalaciones o materiales",
+    "Desobediencia a las instrucciones del profesorado"
+  ];
+
+  const handleSaveIncident = () => {
+    if (!db || !formData.alumnoId || !formData.descripcion) {
+      toast({ variant: "destructive", title: "Error", description: "Complete el alumno y la descripción." });
+      return;
+    }
+
+    const student = allStudents?.find(s => s.id === formData.alumnoId);
+    
+    addDocumentNonBlocking(collection(db, 'incidencias'), {
+      ...formData,
+      profesorId,
+      curso: student?.cursoAlumno || "SIN CURSO",
+      fecha: new Date().toISOString(),
+      createdAt: new Date().toISOString()
+    });
+
+    toast({ title: "Incidencia Registrada", description: "Se ha añadido al expediente disciplinario." });
+    setIsDialogOpen(false);
+    setFormData({
+      alumnoId: '',
+      tipoIncidencia: 'Contraria',
+      gravedad: 1,
+      descripcion: '',
+      conductas: [] as string[],
+      medidasCorrectoras: '',
+      observaciones: '',
+      comunicadoFamilia: false
+    });
+  };
+
+  const getIncidentCount = (studentId: string) => {
+    return allIncidents?.filter(i => i.alumnoId === studentId).length || 0;
+  };
+
+  if (loadingStudents) {
     return (
       <div className="flex justify-center p-20">
         <Loader2 className="h-8 w-8 animate-spin text-[#89a54e]" />
@@ -585,14 +665,30 @@ function AlumnadoIncidenteView() {
   return (
     <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 space-y-6 max-w-6xl mx-auto w-full">
       <div className="bg-white border rounded-lg shadow-sm overflow-hidden">
-        <div className="bg-[#f8f9fa] border-b p-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <AlertCircle className="h-5 w-5 text-red-600" />
+        <div className="bg-[#f8f9fa] border-b p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <ShieldAlert className="h-5 w-5 text-red-600" />
             <span className="text-sm font-bold text-gray-700 uppercase">Gestión de Alumnado Incidente</span>
           </div>
-          <Button size="sm" className="bg-[#89a54e] text-white text-[10px] font-bold uppercase h-8 px-4 gap-2">
-            <Plus className="h-3 w-3" /> Nueva Incidencia
-          </Button>
+          
+          <div className="flex items-center gap-4 w-full md:w-auto">
+             <div className="flex items-center gap-2">
+               <Label className="text-[10px] font-bold text-gray-400 uppercase">Filtrar Curso:</Label>
+               <Select value={selectedCourse} onValueChange={setSelectedCourse}>
+                 <SelectTrigger className="h-8 w-[160px] text-[10px] font-bold border-gray-300">
+                   <SelectValue />
+                 </SelectTrigger>
+                 <SelectContent>
+                   {courses.map(c => (
+                     <SelectItem key={c} value={c} className="text-[10px] font-bold">{c}</SelectItem>
+                   ))}
+                 </SelectContent>
+               </Select>
+             </div>
+             <Button onClick={() => setIsDialogOpen(true)} size="sm" className="bg-[#89a54e] hover:bg-[#728a41] text-white text-[10px] font-bold uppercase h-8 px-4 gap-2 shadow-sm">
+               <Plus className="h-3 w-3" /> Nueva Incidencia
+             </Button>
+          </div>
         </div>
 
         <div className="p-0">
@@ -600,47 +696,53 @@ function AlumnadoIncidenteView() {
             <TableHeader className="bg-gray-50">
               <TableRow>
                 <TableHead className="text-[10px] font-bold uppercase text-gray-500">Alumno</TableHead>
-                <TableHead className="text-[10px] font-bold uppercase text-gray-500">Grupo</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase text-gray-500">Curso</TableHead>
                 <TableHead className="text-[10px] font-bold uppercase text-gray-500">Nº Incidencias</TableHead>
                 <TableHead className="text-[10px] font-bold uppercase text-gray-500 text-center">Estado</TableHead>
                 <TableHead className="text-right text-[10px] font-bold uppercase text-gray-500">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {students && students.length > 0 ? (
-                students.map((student) => (
-                  <TableRow key={student.id} className="hover:bg-gray-50/50">
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={student.imagenPerfil} />
-                          <AvatarFallback>{student.usuario?.substring(0, 2).toUpperCase()}</AvatarFallback>
-                        </Avatar>
-                        <span className="text-xs font-bold text-gray-700">{student.nombrePersona || student.usuario}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-xs text-gray-600">4º ESO - A</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="text-[10px] font-bold bg-red-50 text-red-700 border-red-200">
-                        {Math.floor(Math.random() * 5)} INCIDENCIAS
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <div className="flex justify-center">
-                        <CheckCircle2 className="h-4 w-4 text-green-500" />
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" className="h-8 px-2 text-[9px] font-bold text-[#89a54e] uppercase gap-1">
-                        <FileText className="h-3 w-3" /> Ver Expediente
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
+              {filteredStudents.length > 0 ? (
+                filteredStudents.map((student) => {
+                  const count = getIncidentCount(student.id);
+                  return (
+                    <TableRow key={student.id} className="hover:bg-gray-50/50">
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage src={student.imagenPerfil} />
+                            <AvatarFallback>{student.usuario?.substring(0, 2).toUpperCase()}</AvatarFallback>
+                          </Avatar>
+                          <span className="text-xs font-bold text-gray-700">{student.nombrePersona || student.usuario}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-xs text-gray-600 font-bold">{student.cursoAlumno || "SIN CURSO"}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={cn(
+                          "text-[10px] font-bold border-none",
+                          count > 0 ? "bg-red-50 text-red-700" : "bg-gray-50 text-gray-500"
+                        )}>
+                          {count} {count === 1 ? 'INCIDENCIA' : 'INCIDENCIAS'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex justify-center">
+                          <CheckCircle2 className={cn("h-4 w-4", count > 0 ? "text-yellow-500" : "text-green-500")} />
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="sm" className="h-8 px-2 text-[9px] font-bold text-[#89a54e] uppercase gap-1 hover:bg-[#89a54e]/10">
+                          <FileText className="h-3 w-3" /> Ver Expediente
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               ) : (
                 <TableRow>
                   <TableCell colSpan={5} className="h-40 text-center text-muted-foreground italic text-sm">
-                    No se han encontrado registros de alumnos incidentes.
+                    No se han encontrado alumnos para el curso seleccionado.
                   </TableCell>
                 </TableRow>
               )}
@@ -648,9 +750,117 @@ function AlumnadoIncidenteView() {
           </Table>
         </div>
       </div>
+
+      {/* DIALOGO NUEVA INCIDENCIA */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-2xl font-verdana p-0 border-none overflow-hidden max-h-[90vh] flex flex-col">
+          <DialogHeader className="bg-[#f2f2f2] p-6 text-center shrink-0 border-b">
+             <div className="flex items-center justify-center gap-2 text-red-700 mb-1">
+                <AlertTriangle className="h-5 w-5" />
+                <DialogTitle className="text-sm font-bold uppercase tracking-tight">Registro de Amonestación / Incidencia</DialogTitle>
+             </div>
+             <DialogDescription className="text-[11px] font-bold text-gray-500 uppercase">EXPEDIENTE DISCIPLINARIO DIGITAL - I.E.S PEDRO CASTRO</DialogDescription>
+          </DialogHeader>
+
+          <ScrollArea className="flex-1 p-6 bg-white">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+               <div className="space-y-6">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-bold uppercase text-gray-400">Alumno Implicado</Label>
+                    <Select value={formData.alumnoId} onValueChange={(val) => setFormData({...formData, alumnoId: val})}>
+                      <SelectTrigger className="text-xs font-bold border-gray-300">
+                        <SelectValue placeholder="Seleccione alumno..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {allStudents?.map(s => (
+                          <SelectItem key={s.id} value={s.id} className="text-xs font-bold">{s.nombrePersona || s.usuario} ({s.cursoAlumno || "S/C"})</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-bold uppercase text-gray-400">Tipo Incidencia</Label>
+                      <Select value={formData.tipoIncidencia} onValueChange={(val) => setFormData({...formData, tipoIncidencia: val})}>
+                        <SelectTrigger className="text-xs font-bold border-gray-300">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Contraria" className="text-xs">Contraria</SelectItem>
+                          <SelectItem value="Grave" className="text-xs">Grave</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-bold uppercase text-gray-400">Nivel Gravedad (1-5)</Label>
+                      <Select value={formData.gravedad.toString()} onValueChange={(val) => setFormData({...formData, gravedad: parseInt(val)})}>
+                        <SelectTrigger className="text-xs font-bold border-gray-300">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[1,2,3,4,5].map(v => <SelectItem key={v} value={v.toString()} className="text-xs">{v}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-bold uppercase text-gray-400">Descripción del Suceso</Label>
+                    <Textarea 
+                      className="min-h-[100px] text-xs font-medium leading-relaxed" 
+                      placeholder="Relate detalladamente los hechos ocurridos..."
+                      value={formData.descripcion}
+                      onChange={(e) => setFormData({...formData, descripcion: e.target.value})}
+                    />
+                  </div>
+               </div>
+
+               <div className="space-y-6">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-bold uppercase text-gray-400">Conductas Observadas</Label>
+                    <div className="bg-gray-50 border rounded-lg p-3 space-y-2 h-[150px] overflow-y-auto">
+                       {conductList.map(item => (
+                         <div key={item} className="flex items-center gap-2 group cursor-pointer" onClick={() => {
+                           const current = formData.conductas;
+                           setFormData({...formData, conductas: current.includes(item) ? current.filter(c => c !== item) : [...current, item]});
+                         }}>
+                            <Checkbox checked={formData.conductas.includes(item)} onCheckedChange={() => {}} />
+                            <span className="text-[9px] font-medium leading-tight group-hover:text-primary transition-colors">{item}</span>
+                         </div>
+                       ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-bold uppercase text-gray-400">Medidas Correctoras Aplicadas</Label>
+                    <Input 
+                      className="text-xs h-8" 
+                      placeholder="Ej: Amonestación escrita, Expulsión de aula..."
+                      value={formData.medidasCorrectoras}
+                      onChange={(e) => setFormData({...formData, medidasCorrectoras: e.target.value})}
+                    />
+                  </div>
+
+                  <div className="flex items-center space-x-2 bg-blue-50/50 p-3 rounded-md border border-blue-100">
+                    <Checkbox id="comunicado" checked={formData.comunicadoFamilia} onCheckedChange={(val) => setFormData({...formData, comunicadoFamilia: !!val})} />
+                    <Label htmlFor="comunicado" className="text-[10px] font-bold text-blue-800 uppercase cursor-pointer">Se ha comunicado a la familia</Label>
+                  </div>
+               </div>
+            </div>
+          </ScrollArea>
+
+          <DialogFooter className="bg-gray-50 p-6 border-t gap-4 shrink-0">
+             <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="text-[11px] font-bold uppercase h-10 px-8">Cancelar</Button>
+             <Button onClick={handleSaveIncident} className="bg-red-700 hover:bg-red-800 text-white text-[11px] font-bold uppercase h-10 px-8 gap-2 shadow-md">
+               <Save className="h-4 w-4" /> Registrar en Rayuela
+             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       
       <div className="bg-red-50 border border-red-100 p-4 rounded-lg flex items-start gap-3">
-         <AlertTriangle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
+         <ShieldAlert className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
          <div className="space-y-1">
             <p className="text-xs font-bold text-red-800 uppercase">Aviso de Seguridad Convivencial</p>
             <p className="text-[11px] text-red-700 leading-relaxed italic">
@@ -836,7 +1046,6 @@ function GuardDutyView({ profesorId }: { profesorId: string }) {
 
 /**
  * Vista de Faltas por Materia para Profesores.
- * Refactorizada para soportar modo manual (Guardia) y Comportamiento.
  */
 function AttendanceBySubjectView({ profesorId, manualScheduleId }: { profesorId: string, manualScheduleId?: string }) {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
@@ -849,7 +1058,6 @@ function AttendanceBySubjectView({ profesorId, manualScheduleId }: { profesorId:
     return days[new Date(selectedDate).getDay()];
   }, [selectedDate]);
 
-  // Si estamos en modo manual, usamos el ID pasado, si no, buscamos el horario del profesor
   const schedulesQuery = useMemoFirebase(() => {
     if (manualScheduleId || !db || !profesorId) return null;
     return query(
@@ -861,7 +1069,6 @@ function AttendanceBySubjectView({ profesorId, manualScheduleId }: { profesorId:
 
   const { data: fetchedSchedules, isLoading: loadingSchedules } = useCollection(schedulesQuery);
   
-  // Si estamos en modo manual (Guardia), traemos ese horario específico
   const manualScheduleQuery = useMemoFirebase(() => {
     if (!manualScheduleId || !db) return null;
     return doc(db, 'horarios', manualScheduleId);
@@ -912,7 +1119,6 @@ function AttendanceBySubjectView({ profesorId, manualScheduleId }: { profesorId:
     const existing = attendances?.find(a => a.alumnoId === alumnoId);
     const currentStatus = existing?.tipo || 'A';
     
-    // Ciclo: A (Asiste) -> I (Injustificada) -> R (Retraso) -> A
     let nextStatus = 'A';
     if (currentStatus === 'A') nextStatus = 'I';
     else if (currentStatus === 'I') nextStatus = 'R';
@@ -946,7 +1152,6 @@ function AttendanceBySubjectView({ profesorId, manualScheduleId }: { profesorId:
 
     const existing = behaviors?.find(b => b.alumnoId === alumnoId);
     
-    // Si ya existe uno del mismo tipo, lo quitamos (toggle off)
     if (existing && existing.tipo === tipo) {
       deleteDocumentNonBlocking(doc(db, 'comportamientos', existing.id));
       return;
@@ -961,7 +1166,6 @@ function AttendanceBySubjectView({ profesorId, manualScheduleId }: { profesorId:
       createdAt: new Date().toISOString()
     };
 
-    // Si ya existe pero es de otro tipo, lo actualizamos (solo uno por hora)
     if (existing) {
       setDocumentNonBlocking(doc(db, 'comportamientos', existing.id), behaviorData, { merge: true });
     } else {
@@ -1051,8 +1255,6 @@ function AttendanceBySubjectView({ profesorId, manualScheduleId }: { profesorId:
              const studentAttendance = attendances?.find(a => a.alumnoId === student.id);
              const currentStatus = studentAttendance?.tipo || 'A';
              const studentBehavior = behaviors?.find(b => b.alumnoId === student.id);
-             
-             // Injustificada (I) y Justificada (J) bloquean comportamiento
              const behaviorDisabled = currentStatus === 'I' || currentStatus === 'J';
 
              return (
@@ -1130,7 +1332,7 @@ function AttendanceBySubjectView({ profesorId, manualScheduleId }: { profesorId:
 }
 
 /**
- * Diálogo de historial de asistencias para un alumno en una clase específica.
+ * Diálogo de historial de asistencias para un alumno.
  */
 function AttendanceHistoryDialog({ alumnoId, claseId, onClose }: { alumnoId: string, claseId: string, onClose: () => void }) {
   const db = useFirestore();
