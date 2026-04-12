@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -12,7 +11,8 @@ import {
   Image as ImageIcon, 
   Upload, 
   CheckCircle2,
-  X
+  X,
+  Github
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,7 +23,7 @@ import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
+import { uploadImageToGithub } from '@/app/actions/github-actions';
 
 export default function ConfiguracionPage() {
   const [session, setSession] = useState<any>(null);
@@ -88,22 +88,48 @@ export default function ConfiguracionPage() {
     setIsSaving(false);
   };
 
-  const handleImageUpdate = (type: 'url' | 'file') => {
-    if (!userDocRef) return;
+  const handleImageUpdate = async (type: 'url' | 'file') => {
+    if (!userDocRef || !session?.usuario) return;
     
-    const newImageUrl = type === 'url' ? imageForm.url : imageForm.fileBase64;
+    const imageSource = type === 'url' ? imageForm.url : imageForm.fileBase64;
     
-    if (!newImageUrl) {
+    if (!imageSource) {
       toast({ variant: "destructive", title: "Error", description: "Debe proporcionar una imagen válida." });
       return;
     }
 
     setIsSaving(true);
-    updateDocumentNonBlocking(userDocRef, { imagenPerfil: newImageUrl });
     
-    toast({ title: "Imagen actualizada", description: "Su perfil se ha actualizado correctamente." });
-    setImageForm({ url: '', fileBase64: '' });
-    setIsSaving(false);
+    try {
+      let finalImageUrl = imageSource;
+
+      // Si es un archivo, lo subimos a GitHub
+      if (type === 'file') {
+        const fileName = `${session.usuario}.jpg`;
+        toast({ title: "Subiendo imagen...", description: "Estamos sincronizando su foto con el repositorio de GitHub." });
+        finalImageUrl = await uploadImageToGithub(imageSource, fileName);
+      }
+
+      // Actualizar Firestore con la URL (ya sea externa o la ruta del repo)
+      updateDocumentNonBlocking(userDocRef, { imagenPerfil: finalImageUrl });
+      
+      toast({ 
+        title: "Imagen sincronizada", 
+        description: type === 'file' 
+          ? "Su foto ha sido enviada al repositorio. Puede tardar unos minutos en reflejarse tras el despliegue." 
+          : "Su perfil se ha actualizado correctamente."
+      });
+      
+      setImageForm({ url: '', fileBase64: '' });
+    } catch (error: any) {
+      toast({ 
+        variant: "destructive", 
+        title: "Error de sincronización", 
+        description: error.message || "No se pudo conectar con GitHub. Verifique la configuración." 
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -240,13 +266,13 @@ export default function ConfiguracionPage() {
               <CardHeader className="bg-gray-50 border-b">
                 <div className="flex items-center gap-2">
                    <ImageIcon className="h-4 w-4 text-[#fb8500]" />
-                   <CardTitle className="text-sm font-bold uppercase tracking-tight">Imagen de Perfil</CardTitle>
+                   <CardTitle className="text-sm font-bold uppercase tracking-tight">Imagen de Perfil (Sincronización GitHub)</CardTitle>
                 </div>
               </CardHeader>
               <CardContent className="p-6 space-y-8">
                 {/* Por URL */}
                 <div className="space-y-3">
-                  <Label className="text-[10px] font-bold uppercase text-gray-400">Actualizar por URL</Label>
+                  <Label className="text-[10px] font-bold uppercase text-gray-400">Actualizar por URL externa</Label>
                   <div className="flex gap-2">
                     <Input 
                       placeholder="https://ejemplo.com/imagen.jpg" 
@@ -254,7 +280,7 @@ export default function ConfiguracionPage() {
                       onChange={(e) => setImageForm({...imageForm, url: e.target.value})}
                       className="text-sm border-gray-300 flex-1" 
                     />
-                    <Button onClick={() => handleImageUpdate('url')} variant="outline" className="text-[11px] font-bold uppercase border-gray-300 hover:bg-gray-100 h-10 px-6">
+                    <Button onClick={() => handleImageUpdate('url')} variant="outline" disabled={isSaving} className="text-[11px] font-bold uppercase border-gray-300 hover:bg-gray-100 h-10 px-6">
                       Aplicar URL
                     </Button>
                   </div>
@@ -265,20 +291,21 @@ export default function ConfiguracionPage() {
                    <span className="relative bg-white px-4 text-[10px] font-bold text-gray-400 uppercase">o bien</span>
                 </div>
 
-                {/* Por Archivo */}
+                {/* Por Archivo - GITHUB */}
                 <div className="space-y-4">
-                  <Label className="text-[10px] font-bold uppercase text-gray-400">Subir Archivo de Imagen</Label>
+                  <Label className="text-[10px] font-bold uppercase text-gray-400">Subir Archivo al Repositorio del Centro</Label>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
                     <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center hover:border-[#fb8500] transition-colors group cursor-pointer relative">
                       <input 
                         type="file" 
-                        accept="image/*" 
+                        accept="image/jpeg,image/png" 
                         onChange={handleFileChange}
-                        className="absolute inset-0 opacity-0 cursor-pointer"
+                        disabled={isSaving}
+                        className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed"
                       />
                       <div className="flex flex-col items-center gap-2">
                         <Upload className="h-8 w-8 text-gray-300 group-hover:text-[#fb8500] transition-colors" />
-                        <span className="text-[11px] font-bold text-gray-400 uppercase">Haga clic para subir</span>
+                        <span className="text-[11px] font-bold text-gray-400 uppercase">Haga clic para elegir foto</span>
                       </div>
                     </div>
 
@@ -291,9 +318,10 @@ export default function ConfiguracionPage() {
                            </button>
                         </div>
                         <div className="flex-1">
-                          <p className="text-[10px] font-bold text-gray-400 uppercase mb-2">Vista previa seleccionada</p>
-                          <Button onClick={() => handleImageUpdate('file')} size="sm" className="bg-[#fb8500] text-white text-[9px] font-bold uppercase h-7 w-full gap-1">
-                            <CheckCircle2 className="h-3 w-3" /> Guardar foto
+                          <p className="text-[10px] font-bold text-gray-400 uppercase mb-2">Vista previa lista</p>
+                          <Button onClick={() => handleImageUpdate('file')} size="sm" disabled={isSaving} className="bg-[#fb8500] text-white text-[9px] font-bold uppercase h-7 w-full gap-1">
+                            {isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Github className="h-3 w-3" />}
+                            {isSaving ? "Sincronizando..." : "Sincronizar con GitHub"}
                           </Button>
                         </div>
                       </div>
@@ -304,7 +332,7 @@ export default function ConfiguracionPage() {
               <CardFooter className="bg-blue-50/50 p-4 border-t flex items-center gap-2">
                  <div className="bg-blue-600 w-1.5 h-1.5 rounded-full" />
                  <span className="text-[9px] font-bold text-blue-800 uppercase leading-relaxed">
-                   Se recomienda usar imágenes cuadradas para una mejor visualización en la plataforma.
+                   Las imágenes subidas se guardarán en /public/imagenes/cec/fotoAlumnoServlet/ para su uso en toda la plataforma.
                  </span>
               </CardFooter>
             </Card>
