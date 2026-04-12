@@ -2,11 +2,16 @@
 # https://firebase.google.com/docs/app-hosting/configure
 
 runConfig:
-  # Increase this value if you'd like to automatically spin up
-  # more instances in response to increased traffic.
+  # Aumente este valor si desea escalar automáticamente ante mayor tráfico.
   maxInstances: 1
 
-# Mapeo de secretos para que estén disponibles en process.env
-secrets:
+# Mapeo de variables de entorno y secretos
+env:
+  # Los secretos se mapean aquí para que estén disponibles en process.env
   - variable: PEDROCASTRO_IMAGENES_GENERA
     secret: PEDROCASTRO_IMAGENES_GENERA
+  # Estas variables también deben estar definidas en el panel de App Hosting o aquí
+  - variable: GITHUB_OWNER
+    value: "iespedrocastro" # Ajusta esto si el dueño es otro
+  - variable: GITHUB_REPO
+    value: "rayuela-app"    # Ajusta esto al nombre exacto de tu repo

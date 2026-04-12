@@ -14,16 +14,17 @@ export async function uploadImageToGithub(base64Image: string, fileName: string)
   // Intentamos obtener el token desde la variable configurada
   const token = process.env.PEDROCASTRO_IMAGENES_GENERA;
   
-  // Variables de entorno para el repositorio (Deben configurarse en el panel de App Hosting)
+  // Variables de entorno para el repositorio
   const owner = process.env.GITHUB_OWNER; 
   const repo = process.env.GITHUB_REPO;
 
-  if (!token) {
-    throw new Error('ERROR CRÍTICO: El secreto "PEDROCASTRO_IMAGENES_GENERA" no se ha mapeado correctamente en el servidor. Verifique apphosting.yaml.');
+  // Verificaciones de seguridad y configuración
+  if (!token || token.trim() === "") {
+    throw new Error('ERROR CRÍTICO: El secreto "PEDROCASTRO_IMAGENES_GENERA" no está llegando al servidor. Asegúrese de que el secreto existe en Google Cloud y que apphosting.yaml tiene la sección "env" correctamente configurada.');
   }
 
   if (!owner || !repo) {
-    throw new Error(`ERROR DE CONFIGURACIÓN: Faltan las variables de entorno GITHUB_OWNER o GITHUB_REPO en el servidor.`);
+    throw new Error(`ERROR DE CONFIGURACIÓN: Faltan las variables GITHUB_OWNER o GITHUB_REPO. Actualmente: Owner=${owner || 'N/D'}, Repo=${repo || 'N/D'}.`);
   }
 
   const path = `public/imagenes/cec/fotoAlumnoServlet/${fileName}`;
@@ -68,7 +69,7 @@ export async function uploadImageToGithub(base64Image: string, fileName: string)
 
   if (!res.ok) {
     const errorBody = await res.json();
-    throw new Error(`GitHub API Error: ${errorBody.message || 'Fallo al subir la imagen'}`);
+    throw new Error(`GitHub API Error (${res.status}): ${errorBody.message || 'Fallo al subir la imagen'}`);
   }
 
   // Retornamos la ruta pública que servirá Next.js desde /public
