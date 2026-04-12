@@ -2,16 +2,17 @@
 # https://firebase.google.com/docs/app-hosting/configure
 
 runConfig:
-  # Aumente este valor si desea escalar automáticamente ante mayor tráfico.
   maxInstances: 1
 
 # Mapeo de variables de entorno y secretos
 env:
-  # Los secretos se mapean aquí para que estén disponibles en process.env
+  # IMPORTANTE: Este secreto DEBE existir en Google Cloud Secret Manager
+  # para que el servidor pueda usarlo en tiempo de ejecución.
   - variable: PEDROCASTRO_IMAGENES_GENERA
     secret: PEDROCASTRO_IMAGENES_GENERA
-  # Estas variables también deben estar definidas en el panel de App Hosting o aquí
+  
+  # Variables del repositorio
   - variable: GITHUB_OWNER
-    value: "iespedrocastro" # Ajusta esto si el dueño es otro
+    value: "iespedrocastro"
   - variable: GITHUB_REPO
-    value: "rayuela-app"    # Ajusta esto al nombre exacto de tu repo
+    value: "rayuela-app"

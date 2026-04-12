@@ -6,34 +6,31 @@
 
 /**
  * Sube una imagen en base64 al repositorio de GitHub del IES Pedro Castro.
- * @param base64Image La imagen en formato data URI o base64 puro.
- * @param fileName El nombre del archivo (ej: jsmith.jpg).
- * @returns La ruta relativa donde se ha guardado el archivo en el repo.
  */
 export async function uploadImageToGithub(base64Image: string, fileName: string) {
-  // Intentamos obtener el token desde la variable configurada
+  // Obtención de variables desde el entorno del servidor
   const token = process.env.PEDROCASTRO_IMAGENES_GENERA;
-  
-  // Variables de entorno para el repositorio
   const owner = process.env.GITHUB_OWNER; 
   const repo = process.env.GITHUB_REPO;
 
-  // Verificaciones de seguridad y configuración
+  // Registro de diagnóstico (solo visible en logs del servidor)
+  console.log(`Intentando subida a GitHub: Repo=${owner}/${repo}, Archivo=${fileName}`);
+
   if (!token || token.trim() === "") {
-    throw new Error('ERROR CRÍTICO: El secreto "PEDROCASTRO_IMAGENES_GENERA" no está llegando al servidor. Asegúrese de que el secreto existe en Google Cloud y que apphosting.yaml tiene la sección "env" correctamente configurada.');
+    throw new Error('ERROR DE AUTENTICACIÓN: El servidor no tiene acceso al Token. Por favor, asegúrese de haber creado el secreto en Google Cloud Secret Manager y vinculado en App Hosting.');
   }
 
   if (!owner || !repo) {
-    throw new Error(`ERROR DE CONFIGURACIÓN: Faltan las variables GITHUB_OWNER o GITHUB_REPO. Actualmente: Owner=${owner || 'N/D'}, Repo=${repo || 'N/D'}.`);
+    throw new Error('ERROR DE CONFIGURACIÓN: No se han definido GITHUB_OWNER o GITHUB_REPO en las variables de entorno.');
   }
 
   const path = `public/imagenes/cec/fotoAlumnoServlet/${fileName}`;
   const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
 
-  // Limpiar el prefijo data:image/... si existe para obtener solo el base64 puro
+  // Limpiar el prefijo data:image/... si existe
   const content = base64Image.includes(',') ? base64Image.split(',')[1] : base64Image;
 
-  // 1. Comprobar si el archivo existe para obtener su SHA (necesario para actualizar/sobrescribir)
+  // 1. Obtener el SHA si el archivo ya existe (para actualizar)
   let sha = undefined;
   try {
     const checkRes = await fetch(url, {
@@ -49,7 +46,7 @@ export async function uploadImageToGithub(base64Image: string, fileName: string)
       sha = data.sha;
     }
   } catch (e) {
-    console.log("Archivo nuevo o error de red inicial, se intentará creación limpia.");
+    console.log("Iniciando creación de nuevo archivo.");
   }
 
   // 2. Realizar el PUT a la API de GitHub
@@ -61,17 +58,16 @@ export async function uploadImageToGithub(base64Image: string, fileName: string)
       'Accept': 'application/vnd.github+json',
     },
     body: JSON.stringify({
-      message: `Actualización de foto de perfil: ${fileName} [Rayuela App Sincro]`,
+      message: `Actualización de foto de perfil: ${fileName} [Sincro Rayuela]`,
       content: content,
-      sha: sha // Si existe el SHA, GitHub entiende que es una actualización. Si no, es creación.
+      sha: sha
     }),
   });
 
   if (!res.ok) {
     const errorBody = await res.json();
-    throw new Error(`GitHub API Error (${res.status}): ${errorBody.message || 'Fallo al subir la imagen'}`);
+    throw new Error(`Error de API GitHub (${res.status}): ${errorBody.message || 'Fallo en la comunicación'}`);
   }
 
-  // Retornamos la ruta pública que servirá Next.js desde /public
   return `/imagenes/cec/fotoAlumnoServlet/${fileName}`;
 }
