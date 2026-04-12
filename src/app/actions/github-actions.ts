@@ -7,7 +7,7 @@
 
 export async function uploadImageToGithub(base64Image: string, fileName: string) {
   // Token proporcionado por el usuario (Inyección directa para evitar fallos de entorno)
-  const token = process.env.PEDROCASTRO_IMAGENES_GENERA;
+  const token = "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";
   const owner = "jfornielestiburcio02-web"; 
   const repo = "pedrocastroies";
 
