@@ -752,12 +752,12 @@ export function StudentScheduleView({ studentId }: { studentId: string }) {
 
   const { data: schedules, isLoading } = useCollection(schedulesQuery);
 
-  const days = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"];
+  const days = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
 
   if (isLoading) return <div className="flex justify-center p-20"><Loader2 className="h-8 w-8 animate-spin text-[#89a54e]" /></div>;
 
   return (
-    <div className="animate-in fade-in duration-500 max-w-6xl mx-auto w-full">
+    <div className="animate-in fade-in duration-500 max-w-full mx-auto space-y-6 overflow-x-hidden">
       <div className="bg-white border rounded-xl shadow-sm overflow-hidden">
         <div className="bg-[#89a54e] p-4 text-white flex items-center gap-2">
           <Calendar className="h-5 w-5" />
@@ -765,7 +765,7 @@ export function StudentScheduleView({ studentId }: { studentId: string }) {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse table-fixed">
+          <table className="w-full text-left border-collapse table-fixed min-w-[900px]">
             <thead className="bg-gray-50 border-b">
               <tr>
                 {days.map(day => (

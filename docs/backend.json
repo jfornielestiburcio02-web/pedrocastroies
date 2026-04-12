@@ -63,7 +63,7 @@
       "description": "Definición de clase o guardia asignada a un profesor.",
       "properties": {
         "profesorId": { "type": "string" },
-        "dia": { "type": "string", "enum": ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"] },
+        "dia": { "type": "string", "enum": ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"] },
         "horaInicio": { "type": "string" },
         "horaFin": { "type": "string" },
         "alumnosIds": { "type": "array", "items": { "type": "string" } },

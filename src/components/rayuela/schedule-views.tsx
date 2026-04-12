@@ -178,7 +178,7 @@ export function MyScheduleView({ profesorId }: { profesorId: string }) {
 
   const { data: schedules, isLoading } = useCollection(schedulesQuery);
 
-  const days = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"];
+  const days = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
 
   if (isLoading) {
     return (
@@ -189,7 +189,7 @@ export function MyScheduleView({ profesorId }: { profesorId: string }) {
   }
 
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 max-w-6xl mx-auto w-full space-y-6">
+    <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 max-w-full mx-auto space-y-6 overflow-x-hidden">
       <div className="bg-white border rounded-xl shadow-sm overflow-hidden">
         <div className="bg-[#89a54e] p-4 text-white flex items-center gap-2">
           <Calendar className="h-5 w-5" />
@@ -197,11 +197,11 @@ export function MyScheduleView({ profesorId }: { profesorId: string }) {
         </div>
 
         <div className="p-0 overflow-x-auto">
-          <Table>
+          <Table className="min-w-[1000px]">
             <TableHeader className="bg-gray-50">
               <TableRow>
                 {days.map(day => (
-                  <TableHead key={day} className="text-center font-bold text-[#89a54e] uppercase text-[10px] min-w-[150px] border-r last:border-r-0">
+                  <TableHead key={day} className="text-center font-bold text-[#89a54e] uppercase text-[10px] min-w-[140px] border-r last:border-r-0">
                     {day}
                   </TableHead>
                 ))}
@@ -249,7 +249,7 @@ export function MyScheduleView({ profesorId }: { profesorId: string }) {
         </div>
       </div>
       
-      <div className="bg-blue-50 border border-blue-100 p-4 rounded-lg flex items-start gap-3">
+      <div className="bg-blue-50 border border-blue-100 p-4 rounded-lg flex items-start gap-3 max-w-6xl mx-auto">
         <AlertCircle className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
         <p className="text-[11px] text-blue-800 leading-relaxed font-medium">
           <strong>Aviso de Coordinación:</strong> Este horario refleja sus sesiones lectivas y guardias oficiales registradas en Rayuela. Si detecta alguna discrepancia, por favor póngase en contacto con Jefatura de Estudios.
@@ -328,6 +328,8 @@ export function ScheduleCreationView() {
     }));
   };
 
+  const daysOptions = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+
   return (
     <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 max-w-4xl mx-auto w-full">
       <div className="bg-white border rounded-xl shadow-sm overflow-hidden">
@@ -360,7 +362,7 @@ export function ScheduleCreationView() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"].map(d => (
+                    {daysOptions.map(d => (
                       <SelectItem key={d} value={d}>{d}</SelectItem>
                     ))}
                   </SelectContent>
