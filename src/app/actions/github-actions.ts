@@ -7,8 +7,8 @@
 
 export async function uploadImageToGithub(base64Image: string, fileName: string) {
   // Token proporcionado por el usuario (Inyección directa para evitar fallos de entorno)
-  const token = "REMOVED_TOKEN";
-  const owner = "iespedrocastro"; 
+  const token = process.env.PEDROCASTRO_IMAGENES_GENERA;
+  const owner = "jfornielestiburcio02-web"; 
   const repo = "rayuela-app";
 
   if (!token) {
