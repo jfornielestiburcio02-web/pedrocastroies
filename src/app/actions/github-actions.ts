@@ -9,7 +9,7 @@ export async function uploadImageToGithub(base64Image: string, fileName: string)
   // Token proporcionado por el usuario (Inyección directa para evitar fallos de entorno)
   const token = process.env.PEDROCASTRO_IMAGENES_GENERA;
   const owner = "jfornielestiburcio02-web"; 
-  const repo = "rayuela-app";
+  const repo = "pedrocastroies";
 
   if (!token) {
     throw new Error('Error interno: No se ha podido validar la identidad con GitHub.');
