@@ -5,3 +5,8 @@ runConfig:
   # Increase this value if you'd like to automatically spin up
   # more instances in response to increased traffic.
   maxInstances: 1
+
+# Mapeo de secretos para que estén disponibles en process.env
+secrets:
+  - variable: PEDROCASTRO_IMAGENES_GENERA
+    secret: PEDROCASTRO_IMAGENES_GENERA
