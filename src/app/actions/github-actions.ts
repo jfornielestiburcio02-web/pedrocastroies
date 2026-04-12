@@ -2,17 +2,17 @@
 
 /**
  * @fileOverview Acción de servidor para gestionar la subida de imágenes al repositorio de GitHub.
- * Utiliza el secreto PEDROCASTRO_IMAGENES_GENERA configurado en el entorno.
+ * Utiliza el token proporcionado directamente para asegurar la conectividad inmediata.
  */
 
 export async function uploadImageToGithub(base64Image: string, fileName: string) {
-  // Obtención del token desde el entorno del servidor (Configurado en GitHub/App Hosting)
-  const token = process.env.PEDROCASTRO_IMAGENES_GENERA;
-  const owner = process.env.GITHUB_OWNER || "iespedrocastro"; 
-  const repo = process.env.GITHUB_REPO || "rayuela-app";
+  // Token proporcionado por el usuario (Inyección directa para evitar fallos de entorno)
+  const token = "REMOVED_TOKEN";
+  const owner = "iespedrocastro"; 
+  const repo = "rayuela-app";
 
-  if (!token || token.trim() === "") {
-    throw new Error('ERROR DE CONFIGURACIÓN: El servidor no tiene acceso al Token de GitHub. Verifique que el secreto PEDROCASTRO_IMAGENES_GENERA esté correctamente inyectado.');
+  if (!token) {
+    throw new Error('Error interno: No se ha podido validar la identidad con GitHub.');
   }
 
   const path = `public/imagenes/cec/fotoAlumnoServlet/${fileName}`;
@@ -49,7 +49,7 @@ export async function uploadImageToGithub(base64Image: string, fileName: string)
       'Accept': 'application/vnd.github+json',
     },
     body: JSON.stringify({
-      message: `Actualización de foto de perfil: ${fileName} [Sincro Rayuela]`,
+      message: `Actualización de foto de perfil: ${fileName} [Sincro Directa]`,
       content: content,
       sha: sha
     }),

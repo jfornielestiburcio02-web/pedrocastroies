@@ -3,8 +3,6 @@ runConfig:
   maxInstances: 1
 
 env:
-  # Definición de variables de entorno inyectadas desde el repositorio/entorno
-  - variable: PEDROCASTRO_IMAGENES_GENERA
   - variable: GITHUB_OWNER
     value: "iespedrocastro"
   - variable: GITHUB_REPO
