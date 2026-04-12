@@ -62,3 +62,4 @@ export async function uploadImageToGithub(base64Image: string, fileName: string)
 
   return `/imagenes/cec/fotoAlumnoServlet/${fileName}`;
 }
+
