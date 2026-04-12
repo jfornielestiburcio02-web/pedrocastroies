@@ -103,21 +103,17 @@ export default function ConfiguracionPage() {
     try {
       let finalImageUrl = imageSource;
 
-      // Si es un archivo, lo subimos a GitHub
       if (type === 'file') {
         const fileName = `${session.usuario}.jpg`;
-        toast({ title: "Subiendo imagen...", description: "Estamos sincronizando su foto con el repositorio de GitHub." });
+        toast({ title: "Sincronizando...", description: "Enviando imagen al repositorio del centro." });
         finalImageUrl = await uploadImageToGithub(imageSource, fileName);
       }
 
-      // Actualizar Firestore con la URL (ya sea externa o la ruta del repo)
       updateDocumentNonBlocking(userDocRef, { imagenPerfil: finalImageUrl });
       
       toast({ 
-        title: "Imagen sincronizada", 
-        description: type === 'file' 
-          ? "Su foto ha sido enviada al repositorio. Puede tardar unos minutos en reflejarse tras el despliegue." 
-          : "Su perfil se ha actualizado correctamente."
+        title: "Imagen actualizada", 
+        description: "Su perfil se ha sincronizado correctamente con el sistema del centro."
       });
       
       setImageForm({ url: '', fileBase64: '' });
@@ -125,7 +121,7 @@ export default function ConfiguracionPage() {
       toast({ 
         variant: "destructive", 
         title: "Error de sincronización", 
-        description: error.message || "No se pudo conectar con GitHub. Verifique la configuración." 
+        description: error.message || "No se pudo conectar con el servidor de imágenes." 
       });
     } finally {
       setIsSaving(false);
@@ -175,7 +171,6 @@ export default function ConfiguracionPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
-          {/* Perfil Actual Card */}
           <div className="md:col-span-4">
             <Card className="shadow-sm border-gray-200">
               <CardHeader className="text-center pb-2">
@@ -205,9 +200,7 @@ export default function ConfiguracionPage() {
             </Card>
           </div>
 
-          {/* Settings Section */}
           <div className="md:col-span-8 space-y-8">
-            {/* Change Password */}
             <Card className="shadow-sm border-gray-200">
               <CardHeader className="bg-gray-50 border-b">
                 <div className="flex items-center gap-2">
@@ -261,18 +254,16 @@ export default function ConfiguracionPage() {
               </form>
             </Card>
 
-            {/* Change Profile Image */}
             <Card className="shadow-sm border-gray-200">
               <CardHeader className="bg-gray-50 border-b">
                 <div className="flex items-center gap-2">
                    <ImageIcon className="h-4 w-4 text-[#fb8500]" />
-                   <CardTitle className="text-sm font-bold uppercase tracking-tight">Imagen de Perfil (Sincronización GitHub)</CardTitle>
+                   <CardTitle className="text-sm font-bold uppercase tracking-tight">Imagen de Perfil</CardTitle>
                 </div>
               </CardHeader>
               <CardContent className="p-6 space-y-8">
-                {/* Por URL */}
                 <div className="space-y-3">
-                  <Label className="text-[10px] font-bold uppercase text-gray-400">Actualizar por URL externa</Label>
+                  <Label className="text-[10px] font-bold uppercase text-gray-400">Actualizar por URL</Label>
                   <div className="flex gap-2">
                     <Input 
                       placeholder="https://ejemplo.com/imagen.jpg" 
@@ -291,9 +282,8 @@ export default function ConfiguracionPage() {
                    <span className="relative bg-white px-4 text-[10px] font-bold text-gray-400 uppercase">o bien</span>
                 </div>
 
-                {/* Por Archivo - GITHUB */}
                 <div className="space-y-4">
-                  <Label className="text-[10px] font-bold uppercase text-gray-400">Subir Archivo al Repositorio del Centro</Label>
+                  <Label className="text-[10px] font-bold uppercase text-gray-400">Subir Archivo al Repositorio</Label>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
                     <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center hover:border-[#fb8500] transition-colors group cursor-pointer relative">
                       <input 
@@ -305,7 +295,7 @@ export default function ConfiguracionPage() {
                       />
                       <div className="flex flex-col items-center gap-2">
                         <Upload className="h-8 w-8 text-gray-300 group-hover:text-[#fb8500] transition-colors" />
-                        <span className="text-[11px] font-bold text-gray-400 uppercase">Haga clic para elegir foto</span>
+                        <span className="text-[11px] font-bold text-gray-400 uppercase">Seleccionar foto</span>
                       </div>
                     </div>
 
@@ -318,10 +308,10 @@ export default function ConfiguracionPage() {
                            </button>
                         </div>
                         <div className="flex-1">
-                          <p className="text-[10px] font-bold text-gray-400 uppercase mb-2">Vista previa lista</p>
+                          <p className="text-[10px] font-bold text-gray-400 uppercase mb-2">Vista previa</p>
                           <Button onClick={() => handleImageUpdate('file')} size="sm" disabled={isSaving} className="bg-[#fb8500] text-white text-[9px] font-bold uppercase h-7 w-full gap-1">
                             {isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Github className="h-3 w-3" />}
-                            {isSaving ? "Sincronizando..." : "Sincronizar con GitHub"}
+                            {isSaving ? "Sincronizando..." : "Sincronizar"}
                           </Button>
                         </div>
                       </div>
@@ -332,7 +322,7 @@ export default function ConfiguracionPage() {
               <CardFooter className="bg-blue-50/50 p-4 border-t flex items-center gap-2">
                  <div className="bg-blue-600 w-1.5 h-1.5 rounded-full" />
                  <span className="text-[9px] font-bold text-blue-800 uppercase leading-relaxed">
-                   Las imágenes subidas se guardarán en /public/imagenes/cec/fotoAlumnoServlet/ para su uso en toda la plataforma.
+                   Las imágenes se guardarán en la ruta oficial del centro para su uso en toda la plataforma.
                  </span>
               </CardFooter>
             </Card>

@@ -2,26 +2,17 @@
 
 /**
  * @fileOverview Acción de servidor para gestionar la subida de imágenes al repositorio de GitHub.
+ * Utiliza el secreto PEDROCASTRO_IMAGENES_GENERA configurado en el entorno.
  */
 
-/**
- * Sube una imagen en base64 al repositorio de GitHub del IES Pedro Castro.
- */
 export async function uploadImageToGithub(base64Image: string, fileName: string) {
-  // Obtención de variables desde el entorno del servidor
+  // Obtención del token desde el entorno del servidor (Configurado en GitHub/App Hosting)
   const token = process.env.PEDROCASTRO_IMAGENES_GENERA;
-  const owner = process.env.GITHUB_OWNER; 
-  const repo = process.env.GITHUB_REPO;
-
-  // Registro de diagnóstico (solo visible en logs del servidor)
-  console.log(`Intentando subida a GitHub: Repo=${owner}/${repo}, Archivo=${fileName}`);
+  const owner = process.env.GITHUB_OWNER || "iespedrocastro"; 
+  const repo = process.env.GITHUB_REPO || "rayuela-app";
 
   if (!token || token.trim() === "") {
-    throw new Error('ERROR DE AUTENTICACIÓN: El servidor no tiene acceso al Token. Por favor, asegúrese de haber creado el secreto en Google Cloud Secret Manager y vinculado en App Hosting.');
-  }
-
-  if (!owner || !repo) {
-    throw new Error('ERROR DE CONFIGURACIÓN: No se han definido GITHUB_OWNER o GITHUB_REPO en las variables de entorno.');
+    throw new Error('ERROR DE CONFIGURACIÓN: El servidor no tiene acceso al Token de GitHub. Verifique que el secreto PEDROCASTRO_IMAGENES_GENERA esté correctamente inyectado.');
   }
 
   const path = `public/imagenes/cec/fotoAlumnoServlet/${fileName}`;
@@ -30,7 +21,7 @@ export async function uploadImageToGithub(base64Image: string, fileName: string)
   // Limpiar el prefijo data:image/... si existe
   const content = base64Image.includes(',') ? base64Image.split(',')[1] : base64Image;
 
-  // 1. Obtener el SHA si el archivo ya existe (para actualizar)
+  // 1. Obtener el SHA si el archivo ya existe para poder actualizarlo
   let sha = undefined;
   try {
     const checkRes = await fetch(url, {
@@ -66,7 +57,7 @@ export async function uploadImageToGithub(base64Image: string, fileName: string)
 
   if (!res.ok) {
     const errorBody = await res.json();
-    throw new Error(`Error de API GitHub (${res.status}): ${errorBody.message || 'Fallo en la comunicación'}`);
+    throw new Error(`Error de GitHub (${res.status}): ${errorBody.message || 'Fallo en la comunicación'}`);
   }
 
   return `/imagenes/cec/fotoAlumnoServlet/${fileName}`;
