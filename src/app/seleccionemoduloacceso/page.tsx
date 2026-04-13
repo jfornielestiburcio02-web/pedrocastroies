@@ -62,7 +62,14 @@ import { EvaluationsSummaryView, IncidentsSummaryView } from '@/components/rayue
 import { TeacherNotificationsView } from '@/components/rayuela/teacher-notifications-view';
 
 // Componentes de Secretaría
-import { CredentialDeliveryView, SecretaryPlaceholderView } from '@/components/rayuela/secretaria-views';
+import { 
+  CredentialDeliveryView, 
+  SecretaryPlaceholderView, 
+  EconomyManagementView, 
+  CashClosingView,
+  SecodexView,
+  SecretaryErrorView
+} from '@/components/rayuela/secretaria-views';
 
 // Componentes del Alumno
 import { 
@@ -570,7 +577,9 @@ export default function SeleccioneModuloAccesoPage() {
                           <SidebarHeading label="Arqueo de caja" expanded={expandedItems['arqueo']} onClick={() => toggleExpanded('arqueo')} />
                           {expandedItems['arqueo'] && (
                             <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
+                              <SidebarItem color="#fb8500" label="Arqueo de caja (Control)" isSubItem onClick={() => setActiveSubContent('Arqueo de caja (Control)')} active={activeSubContent === 'Arqueo de caja (Control)'} />
                               <SidebarItem color="#fb8500" label="Gestión Económica" isSubItem onClick={() => setActiveSubContent('Gestión Económica')} active={activeSubContent === 'Gestión Económica'} />
+                              <SidebarItem color="#fb8500" label="Gastos y ganancias" isSubItem onClick={() => setActiveSubContent('Arqueo de caja (Control)')} active={activeSubContent === 'Gastos y ganancias'} />
                               <SidebarItem color="#fb8500" label="Tasas por descuento" isSubItem onClick={() => setActiveSubContent('Tasas por descuento')} active={activeSubContent === 'Tasas por descuento'} />
                               <SidebarItem color="#fb8500" label="Formación Profesional" isSubItem onClick={() => setActiveSubContent('Formación Profesional')} active={activeSubContent === 'Formación Profesional'} />
                             </div>
@@ -765,9 +774,19 @@ export default function SeleccioneModuloAccesoPage() {
                     <StudentScheduleView studentId={session.usuario} />
                   ) : activeSubContent === 'Entrega de credenciales' ? (
                     <CredentialDeliveryView />
+                  ) : activeSubContent === 'Gestión Económica' ? (
+                    <EconomyManagementView />
+                  ) : activeSubContent === 'Arqueo de caja (Control)' ? (
+                    <CashClosingView />
+                  ) : activeSubContent === 'seCODEX' ? (
+                    <SecodexView />
+                  ) : activeSubContent === 'Título de bachillerato' ? (
+                    <SecretaryErrorView code="19832" title={activeSubContent} />
+                  ) : activeSubContent === 'Formación Profesional' ? (
+                    <SecretaryPlaceholderView title={activeSubContent} />
                   ) : activeSubContent === 'Por Alumno' || activeSubContent === 'Por centro' ? (
                     <CenterStudentsView />
-                  ) : activeSubContent === 'Gestión Económica' || activeSubContent === 'Tasas por descuento' || activeSubContent === 'Formación Profesional' || activeSubContent === 'Título de bachillerato' || activeSubContent === 'seCODEX' ? (
+                  ) : activeSubContent === 'Tasas por descuento' ? (
                     <SecretaryPlaceholderView title={activeSubContent} />
                   ) : activeSubContent ? (
                     <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
@@ -791,7 +810,7 @@ export default function SeleccioneModuloAccesoPage() {
                           <p className="text-xl text-gray-600">Acceso activo como <span className="font-bold text-primary">{activeRole}</span></p>
                           <div className="bg-white p-8 rounded-xl border border-200 text-base text-gray-700 italic leading-relaxed shadow-sm max-w-3xl mx-auto">
                             {activeRole === 'Profesor' 
-                              ? "Seleccione una opción del menú lateral para comenzar el seguimiento de sus alumnos." 
+                              ? "Seleccione una option del menú lateral para comenzar el seguimiento de sus alumnos." 
                               : activeRole === 'Alumno'
                               ? "Entorno de seguimiento académico activo para consulta de notas y asistencia personal."
                               : activeRole === 'Dirección'
