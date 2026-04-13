@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useState, useMemo } from 'react';
@@ -33,7 +34,9 @@ import {
   AlertCircle,
   Bell,
   Coins,
-  Key
+  Key,
+  Award,
+  Book
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -101,7 +104,10 @@ export default function SeleccioneModuloAccesoPage() {
     'comportamiento_alum': false,
     'evaluaciones_alum': false,
     'notificaciones_root': false,
-    'arqueo': false
+    'arqueo': false,
+    'titulos': false,
+    'sello': false,
+    'expedientes': false
   });
   
   const router = useRouter();
@@ -122,7 +128,6 @@ export default function SeleccioneModuloAccesoPage() {
     const savedSessionStr = sessionStorage.getItem('user_session');
     
     if (!savedSessionStr) {
-      // Si se intenta entrar sin sesión, redirigir a una ruta inexistente para mostrar el 404 personalizado
       router.push('/error-solicitud-directa');
       return;
     }
@@ -386,6 +391,7 @@ export default function SeleccioneModuloAccesoPage() {
                     <>
                       <div className="p-2 bg-[#fb8500] rounded-sm text-white"><Briefcase className="h-5 w-5" /></div>
                       <div className="p-2 bg-[#fb8500] rounded-sm text-white"><Coins className="h-5 w-5" /></div>
+                      <div className="p-2 bg-[#fb8500] rounded-sm text-white"><Award className="h-5 w-5" /></div>
                       <div className="p-2 bg-[#fb8500] rounded-sm text-white"><Files className="h-5 w-5" /></div>
                       <div className="p-2 bg-[#fb8500] rounded-sm text-white"><Key className="h-5 w-5" /></div>
                       <div className="p-2 bg-gray-400 rounded-sm text-white" onClick={() => router.push('/configuracion')}><UserCog className="h-5 w-5" /></div>
@@ -570,6 +576,34 @@ export default function SeleccioneModuloAccesoPage() {
                             </div>
                           )}
                         </div>
+
+                        <div className="flex flex-col">
+                          <SidebarHeading label="Títulos" expanded={expandedItems['titulos']} onClick={() => toggleExpanded('titulos')} />
+                          {expandedItems['titulos'] && (
+                            <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
+                              <SidebarItem color="#fb8500" label="Título de bachillerato" isSubItem onClick={() => setActiveSubContent('Título de bachillerato')} active={activeSubContent === 'Título de bachillerato'} />
+                              <div className="flex flex-col">
+                                <SidebarHeading label="Sello de buena práctica" expanded={expandedItems['sello']} onClick={() => toggleExpanded('sello')} />
+                                {expandedItems['sello'] && (
+                                  <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
+                                    <SidebarItem color="#fb8500" label="seCODEX" isSubItem onClick={() => setActiveSubContent('seCODEX')} active={activeSubContent === 'seCODEX'} />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex flex-col">
+                          <SidebarHeading label="Expedientes" expanded={expandedItems['expedientes']} onClick={() => toggleExpanded('expedientes')} />
+                          {expandedItems['expedientes'] && (
+                            <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
+                              <SidebarItem color="#fb8500" label="Por Alumno" isSubItem onClick={() => setActiveSubContent('Por Alumno')} active={activeSubContent === 'Por Alumno'} />
+                              <SidebarItem color="#fb8500" label="Por centro" isSubItem onClick={() => setActiveSubContent('Por centro')} active={activeSubContent === 'Por centro'} />
+                            </div>
+                          )}
+                        </div>
+
                         <SidebarItem color="#fb8500" label="Entrega de credenciales" onClick={() => setActiveSubContent('Entrega de credenciales')} active={activeSubContent === 'Entrega de credenciales'} />
                       </div>
                     ) : (
@@ -731,7 +765,9 @@ export default function SeleccioneModuloAccesoPage() {
                     <StudentScheduleView studentId={session.usuario} />
                   ) : activeSubContent === 'Entrega de credenciales' ? (
                     <CredentialDeliveryView />
-                  ) : activeSubContent === 'Gestión Económica' || activeSubContent === 'Tasas por descuento' || activeSubContent === 'Formación Profesional' ? (
+                  ) : activeSubContent === 'Por Alumno' || activeSubContent === 'Por centro' ? (
+                    <CenterStudentsView />
+                  ) : activeSubContent === 'Gestión Económica' || activeSubContent === 'Tasas por descuento' || activeSubContent === 'Formación Profesional' || activeSubContent === 'Título de bachillerato' || activeSubContent === 'seCODEX' ? (
                     <SecretaryPlaceholderView title={activeSubContent} />
                   ) : activeSubContent ? (
                     <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">

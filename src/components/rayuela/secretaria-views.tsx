@@ -12,7 +12,10 @@ import {
   Copy, 
   Briefcase,
   Coins,
-  FileText
+  FileText,
+  Award,
+  Book,
+  Library
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -213,6 +216,7 @@ export function CredentialDeliveryView() {
 export function SecretaryPlaceholderView({ title }: { title: string }) {
   const getIcon = () => {
     if (title.includes('Económica')) return <Coins className="h-12 w-12" />;
+    if (title.includes('Título') || title === 'seCODEX') return <Award className="h-12 w-12" />;
     return <FileText className="h-12 w-12" />;
   };
 
@@ -224,10 +228,10 @@ export function SecretaryPlaceholderView({ title }: { title: string }) {
       <div className="space-y-2">
         <h2 className="text-2xl font-bold text-gray-800 uppercase tracking-tight">{title}</h2>
         <p className="text-gray-400 italic max-w-md mx-auto leading-relaxed">
-          Esta sección del arqueo de caja y trámites administrativos está siendo sincronizada con el servidor central.
+          Esta sección de {title.toLowerCase()} está siendo sincronizada con el servidor central de Rayuela (Comunidad de Madrid).
         </p>
       </div>
-      <Badge className="bg-[#fb8500] text-white px-6 py-1.5 font-bold uppercase tracking-widest text-[10px]">Módulo en Sincronización</Badge>
+      <Badge className="bg-[#fb8500] text-white px-6 py-1.5 font-bold uppercase tracking-widest text-[10px]">Servicio en Sincronización</Badge>
     </div>
   );
 }
