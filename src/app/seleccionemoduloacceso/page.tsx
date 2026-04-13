@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useEffect, useState, useMemo } from 'react';
@@ -89,7 +88,6 @@ export default function SeleccioneModuloAccesoPage() {
   const [activeSubContent, setActiveSubContent] = useState<string | null>(null);
   const [sidebarMode, setSidebarMode] = useState<'ACADEMIC' | 'MESSAGING'>('ACADEMIC');
   
-  // Estado para gestionar redirecciones desde mensajes
   const [targetIncidentData, setTargetIncidentData] = useState<{ studentId: string } | null>(null);
 
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({
@@ -121,7 +119,6 @@ export default function SeleccioneModuloAccesoPage() {
   const db = useFirestore();
 
   useEffect(() => {
-    // 1. Comprobar si es un refresco de página
     const navigationEntries = performance.getEntriesByType('navigation');
     const isReload = navigationEntries.length > 0 && (navigationEntries[0] as PerformanceNavigationTiming).type === 'reload';
 
@@ -176,7 +173,6 @@ export default function SeleccioneModuloAccesoPage() {
     }
   }, [router, db]);
 
-  // Hook para contar mensajes no leídos
   const unreadMessagesQuery = useMemoFirebase(() => {
     if (!db || !session?.usuario) return null;
     return query(
@@ -579,7 +575,7 @@ export default function SeleccioneModuloAccesoPage() {
                             <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
                               <SidebarItem color="#fb8500" label="Arqueo de caja (Control)" isSubItem onClick={() => setActiveSubContent('Arqueo de caja (Control)')} active={activeSubContent === 'Arqueo de caja (Control)'} />
                               <SidebarItem color="#fb8500" label="Gestión Económica" isSubItem onClick={() => setActiveSubContent('Gestión Económica')} active={activeSubContent === 'Gestión Económica'} />
-                              <SidebarItem color="#fb8500" label="Gastos y ganancias" isSubItem onClick={() => setActiveSubContent('Arqueo de caja (Control)')} active={activeSubContent === 'Gastos y ganancias'} />
+                              <SidebarItem color="#fb8500" label="Gastos y ganancias" isSubItem onClick={() => setActiveSubContent('Gestión Económica')} active={activeSubContent === 'Gastos y ganancias'} />
                               <SidebarItem color="#fb8500" label="Tasas por descuento" isSubItem onClick={() => setActiveSubContent('Tasas por descuento')} active={activeSubContent === 'Tasas por descuento'} />
                               <SidebarItem color="#fb8500" label="Formación Profesional" isSubItem onClick={() => setActiveSubContent('Formación Profesional')} active={activeSubContent === 'Formación Profesional'} />
                             </div>
@@ -774,7 +770,7 @@ export default function SeleccioneModuloAccesoPage() {
                     <StudentScheduleView studentId={session.usuario} />
                   ) : activeSubContent === 'Entrega de credenciales' ? (
                     <CredentialDeliveryView />
-                  ) : activeSubContent === 'Gestión Económica' ? (
+                  ) : activeSubContent === 'Gestión Económica' || activeSubContent === 'Gastos y ganancias' ? (
                     <EconomyManagementView />
                   ) : activeSubContent === 'Arqueo de caja (Control)' ? (
                     <CashClosingView />

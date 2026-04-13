@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useMemo } from 'react';
@@ -64,8 +63,136 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 /**
+ * Vista de Entrega de Credenciales para Secretaría.
+ */
+export function CredentialDeliveryView() {
+  const db = useFirestore();
+  const { toast } = useToast();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [generatedPassData, setGeneratedPassData] = useState<{name: string, pass: string} | null>(null);
+
+  const usersQuery = useMemoFirebase(() => {
+    if (!db) return null;
+    return collection(db, 'usuarios');
+  }, [db]);
+
+  const { data: users, isLoading } = useCollection(usersQuery);
+
+  const handleGeneratePassword = (userId: string, userName: string) => {
+    if (!db) return;
+    const newPassword = Math.random().toString(36).substring(2, 10).toUpperCase();
+    const docRef = doc(db, 'usuarios', userId);
+    updateDocumentNonBlocking(docRef, { contrasena: newPassword });
+    setGeneratedPassData({ name: userName, pass: newPassword });
+  };
+
+  const copyToClipboard = () => {
+    if (generatedPassData) {
+      navigator.clipboard.writeText(generatedPassData.pass);
+      toast({ title: "Copiado", description: "Contraseña copiada al portapapeles." });
+    }
+  };
+
+  const filteredUsers = users?.filter(u => 
+    (u.nombrePersona || u.usuario || "").toLowerCase().includes(searchTerm.toLowerCase())
+  ) || [];
+
+  if (isLoading) return <div className="flex justify-center p-20"><Loader2 className="h-8 w-8 animate-spin text-[#fb8500]" /></div>;
+
+  return (
+    <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 space-y-6 max-w-5xl mx-auto w-full font-verdana">
+      <div className="bg-white border rounded-xl shadow-sm overflow-hidden flex flex-col min-h-[500px]">
+        <div className="bg-[#f8f9fa] border-b p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Key className="h-5 w-5 text-[#fb8500]" />
+            <span className="text-sm font-bold text-gray-700 uppercase">Entrega de Credenciales (Censo General)</span>
+          </div>
+          <div className="relative w-full md:w-80">
+            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-gray-400" />
+            <Input 
+              placeholder="Buscar por nombre o apellidos..." 
+              className="pl-8 h-9 text-[11px] border-gray-300" 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <ScrollArea className="flex-1">
+          <div className="p-4 space-y-2">
+            {filteredUsers.length === 0 ? (
+              <p className="text-center py-20 text-gray-400 italic text-sm">No se han encontrado usuarios con ese criterio.</p>
+            ) : (
+              filteredUsers.map((user) => (
+                <div key={user.id} className="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors shadow-sm">
+                  <div className="flex items-center gap-4">
+                    <Avatar className="h-10 w-10 border shadow-sm">
+                      <AvatarImage src={user.imagenPerfil} />
+                      <AvatarFallback>{user.usuario?.substring(0, 2).toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-bold text-gray-700 uppercase">{user.nombrePersona || user.usuario}</span>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="h-4 text-[8px] font-bold border-orange-100 text-orange-600 bg-orange-50 uppercase">
+                          {user.rolesUsuario?.[0]?.replace('Es', '') || "USUARIO"}
+                        </Badge>
+                        <span className="text-[10px] text-gray-400 font-bold uppercase">ID: {user.usuario}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <Button 
+                    size="sm" 
+                    onClick={() => handleGeneratePassword(user.id, user.nombrePersona || user.usuario)}
+                    className="bg-[#fb8500] hover:bg-[#e07600] text-white text-[10px] font-bold uppercase h-8 px-4 gap-2"
+                  >
+                    <Key className="h-3 w-3" /> Generar Clave
+                  </Button>
+                </div>
+              ))
+            )}
+          </div>
+        </ScrollArea>
+      </div>
+
+      <Dialog open={!!generatedPassData} onOpenChange={() => setGeneratedPassData(null)}>
+        <DialogContent className="max-w-md font-verdana p-0 border-none overflow-hidden">
+          <DialogHeader className="bg-[#fb8500] p-6 text-white text-center">
+             <div className="flex justify-center mb-2"><ShieldCheck className="h-8 w-8" /></div>
+             <DialogTitle className="text-lg font-bold uppercase tracking-widest">Nueva Credencial Rayuela</DialogTitle>
+             <DialogDescription className="text-white/80 text-xs font-medium uppercase">Documento oficial de Secretaría</DialogDescription>
+          </DialogHeader>
+          <div className="p-8 bg-white space-y-6 text-center">
+             <div className="space-y-1">
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Titular</span>
+                <p className="text-xl font-bold text-gray-800 uppercase">{generatedPassData?.name}</p>
+             </div>
+             <div className="bg-gray-50 border-2 border-dashed p-6 rounded-xl relative group">
+                <span className="text-[10px] font-bold text-gray-400 uppercase absolute top-2 left-1/2 -translate-x-1/2">Nueva Contraseña</span>
+                <p className="text-3xl font-mono font-bold tracking-[0.2em] text-[#fb8500] mt-2">{generatedPassData?.pass}</p>
+                <Button 
+                  variant="ghost" size="icon" className="absolute top-2 right-2 h-8 w-8 text-gray-300 hover:text-orange-600"
+                  onClick={copyToClipboard}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+             </div>
+             <div className="p-4 bg-blue-50 border border-blue-100 rounded-lg">
+                <p className="text-[9px] text-blue-800 font-bold leading-relaxed uppercase">
+                  Entregue esta información personalmente. El usuario debe cambiarla en su primer acceso.
+                </p>
+             </div>
+          </div>
+          <DialogFooter className="bg-gray-50 p-4 border-t">
+             <Button onClick={() => setGeneratedPassData(null)} className="w-full bg-gray-800 hover:bg-black text-white text-[11px] font-bold uppercase h-10 shadow-md">Cerrar y Limpiar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+/**
  * Vista de Gestión Económica.
- * Saldo base de 10.000€ + gestión de ingresos y gastos.
  */
 export function EconomyManagementView() {
   const db = useFirestore();
@@ -235,7 +362,6 @@ export function EconomyManagementView() {
 
 /**
  * Vista de Arqueo de Caja.
- * Gráficas comparativas y control de porcentajes.
  */
 export function CashClosingView() {
   const db = useFirestore();
@@ -467,7 +593,7 @@ export function SecodexView() {
 }
 
 /**
- * Vistas de Error y Avisos de Estado.
+ * Vista de Error de Secretaría.
  */
 export function SecretaryErrorView({ code, title }: { code: string, title: string }) {
   return (
@@ -484,6 +610,9 @@ export function SecretaryErrorView({ code, title }: { code: string, title: strin
   );
 }
 
+/**
+ * Vista Placeholder de Secretaría.
+ */
 export function SecretaryPlaceholderView({ title }: { title: string }) {
   const isFP = title.includes('Profesional');
   const getIcon = () => {
