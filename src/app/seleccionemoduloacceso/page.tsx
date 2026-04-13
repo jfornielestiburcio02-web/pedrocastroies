@@ -32,7 +32,8 @@ import {
   ShieldAlert,
   ClipboardList,
   AlertCircle,
-  Bell
+  Bell,
+  Coins
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -56,6 +57,9 @@ import { TutoringGradesView } from '@/components/rayuela/tutoring-grades-view';
 import { UserCreationView, UserManagementListView } from '@/components/rayuela/user-management-views';
 import { EvaluationsSummaryView, IncidentsSummaryView } from '@/components/rayuela/management-summary-views';
 import { TeacherNotificationsView } from '@/components/rayuela/teacher-notifications-view';
+
+// Componentes de Secretaría
+import { CredentialDeliveryView, SecretaryPlaceholderView } from '@/components/rayuela/secretaria-views';
 
 // Componentes del Alumno
 import { 
@@ -96,13 +100,25 @@ export default function SeleccioneModuloAccesoPage() {
     'faltas_alum': false,
     'comportamiento_alum': false,
     'evaluaciones_alum': false,
-    'notificaciones_root': false
+    'notificaciones_root': false,
+    'arqueo': false
   });
   
   const router = useRouter();
   const db = useFirestore();
 
   useEffect(() => {
+    // 1. Comprobar si es un refresco de página
+    const navigationEntries = performance.getEntriesByType('navigation');
+    const isReload = navigationEntries.length > 0 && (navigationEntries[0] as PerformanceNavigationTiming).type === 'reload';
+
+    if (isReload) {
+      alert("Sesión Caducada");
+      localStorage.removeItem('user_session');
+      router.push('/login');
+      return;
+    }
+
     const savedSessionStr = localStorage.getItem('user_session');
     
     if (!savedSessionStr) {
@@ -351,7 +367,7 @@ export default function SeleccioneModuloAccesoPage() {
       )}
 
       <div className="flex-1 flex w-full relative">
-        {selectedModule && (activeRole === 'Profesor' || activeRole === 'Dirección' || activeRole === 'Alumno') && (
+        {selectedModule && (activeRole === 'Profesor' || activeRole === 'Dirección' || activeRole === 'Alumno' || activeRole === 'Secretaría') && (
           <div className="group relative z-40 bg-[#f4f4f4] border-r border-gray-300 w-[60px] hover:w-[250px] transition-all duration-300 ease-in-out flex flex-col min-h-full overflow-hidden">
             <div className="flex-1 flex flex-col">
               <div className="flex h-full">
@@ -363,6 +379,14 @@ export default function SeleccioneModuloAccesoPage() {
                       <div className="p-2 bg-gray-400 rounded-sm text-white"><Video className="h-5 w-5" /></div>
                       <div className="p-2 bg-gray-400 rounded-sm text-white"><Pin className="h-5 w-5" /></div>
                       <div className="p-2 bg-gray-400 rounded-sm text-white"><Files className="h-5 w-5" /></div>
+                      <div className="p-2 bg-gray-400 rounded-sm text-white" onClick={() => router.push('/configuracion')}><UserCog className="h-5 w-5" /></div>
+                    </>
+                  ) : activeRole === 'Secretaría' ? (
+                    <>
+                      <div className="p-2 bg-[#fb8500] rounded-sm text-white"><Briefcase className="h-5 w-5" /></div>
+                      <div className="p-2 bg-[#fb8500] rounded-sm text-white"><Coins className="h-5 w-5" /></div>
+                      <div className="p-2 bg-[#fb8500] rounded-sm text-white"><Files className="h-5 w-5" /></div>
+                      <div className="p-2 bg-[#fb8500] rounded-sm text-white"><Key className="h-5 w-5" /></div>
                       <div className="p-2 bg-gray-400 rounded-sm text-white" onClick={() => router.push('/configuracion')}><UserCog className="h-5 w-5" /></div>
                     </>
                   ) : (
@@ -533,6 +557,20 @@ export default function SeleccioneModuloAccesoPage() {
                           </div>
                         )}
                       </div>
+                    ) : activeRole === 'Secretaría' ? (
+                      <div className="space-y-2">
+                        <div className="flex flex-col">
+                          <SidebarHeading label="Arqueo de caja" expanded={expandedItems['arqueo']} onClick={() => toggleExpanded('arqueo')} />
+                          {expandedItems['arqueo'] && (
+                            <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
+                              <SidebarItem color="#fb8500" label="Gestión Económica" isSubItem onClick={() => setActiveSubContent('Gestión Económica')} active={activeSubContent === 'Gestión Económica'} />
+                              <SidebarItem color="#fb8500" label="Tasas por descuento" isSubItem onClick={() => setActiveSubContent('Tasas por descuento')} active={activeSubContent === 'Tasas por descuento'} />
+                              <SidebarItem color="#fb8500" label="Formación Profesional" isSubItem onClick={() => setActiveSubContent('Formación Profesional')} active={activeSubContent === 'Formación Profesional'} />
+                            </div>
+                          )}
+                        </div>
+                        <SidebarItem color="#fb8500" label="Entrega de credenciales" onClick={() => setActiveSubContent('Entrega de credenciales')} active={activeSubContent === 'Entrega de credenciales'} />
+                      </div>
                     ) : (
                       <div className="space-y-2">
                         <div className="flex flex-col">
@@ -690,11 +728,16 @@ export default function SeleccioneModuloAccesoPage() {
                     <StudentEvaluationsListView studentId={session.usuario} type="exam" />
                   ) : activeSubContent === 'Mi Horario Alumno' ? (
                     <StudentScheduleView studentId={session.usuario} />
+                  ) : activeSubContent === 'Entrega de credenciales' ? (
+                    <CredentialDeliveryView />
+                  ) : activeSubContent === 'Gestión Económica' || activeSubContent === 'Tasas por descuento' || activeSubContent === 'Formación Profesional' ? (
+                    <SecretaryPlaceholderView title={activeSubContent} />
                   ) : activeSubContent ? (
                     <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
                        <div className="bg-white border rounded-lg p-10 shadow-sm min-h-[400px] flex flex-col items-center justify-center text-center space-y-4">
                           <div className={cn(
                             "w-16 h-16 rounded-full flex items-center justify-center",
+                            activeRole === 'Secretaría' ? "bg-[#fb8500]/10 text-[#fb8500]" :
                             (activeRole === 'Profesor' || activeRole === 'Alumno') ? "bg-[#89a54e]/10 text-[#89a54e]" : "bg-[#9c4d96]/10 text-[#9c4d96]"
                           )}>
                              <Files className="h-8 w-8" />
