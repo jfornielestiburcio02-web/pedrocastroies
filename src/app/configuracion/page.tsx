@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -46,7 +45,8 @@ export default function ConfiguracionPage() {
   });
 
   useEffect(() => {
-    const savedSession = localStorage.getItem('user_session');
+    // Usamos sessionStorage para garantizar que la configuración solo es accesible en la sesión actual
+    const savedSession = sessionStorage.getItem('user_session');
     if (!savedSession) {
       router.push('/error-configuracion-acceso');
     } else {
@@ -105,9 +105,14 @@ export default function ConfiguracionPage() {
       let finalImageUrl = imageSource;
 
       if (type === 'file') {
-        const fileName = `${session.usuario}.jpg`;
+        const fileExtension = imageSource.includes('image/png') ? 'png' : 'jpg';
+        const randomString = Math.random().toString(36).substring(2, 10);
+        const fileName = `${session.usuario}_${randomString}.${fileExtension}`;
+        
         toast({ title: "Sincronizando...", description: "Enviando imagen al repositorio del centro." });
-        finalImageUrl = await uploadImageToGithub(imageSource, fileName);
+        
+        const githubPath = await uploadImageToGithub(imageSource, fileName);
+        finalImageUrl = `https://iespedrocastro.vercel.app${githubPath}`;
       }
 
       updateDocumentNonBlocking(userDocRef, { imagenPerfil: finalImageUrl });

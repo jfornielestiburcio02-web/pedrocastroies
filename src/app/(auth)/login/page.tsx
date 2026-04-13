@@ -1,9 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Lock, User, Loader2, ArrowRight } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,7 +18,8 @@ export default function LoginPage() {
   const db = useFirestore();
 
   useEffect(() => {
-    const session = localStorage.getItem('user_session');
+    // Usamos sessionStorage para que la sesión no sea persistente entre cierres de navegador
+    const session = sessionStorage.getItem('user_session');
     if (session) {
       router.push('/seleccionemoduloacceso');
     }
@@ -30,7 +30,7 @@ export default function LoginPage() {
     setIsLoading(true);
 
     const formData = new FormData(event.currentTarget);
-    const usuarioInput = formData.get('usuario') as string;
+    const usuarioInput = (formData.get('usuario') as string).toLowerCase().trim();
     const contrasena = formData.get('contrasena') as string;
 
     if (!db) return;
@@ -48,7 +48,8 @@ export default function LoginPage() {
           // Actualizar sesión en Firestore
           await updateDoc(userRef, { sesion: jsessionid });
 
-          localStorage.setItem('user_session', JSON.stringify({
+          // Guardar en sessionStorage (se borra al cerrar la pestaña)
+          sessionStorage.setItem('user_session', JSON.stringify({
             usuario: usuarioInput,
             sesion: jsessionid,
             displayName: userData.nombrePersona || userData.usuario
@@ -82,24 +83,24 @@ export default function LoginPage() {
           <h1 className="text-3xl font-bold tracking-tight text-primary">Acceso Rayuela</h1>
         </div>
 
-        <Card className="border-border shadow-xl bg-card">
-          <CardHeader>
-            <CardTitle className="text-xl">Identificación</CardTitle>
-            <CardDescription>Introduzca sus credenciales</CardDescription>
+        <Card className="border-border shadow-xl bg-card rounded-none">
+          <CardHeader className="bg-gray-50 border-b mb-6">
+            <CardTitle className="text-xl uppercase tracking-tighter font-bold">Identificación</CardTitle>
+            <CardDescription className="text-[10px] font-bold uppercase text-gray-400">Introduzca sus credenciales de Rayuela</CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit}>
             <CardContent className="grid gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="usuario">Usuario</Label>
-                <Input id="usuario" name="usuario" type="text" required />
+                <Label htmlFor="usuario" className="text-[10px] font-bold uppercase text-gray-500">Usuario</Label>
+                <Input id="usuario" name="usuario" type="text" className="rounded-none border-gray-300" required />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="contrasena">Contraseña</Label>
-                <Input id="contrasena" name="contrasena" type="password" required />
+                <Label htmlFor="contrasena" className="text-[10px] font-bold uppercase text-gray-500">Contraseña</Label>
+                <Input id="contrasena" name="contrasena" type="password" className="rounded-none border-gray-300" required />
               </div>
             </CardContent>
-            <CardFooter className="flex flex-col gap-4">
-              <Button type="submit" className="w-full" disabled={isLoading}>
+            <CardFooter className="flex flex-col gap-4 mt-4">
+              <Button type="submit" className="w-full bg-primary hover:bg-primary/90 rounded-none h-12 font-bold uppercase text-[11px] tracking-widest shadow-md" disabled={isLoading}>
                 {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Entrar"}
               </Button>
             </CardFooter>

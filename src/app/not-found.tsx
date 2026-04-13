@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from 'react';
@@ -9,8 +8,8 @@ export default function NotFound() {
   const router = useRouter();
 
   const handleAccept = () => {
-    // Si hay sesión la cierra y redirige a login
-    localStorage.removeItem('user_session');
+    // Si hay sesión la cierra en sessionStorage y redirige a login
+    sessionStorage.removeItem('user_session');
     router.push('/login');
   };
 

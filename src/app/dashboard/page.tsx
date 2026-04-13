@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useEffect, useState } from 'react';
@@ -45,13 +44,13 @@ export default function DashboardPage() {
 
     if (isReload) {
       alert("Sesión Caducada");
-      localStorage.removeItem('user_session');
+      sessionStorage.removeItem('user_session');
       router.push('/login');
       return;
     }
 
-    // 2. Comprobar sesión manual
-    const savedSession = localStorage.getItem('user_session');
+    // 2. Comprobar sesión manual en sessionStorage
+    const savedSession = sessionStorage.getItem('user_session');
     if (!savedSession) {
       router.push('/login');
     } else {
@@ -61,7 +60,7 @@ export default function DashboardPage() {
   }, [router]);
 
   function handleLogout() {
-    localStorage.removeItem('user_session');
+    sessionStorage.removeItem('user_session');
     router.push('/login');
   }
 
@@ -71,7 +70,7 @@ export default function DashboardPage() {
 
   function handleAcceptError() {
     const randomVal = Math.floor(Math.random() * 1000000);
-    localStorage.removeItem('user_session');
+    sessionStorage.removeItem('user_session');
     router.push(`/login?rndval=${randomVal}`);
   }
 

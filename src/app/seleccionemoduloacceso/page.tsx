@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useEffect, useState, useMemo } from 'react';
@@ -115,12 +114,12 @@ export default function SeleccioneModuloAccesoPage() {
 
     if (isReload) {
       alert("Sesión Caducada");
-      localStorage.removeItem('user_session');
+      sessionStorage.removeItem('user_session');
       router.push('/login');
       return;
     }
 
-    const savedSessionStr = localStorage.getItem('user_session');
+    const savedSessionStr = sessionStorage.getItem('user_session');
     
     if (!savedSessionStr) {
       // Si se intenta entrar sin sesión, redirigir a una ruta inexistente para mostrar el 404 personalizado
@@ -201,7 +200,7 @@ export default function SeleccioneModuloAccesoPage() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('user_session');
+    sessionStorage.removeItem('user_session');
     router.push('/login');
   };
 

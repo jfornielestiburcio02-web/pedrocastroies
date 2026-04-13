@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useEffect, useState } from 'react';
@@ -18,8 +17,8 @@ export default function ContenedorPage() {
   const db = useFirestore();
 
   useEffect(() => {
-    const savedSession = localStorage.getItem('user_session');
-    const module = localStorage.getItem('selected_module');
+    const savedSession = sessionStorage.getItem('user_session');
+    const module = sessionStorage.getItem('selected_module');
     
     if (!savedSession) {
       router.push('/error-sesion-inexistente');

@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useEffect, useState } from 'react';
@@ -12,7 +11,7 @@ export default function ContenedirPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const savedSession = localStorage.getItem('user_session');
+    const savedSession = sessionStorage.getItem('user_session');
     if (!savedSession) {
       router.push('/login');
     } else {

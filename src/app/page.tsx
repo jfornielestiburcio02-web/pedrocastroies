@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useRouter } from 'next/navigation';
@@ -9,9 +8,8 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-    // Redirección simple para evitar bucles.
-    // Solo redirige una vez basándose en el estado de localStorage.
-    const sessionStr = localStorage.getItem('user_session');
+    // Redirección basada en sessionStorage para garantizar sesiones no persistentes
+    const sessionStr = sessionStorage.getItem('user_session');
     
     if (sessionStr) {
       try {
@@ -21,7 +19,7 @@ export default function Home() {
           return;
         }
       } catch (e) {
-        localStorage.removeItem('user_session');
+        sessionStorage.removeItem('user_session');
       }
     }
     
