@@ -615,9 +615,11 @@ export function SecretaryErrorView({ code, title }: { code: string, title: strin
  */
 export function SecretaryPlaceholderView({ title }: { title: string }) {
   const isFP = title.includes('Profesional');
+  const isTasas = title.includes('Tasas');
+  
   const getIcon = () => {
     if (isFP) return <Library className="h-12 w-12" />;
-    if (title.includes('Económica')) return <Coins className="h-12 w-12" />;
+    if (title.includes('Económica') || isTasas) return <Coins className="h-12 w-12" />;
     if (title.includes('Título') || title === 'seCODEX') return <Award className="h-12 w-12" />;
     return <FileText className="h-12 w-12" />;
   };
@@ -632,14 +634,16 @@ export function SecretaryPlaceholderView({ title }: { title: string }) {
         <p className="text-gray-400 italic max-w-md mx-auto leading-relaxed">
           {isFP 
             ? "No hay ciclos de Formación Profesional en curso"
+            : isTasas 
+            ? "Material escolar en descuento"
             : `Esta sección de ${title.toLowerCase()} está siendo sincronizada con el servidor central de Rayuela (Comunidad de Madrid).`}
         </p>
       </div>
       <Badge className={cn(
         "px-6 py-1.5 font-bold uppercase tracking-widest text-[10px]",
-        isFP ? "bg-gray-400 text-white" : "bg-[#fb8500] text-white"
+        (isFP || isTasas) ? "bg-gray-400 text-white" : "bg-[#fb8500] text-white"
       )}>
-        {isFP ? "SIN REGISTROS" : "Servicio en Sincronización"}
+        {(isFP || isTasas) ? "AVISO DEL CENTRO" : "Servicio en Sincronización"}
       </Badge>
     </div>
   );
