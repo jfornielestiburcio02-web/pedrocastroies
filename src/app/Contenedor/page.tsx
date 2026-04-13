@@ -22,7 +22,7 @@ export default function ContenedorPage() {
     const module = localStorage.getItem('selected_module');
     
     if (!savedSession) {
-      router.push('/login');
+      router.push('/error-sesion-inexistente');
       return;
     }
 
@@ -31,8 +31,7 @@ export default function ContenedorPage() {
       
       // Validación crítica: Si no hay identificador de usuario, la sesión es inválida
       if (!sessionData || !sessionData.usuario) {
-        console.warn("Sesión malformada o vacía, redirigiendo a login.");
-        router.push('/login');
+        router.push('/error-sesion-malformada');
         return;
       }
 
@@ -71,8 +70,7 @@ export default function ContenedorPage() {
 
       fetchUserRoles();
     } catch (e) {
-      console.error("Error al procesar la sesión:", e);
-      router.push('/login');
+      router.push('/error-excepcion-sesion');
     }
   }, [router, db]);
 

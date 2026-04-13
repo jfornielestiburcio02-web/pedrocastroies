@@ -33,7 +33,8 @@ import {
   ClipboardList,
   AlertCircle,
   Bell,
-  Coins
+  Coins,
+  Key
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -122,14 +123,15 @@ export default function SeleccioneModuloAccesoPage() {
     const savedSessionStr = localStorage.getItem('user_session');
     
     if (!savedSessionStr) {
-      router.push('/login');
+      // Si se intenta entrar sin sesión, redirigir a una ruta inexistente para mostrar el 404 personalizado
+      router.push('/error-solicitud-directa');
       return;
     }
 
     try {
       const sessionData = JSON.parse(savedSessionStr);
       if (!sessionData || !sessionData.usuario) {
-        router.push('/login');
+        router.push('/error-solicitud-directa');
         return;
       }
       setSession(sessionData);
@@ -395,7 +397,7 @@ export default function SeleccioneModuloAccesoPage() {
                       <div className="p-2 bg-[#9c4d96] rounded-sm text-white"><Clock className="h-5 w-5" /></div>
                       <div className="p-2 bg-[#9c4d96] rounded-sm text-white"><Files className="h-5 w-5" /></div>
                       <div className="p-2 bg-[#9c4d96] rounded-sm text-white"><ShieldCheck className="h-5 w-5" /></div>
-                      <div className="p-2 bg-[#9c4d96] rounded-sm text-white" onClick={() => router.push('/configuracion')}><UserCog className="h-5 w-5" /></div>
+                      <div className="p-2 bg-gray-400 rounded-sm text-white" onClick={() => router.push('/configuracion')}><UserCog className="h-5 w-5" /></div>
                     </>
                   )}
                 </div>

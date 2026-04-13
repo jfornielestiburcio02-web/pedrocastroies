@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -47,7 +48,7 @@ export default function ConfiguracionPage() {
   useEffect(() => {
     const savedSession = localStorage.getItem('user_session');
     if (!savedSession) {
-      router.push('/login');
+      router.push('/error-configuracion-acceso');
     } else {
       setSession(JSON.parse(savedSession));
       setIsLoading(false);
