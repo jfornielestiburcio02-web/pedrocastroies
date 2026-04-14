@@ -12,7 +12,8 @@ import {
   Trash2,
   AlertCircle,
   X,
-  CheckCircle2
+  CheckCircle2,
+  Layout
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
