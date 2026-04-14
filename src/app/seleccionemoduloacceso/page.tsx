@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useState, useMemo } from 'react';
@@ -35,7 +36,8 @@ import {
   Coins,
   Key,
   Award,
-  Book
+  Book,
+  Layout
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -51,7 +53,7 @@ import { MessagingView } from '@/components/rayuela/messaging-view';
 import { TutorialFunctionView } from '@/components/rayuela/tutorial-function-view';
 import { ScheduleListView, ScheduleCreationView, MyScheduleView } from '@/components/rayuela/schedule-views';
 import { SidebarItem, SidebarHeading, ModuleBox } from '@/components/rayuela/shared-components';
-import { MyTutoringStudentsView, CenterStudentsView } from '@/components/rayuela/student-management-views';
+import { MyTutoringStudentsView, CenterStudentsView, TeacherGroupsView } from '@/components/rayuela/student-management-views';
 import { EvaluationsView } from '@/components/rayuela/evaluations-views';
 import { EvaluationOpeningView } from '@/components/rayuela/management-evaluation-views';
 import { TeacherGradingView } from '@/components/rayuela/teacher-grading-view';
@@ -98,6 +100,7 @@ export default function SeleccioneModuloAccesoPage() {
     'horarios': false,
     'mensajeria': false,
     'miAlumnado': false,
+    'grupos_root': false,
     'horario_profesor': false,
     'calificaciones_root': false,
     'evaluaciones': false,
@@ -477,6 +480,14 @@ export default function SeleccioneModuloAccesoPage() {
                               <SidebarHeading label="Mi alumnado" expanded={expandedItems['miAlumnado']} onClick={() => toggleExpanded('miAlumnado')} />
                               {expandedItems['miAlumnado'] && (
                                 <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
+                                  <div className="flex flex-col">
+                                    <SidebarHeading label="Grupos" expanded={expandedItems['grupos_root']} onClick={() => toggleExpanded('grupos_root')} />
+                                    {expandedItems['grupos_root'] && (
+                                      <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
+                                        <SidebarItem color="#89a54e" label="Gestión de Grupos" isSubItem onClick={() => setActiveSubContent('Gestión de Grupos')} active={activeSubContent === 'Gestión de Grupos'} />
+                                      </div>
+                                    )}
+                                  </div>
                                   {isTeacherTutor && (
                                     <SidebarItem color="#89a54e" label="Alumnado de mi tutoria" isSubItem onClick={() => setActiveSubContent('Alumnado de mi tutoria')} active={activeSubContent === 'Alumnado de mi tutoria'} />
                                   )}
@@ -718,6 +729,8 @@ export default function SeleccioneModuloAccesoPage() {
                       targetStudentId={targetIncidentData?.studentId} 
                       onActionComplete={() => setTargetIncidentData(null)}
                     />
+                  ) : activeSubContent === 'Gestión de Grupos' ? (
+                    <TeacherGroupsView profesorId={session.usuario} />
                   ) : activeSubContent === 'Mis Mensajes' ? (
                     <MessagingView 
                       mode="inbox" 

@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useMemo } from 'react';
@@ -9,7 +10,8 @@ import {
   Plus,
   Calendar,
   AlertCircle,
-  Users
+  Users,
+  Layout
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -266,14 +268,13 @@ export function ScheduleCreationView() {
     if (!db) return null;
     return collection(db, 'usuarios');
   }, [db]);
-  
   const { data: allUsers, isLoading: loadingUsers } = useCollection(usersQuery);
   
   const professors = useMemo(() => allUsers?.filter(u => u.rolesUsuario?.includes('EsProfesor')) || [], [allUsers]);
-  const students = useMemo(() => allUsers?.filter(u => u.rolesUsuario?.includes('EsAlumno')) || [], [allUsers]);
 
   const [formData, setFormData] = useState({
     profesorId: '',
+    grupoId: '',
     dia: 'Lunes',
     horaInicio: '08:30',
     horaFin: '09:30',
@@ -282,7 +283,30 @@ export function ScheduleCreationView() {
     alumnosIds: [] as string[]
   });
 
+  // Query para obtener los grupos del profesor seleccionado
+  const professorGroupsQuery = useMemoFirebase(() => {
+    if (!db || !formData.profesorId) return null;
+    return query(collection(db, 'gruposAlumnos'), where('profesorId', '==', formData.profesorId));
+  }, [db, formData.profesorId]);
+  const { data: professorGroups } = useCollection(professorGroupsQuery);
+
   const [isSaving, setIsSaving] = useState(false);
+
+  const handleProfessorChange = (val: string) => {
+    setFormData(prev => ({ ...prev, profesorId: val, grupoId: '', alumnosIds: [] }));
+  };
+
+  const handleGroupChange = (val: string) => {
+    const selectedGroup = professorGroups?.find(g => g.id === val);
+    if (selectedGroup) {
+      setFormData(prev => ({ 
+        ...prev, 
+        grupoId: val, 
+        alumnosIds: selectedGroup.alumnosIds,
+        asignatura: selectedGroup.titulo // Sugerir el título del grupo como asignatura
+      }));
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -293,6 +317,11 @@ export function ScheduleCreationView() {
         title: "Error de validación",
         description: "Debe seleccionar un profesor y asignar una materia o marcar como guardia."
       });
+      return;
+    }
+
+    if (!formData.esGuardia && formData.alumnosIds.length === 0) {
+      toast({ variant: "destructive", title: "Sin Alumnos", description: "El horario lectivo debe tener un grupo de alumnos asociado." });
       return;
     }
 
@@ -313,18 +342,10 @@ export function ScheduleCreationView() {
       ...prev,
       asignatura: '',
       esGuardia: false,
+      grupoId: '',
       alumnosIds: []
     }));
     setIsSaving(false);
-  };
-
-  const toggleStudent = (id: string) => {
-    setFormData(prev => ({
-      ...prev,
-      alumnosIds: prev.alumnosIds.includes(id) 
-        ? prev.alumnosIds.filter(sid => sid !== id)
-        : [...prev.alumnosIds, id]
-    }));
   };
 
   const daysOptions = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
@@ -341,8 +362,8 @@ export function ScheduleCreationView() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="space-y-6">
               <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase text-gray-500">Profesor Asignado</Label>
-                <Select onValueChange={(val) => setFormData({...formData, profesorId: val})} value={formData.profesorId}>
+                <Label className="text-xs font-bold uppercase text-gray-500">1. Profesor Asignado</Label>
+                <Select onValueChange={handleProfessorChange} value={formData.profesorId}>
                   <SelectTrigger className="border-gray-300">
                     <SelectValue placeholder="Seleccione un profesor..." />
                   </SelectTrigger>
@@ -355,7 +376,7 @@ export function ScheduleCreationView() {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase text-gray-500">Día de la semana</Label>
+                <Label className="text-xs font-bold uppercase text-gray-500">2. Día de la semana</Label>
                 <Select onValueChange={(val) => setFormData({...formData, dia: val})} value={formData.dia}>
                   <SelectTrigger className="border-gray-300">
                     <SelectValue />
@@ -370,7 +391,7 @@ export function ScheduleCreationView() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase text-gray-500">Hora Inicio</Label>
+                  <Label className="text-xs font-bold uppercase text-gray-500">3. Hora Inicio</Label>
                   <Input 
                     type="time" 
                     className="border-gray-300"
@@ -379,7 +400,7 @@ export function ScheduleCreationView() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase text-gray-500">Hora Fin</Label>
+                  <Label className="text-xs font-bold uppercase text-gray-500">4. Hora Fin</Label>
                   <Input 
                     type="time" 
                     className="border-gray-300"
@@ -391,65 +412,66 @@ export function ScheduleCreationView() {
             </div>
 
             <div className="space-y-6">
-              <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase text-gray-500">Nombre de Asignatura / Actividad</Label>
-                <Input 
-                  placeholder="Ej: Matemáticas II" 
-                  className="border-gray-300"
-                  value={formData.asignatura}
-                  disabled={formData.esGuardia}
-                  onChange={(e) => setFormData({...formData, asignatura: e.target.value})}
-                />
-              </div>
-
               <div className="flex items-center space-x-2 bg-gray-50 p-4 rounded-lg border border-dashed border-gray-300">
                 <Checkbox 
                   id="esGuardia" 
                   checked={formData.esGuardia}
-                  onCheckedChange={(checked) => setFormData({...formData, esGuardia: !!checked, asignatura: checked ? 'GUARDIA' : ''})}
+                  onCheckedChange={(checked) => setFormData({...formData, esGuardia: !!checked, asignatura: checked ? 'GUARDIA' : '', grupoId: '', alumnosIds: []})}
                 />
-                <Label htmlFor="esGuardia" className="text-sm font-bold text-gray-700 cursor-pointer">Es una sesión de GUARDIA</Label>
+                <Label htmlFor="esGuardia" className="text-sm font-bold text-gray-700 cursor-pointer uppercase">Es una sesión de GUARDIA</Label>
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase text-gray-500 flex justify-between">
-                  <span>Alumnos Asignados</span>
-                  <span className="text-primary">{formData.alumnosIds.length} seleccionados</span>
-                </Label>
-                <div className="border rounded-lg h-[200px] overflow-y-auto p-2 bg-gray-50/50 space-y-1">
-                  {students.length === 0 ? (
-                    <p className="text-center text-[11px] text-gray-400 mt-10 italic">No hay alumnos registrados</p>
-                  ) : (
-                    students.map(s => (
-                      <div 
-                        key={s.id} 
-                        onClick={() => toggleStudent(s.id)}
-                        className={cn(
-                          "flex items-center gap-3 p-2 rounded-md cursor-pointer transition-all border",
-                          formData.alumnosIds.includes(s.id) 
-                            ? "bg-white border-[#9c4d96] shadow-sm" 
-                            : "bg-transparent border-transparent hover:bg-white hover:border-gray-200"
+              {!formData.esGuardia && (
+                <div className="space-y-6 animate-in slide-in-from-top-2 duration-300">
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase text-gray-500">5. Seleccione Grupo del Profesor</Label>
+                    <Select onValueChange={handleGroupChange} value={formData.grupoId} disabled={!formData.profesorId}>
+                      <SelectTrigger className="border-gray-300">
+                        <SelectValue placeholder={!formData.profesorId ? "Elija primero profesor" : "Seleccione grupo de alumnos..."} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {professorGroups?.length === 0 ? (
+                          <div className="p-2 text-xs text-gray-400 italic">Este profesor no tiene grupos creados</div>
+                        ) : (
+                          professorGroups?.map(g => (
+                            <SelectItem key={g.id} value={g.id} className="font-bold">{g.titulo}</SelectItem>
+                          ))
                         )}
-                      >
-                        <div className={cn(
-                          "w-4 h-4 rounded-sm border flex items-center justify-center transition-colors",
-                          formData.alumnosIds.includes(s.id) ? "bg-[#9c4d96] border-[#9c4d96]" : "bg-white border-gray-300"
-                        )}>
-                          {formData.alumnosIds.includes(s.id) && <Plus className="h-3 w-3 text-white" />}
-                        </div>
-                        <span className="text-[12px]">{s.nombrePersona || s.usuario}</span>
-                      </div>
-                    ))
+                      </SelectContent>
+                    </Select>
+                    {formData.profesorId && (
+                      <p className="text-[9px] text-gray-400 italic">Los grupos se gestionan desde el menú "Mi Alumnado" del profesor.</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase text-gray-500">6. Nombre de Asignatura</Label>
+                    <Input 
+                      placeholder="Ej: Matemáticas II" 
+                      className="border-gray-300 font-bold"
+                      value={formData.asignatura}
+                      onChange={(e) => setFormData({...formData, asignatura: e.target.value})}
+                    />
+                  </div>
+
+                  {formData.alumnosIds.length > 0 && (
+                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 flex items-center justify-between">
+                       <div className="flex items-center gap-2">
+                          <Users className="h-4 w-4 text-blue-600" />
+                          <span className="text-[10px] font-bold text-blue-800 uppercase">Grupo con {formData.alumnosIds.length} alumnos</span>
+                       </div>
+                       <Badge className="bg-blue-600 text-white font-bold text-[9px]">VINCULADO</Badge>
+                    </div>
                   )}
                 </div>
-              </div>
+              )}
             </div>
           </div>
 
           <div className="pt-6 border-t flex items-center justify-end">
-             <Button type="submit" disabled={isSaving} className="bg-[#9c4d96] hover:bg-[#833d7d] text-white gap-2 px-8 text-[11px] font-bold uppercase tracking-widest h-12">
+             <Button type="submit" disabled={isSaving} className="bg-[#9c4d96] hover:bg-[#833d7d] text-white gap-2 px-8 text-[11px] font-bold uppercase tracking-widest h-12 shadow-lg">
                {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-               Guardar en Rayuela
+               Registrar Horario en Rayuela
              </Button>
           </div>
         </form>
@@ -457,4 +479,3 @@ export function ScheduleCreationView() {
     </div>
   );
 }
-

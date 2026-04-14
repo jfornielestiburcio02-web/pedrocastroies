@@ -148,6 +148,7 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
     const attendanceData = {
       alumnoId,
       claseId: selectedScheduleId,
+      grupoId: currentSchedule?.grupoId || "", // Vincular al grupo para historial coherente
       fecha: selectedDate,
       tipo: nextStatus,
       profesorId,
@@ -174,6 +175,7 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
     const behaviorData = {
       alumnoId,
       claseId: selectedScheduleId,
+      grupoId: currentSchedule?.grupoId || "",
       fecha: selectedDate,
       tipo: tipo,
       profesorId,
@@ -202,6 +204,7 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
       addDocumentNonBlocking(collection(db, 'asistenciasInasistencias'), {
         alumnoId: viewingReason.alumnoId,
         claseId: selectedScheduleId,
+        grupoId: currentSchedule?.grupoId || "",
         fecha: selectedDate,
         tipo: 'J',
         motivo: viewingReason.reason,
@@ -261,6 +264,13 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
             )}
           </div>
         </div>
+
+        {currentSchedule?.grupoId && (
+          <div className="bg-white px-3 py-1 border rounded flex items-center gap-2">
+             <Layout className="h-3 w-3 text-[#89a54e]" />
+             <span className="text-[10px] font-bold text-[#89a54e] uppercase tracking-tight">Grupo Vinculado: {currentSchedule.asignatura}</span>
+          </div>
+        )}
 
         <div className="flex gap-4">
            <div className="flex items-center gap-1.5">
@@ -376,6 +386,7 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
         <AttendanceHistoryDialog 
           alumnoId={historyAlumnoId} 
           claseId={selectedScheduleId!} 
+          grupoId={currentSchedule?.grupoId}
           onClose={() => setHistoryAlumnoId(null)} 
         />
       )}
@@ -414,7 +425,7 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
   );
 }
 
-function AttendanceHistoryDialog({ alumnoId, claseId, onClose }: { alumnoId: string, claseId: string, onClose: () => void }) {
+function AttendanceHistoryDialog({ alumnoId, claseId, grupoId, onClose }: { alumnoId: string, claseId: string, grupoId?: string, onClose: () => void }) {
   const db = useFirestore();
   const [alumnoName, setAlumnoName] = useState("");
   const [justifyingId, setJustifyingId] = useState<string | null>(null);
@@ -430,13 +441,23 @@ function AttendanceHistoryDialog({ alumnoId, claseId, onClose }: { alumnoId: str
 
   const historyQuery = useMemoFirebase(() => {
     if (!db) return null;
+    // Si hay grupoId, mostramos el historial de todo el grupo (inter-dias)
+    if (grupoId) {
+      return query(
+        collection(db, 'asistenciasInasistencias'),
+        where('alumnoId', '==', alumnoId),
+        where('grupoId', '==', grupoId),
+        orderBy('fecha', 'desc')
+      );
+    }
+    // Fallback: historial de la clase específica
     return query(
       collection(db, 'asistenciasInasistencias'),
       where('alumnoId', '==', alumnoId),
       where('claseId', '==', claseId),
       orderBy('fecha', 'desc')
     );
-  }, [db, alumnoId, claseId]);
+  }, [db, alumnoId, claseId, grupoId]);
 
   const { data: history, isLoading } = useCollection(historyQuery);
 
@@ -465,7 +486,7 @@ function AttendanceHistoryDialog({ alumnoId, claseId, onClose }: { alumnoId: str
         <DialogHeader className="bg-[#f2f2f2] p-4 text-center">
           <DialogTitle className="text-[14px] font-bold text-black uppercase tracking-tight">Historial de Asistencias</DialogTitle>
           <DialogDescription className="text-[11px] font-bold text-[#008D88] uppercase mt-1">
-            Alumno: {alumnoName}
+            Alumno: {alumnoName} {grupoId ? "(Seguimiento por Grupo)" : ""}
           </DialogDescription>
         </DialogHeader>
 
@@ -549,7 +570,7 @@ function AttendanceHistoryDialog({ alumnoId, claseId, onClose }: { alumnoId: str
             </div>
           ) : (
             <div className="text-center py-10 text-gray-400 italic text-sm">
-              No constan registros para este alumno en este horario.
+              No constan registros para este alumno en este historial.
             </div>
           )}
           <div className="mt-6 flex justify-center">

@@ -57,12 +57,24 @@
         "email"
       ]
     },
+    "GrupoAlumnos": {
+      "title": "GrupoAlumnos",
+      "type": "object",
+      "description": "Grupo personalizado de alumnos creado por un profesor.",
+      "properties": {
+        "profesorId": { "type": "string" },
+        "titulo": { "type": "string" },
+        "alumnosIds": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
     "Horario": {
       "title": "Horario",
       "type": "object",
       "description": "Definición de clase o guardia asignada a un profesor.",
       "properties": {
         "profesorId": { "type": "string" },
+        "grupoId": { "type": "string", "description": "Referencia al grupo de alumnos vinculado." },
         "dia": { "type": "string", "enum": ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"] },
         "horaInicio": { "type": "string" },
         "horaFin": { "type": "string" },
@@ -199,6 +211,12 @@
         "$ref": "#/backend/entities/Usuario"
       },
       "description": "Colección de usuarios con gestión de sesión manual."
+    },
+    "/gruposAlumnos/{grupoId}": {
+      "schema": {
+        "$ref": "#/backend/entities/GrupoAlumnos"
+      },
+      "description": "Colección de grupos personalizados creados por profesores."
     },
     "/horarios/{horarioId}": {
       "schema": {

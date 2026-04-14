@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Loader2, 
   Key, 
@@ -12,13 +12,18 @@ import {
   Lock,
   Copy,
   ShieldCheck,
-  X
+  X,
+  Plus,
+  Save,
+  Trash2,
+  Layout
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, doc } from 'firebase/firestore';
-import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { collection, query, where, doc, deleteDoc } from 'firebase/firestore';
+import { updateDocumentNonBlocking, addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from '@/components/ui/badge';
@@ -32,10 +37,184 @@ import {
   DialogTitle,
   DialogFooter
 } from "@/components/ui/dialog";
+import { Checkbox } from '@/components/ui/checkbox';
+
+/**
+ * Vista de gestión de grupos personalizados para el profesor.
+ */
+export function TeacherGroupsView({ profesorId }: { profesorId: string }) {
+  const db = useFirestore();
+  const { toast } = useToast();
+  const [isCreating, setIsCreating] = useState(false);
+  const [formData, setFormData] = useState({ titulo: '', alumnosIds: [] as string[] });
+
+  // 1. Obtener todos los alumnos del centro para seleccionar
+  const allStudentsQuery = useMemoFirebase(() => {
+    if (!db) return null;
+    return query(collection(db, 'usuarios'), where('rolesUsuario', 'array-contains', 'EsAlumno'));
+  }, [db]);
+  const { data: allStudents, isLoading: loadingStudents } = useCollection(allStudentsQuery);
+
+  // 2. Obtener los grupos propios de este profesor
+  const myGroupsQuery = useMemoFirebase(() => {
+    if (!db || !profesorId) return null;
+    return query(collection(db, 'gruposAlumnos'), where('profesorId', '==', profesorId));
+  }, [db, profesorId]);
+  const { data: myGroups, isLoading: loadingGroups } = useCollection(myGroupsQuery);
+
+  const handleCreateGroup = () => {
+    if (!db || !formData.titulo || formData.alumnosIds.length === 0) {
+      toast({ variant: "destructive", title: "Incompleto", description: "Asigne un título y seleccione alumnos." });
+      return;
+    }
+
+    addDocumentNonBlocking(collection(db, 'gruposAlumnos'), {
+      ...formData,
+      profesorId,
+      createdAt: new Date().toISOString()
+    });
+
+    toast({ title: "Grupo Creado", description: `El grupo "${formData.titulo}" ya está disponible para horarios.` });
+    setIsCreating(false);
+    setFormData({ titulo: '', alumnosIds: [] });
+  };
+
+  const handleDeleteGroup = (id: string) => {
+    if (!db) return;
+    deleteDocumentNonBlocking(doc(db, 'gruposAlumnos', id));
+    toast({ title: "Grupo eliminado" });
+  };
+
+  const toggleStudent = (id: string) => {
+    setFormData(prev => ({
+      ...prev,
+      alumnosIds: prev.alumnosIds.includes(id) 
+        ? prev.alumnosIds.filter(sid => sid !== id)
+        : [...prev.alumnosIds, id]
+    }));
+  };
+
+  if (loadingStudents || loadingGroups) return <div className="flex justify-center p-20"><Loader2 className="h-8 w-8 animate-spin text-[#89a54e]" /></div>;
+
+  return (
+    <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 space-y-6 max-w-6xl mx-auto w-full font-verdana">
+      <div className="flex items-center justify-between bg-white border p-4 rounded-xl shadow-sm">
+         <div className="flex items-center gap-3">
+            <Layout className="h-5 w-5 text-[#89a54e]" />
+            <h2 className="text-sm font-bold text-gray-700 uppercase">Mis Grupos de Alumnado</h2>
+         </div>
+         <Button onClick={() => setIsCreating(true)} className="bg-[#89a54e] hover:bg-[#728a41] text-white text-[10px] font-bold uppercase h-8 px-4 gap-2">
+           <Plus className="h-3 w-3" /> Crear nuevo grupo
+         </Button>
+      </div>
+
+      {myGroups?.length === 0 ? (
+        <div className="py-20 text-center bg-gray-50 border-2 border-dashed rounded-2xl opacity-40">
+           <p className="text-sm italic">Aún no ha creado grupos personalizados para sus materias.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+           {myGroups?.map(group => (
+             <div key={group.id} className="bg-white border rounded-xl overflow-hidden shadow-sm flex flex-col group hover:border-[#89a54e] transition-all">
+                <div className="bg-gray-50 p-4 border-b flex items-center justify-between">
+                   <h3 className="text-xs font-bold text-gray-700 uppercase truncate pr-4">{group.titulo}</h3>
+                   <Button variant="ghost" size="icon" onClick={() => handleDeleteGroup(group.id)} className="h-7 w-7 text-gray-300 hover:text-red-600">
+                      <Trash2 className="h-3.5 w-3.5" />
+                   </Button>
+                </div>
+                <div className="p-4 flex-1">
+                   <div className="flex flex-wrap gap-1.5">
+                      {group.alumnosIds.slice(0, 6).map((sid: string) => {
+                        const student = allStudents?.find(s => s.id === sid);
+                        return student ? (
+                          <Badge key={sid} variant="outline" className="text-[8px] font-bold py-0 h-5 border-gray-200 text-gray-500 bg-gray-50">
+                            {student.nombrePersona || student.usuario}
+                          </Badge>
+                        ) : null;
+                      })}
+                      {group.alumnosIds.length > 6 && (
+                        <Badge variant="outline" className="text-[8px] font-bold py-0 h-5 bg-blue-50 text-blue-600">+{group.alumnosIds.length - 6} MÁS</Badge>
+                      )}
+                   </div>
+                </div>
+                <div className="bg-gray-50 p-3 text-[9px] font-bold text-gray-400 uppercase text-center border-t">
+                   {group.alumnosIds.length} ALUMNOS VINCULADOS
+                </div>
+             </div>
+           ))}
+        </div>
+      )}
+
+      <Dialog open={isCreating} onOpenChange={setIsCreating}>
+        <DialogContent className="max-w-2xl font-verdana p-0 border-none overflow-hidden">
+          <DialogHeader className="bg-[#89a54e] p-6 text-white shrink-0">
+             <DialogTitle className="text-sm font-bold uppercase tracking-widest flex items-center gap-2">
+               <Plus className="h-4 w-4" /> Configurar Nuevo Grupo
+             </DialogTitle>
+             <DialogDescription className="text-white/80 text-[10px] font-bold uppercase">Gestión de agrupaciones por materia</DialogDescription>
+          </DialogHeader>
+
+          <div className="p-8 bg-white space-y-6">
+             <div className="space-y-2">
+                <Label className="text-[10px] font-bold text-gray-400 uppercase">Título del Grupo (Ej: Matemáticas 2º ESO)</Label>
+                <Input 
+                  placeholder="Nombre identificativo..." 
+                  value={formData.titulo}
+                  onChange={(e) => setFormData({...formData, titulo: e.target.value})}
+                  className="h-10 border-gray-300 font-bold text-sm"
+                />
+             </div>
+
+             <div className="space-y-2">
+                <Label className="text-[10px] font-bold text-gray-400 uppercase flex justify-between">
+                  <span>Seleccione los alumnos</span>
+                  <span className="text-[#89a54e]">{formData.alumnosIds.length} seleccionados</span>
+                </Label>
+                <div className="border rounded-lg h-[250px] bg-gray-50/50 overflow-hidden flex flex-col">
+                   <ScrollArea className="flex-1 p-2">
+                      <div className="grid grid-cols-1 gap-1">
+                         {allStudents?.map(s => (
+                           <div 
+                            key={s.id} 
+                            onClick={() => toggleStudent(s.id)}
+                            className={cn(
+                              "flex items-center gap-3 p-2 rounded-md cursor-pointer transition-all border",
+                              formData.alumnosIds.includes(s.id) 
+                                ? "bg-white border-[#89a54e] shadow-sm" 
+                                : "bg-transparent border-transparent hover:bg-white hover:border-gray-200"
+                            )}
+                           >
+                              <Checkbox checked={formData.alumnosIds.includes(s.id)} />
+                              <div className="flex items-center gap-2">
+                                <Avatar className="h-6 w-6">
+                                  <AvatarImage src={s.imagenPerfil} />
+                                  <AvatarFallback className="text-[8px]">{s.usuario?.substring(0,2).toUpperCase()}</AvatarFallback>
+                                </Avatar>
+                                <span className="text-[11px] font-bold text-gray-700">{s.nombrePersona || s.usuario}</span>
+                                <Badge variant="outline" className="text-[8px] h-4 py-0 border-gray-200">{s.cursoAlumno || 'S/C'}</Badge>
+                              </div>
+                           </div>
+                         ))}
+                      </div>
+                   </ScrollArea>
+                </div>
+             </div>
+          </div>
+
+          <DialogFooter className="bg-gray-50 p-6 border-t gap-4 shrink-0">
+             <Button variant="outline" onClick={() => setIsCreating(false)} className="text-[11px] font-bold uppercase h-10 px-8">Cancelar</Button>
+             <Button onClick={handleCreateGroup} className="bg-[#89a54e] hover:bg-[#728a41] text-white text-[11px] font-bold uppercase h-10 px-8 gap-2 shadow-md">
+               <Save className="h-4 w-4" /> Guardar Grupo
+             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
 
 /**
  * Vista de alumnos del grupo de tutoría del profesor.
- * Permite listar alumnos y generar nuevas contraseñas de forma segura.
  */
 export function MyTutoringStudentsView({ grupoTutorizado }: { grupoTutorizado: string }) {
   const db = useFirestore();
