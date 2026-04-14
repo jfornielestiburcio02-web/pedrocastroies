@@ -151,7 +151,18 @@ export function AlumnadoIncidenteView({ profesorId, targetStudentId, onActionCom
 
     if (!incidentRef) return;
 
-    // Enviar notificación al tutor si existe
+    // 1. Enviar mensaje al ALUMNO (Aviso solicitado)
+    addDocumentNonBlocking(collection(db, 'mensajes'), {
+      remitenteId: 'SISTEMA',
+      destinatarioId: formData.alumnoId,
+      asunto: 'Aviso de Conducta: Rayuela',
+      cuerpo: `Se ha registrado una nueva conducta hacia tu persona, para verla entre en Comportamiento -> Amonestaciones\n\nAmonestación puesta por ${profName}`,
+      leido: false,
+      eliminado: false,
+      createdAt: new Date().toISOString()
+    });
+
+    // 2. Enviar notificación al tutor si existe
     if (studentCourse && studentCourse !== "SIN CURSO") {
       const tutorsQuery = query(collection(db, 'usuarios'), where('esTutor', '==', studentCourse));
       const tutorsSnap = await getDocs(tutorsQuery);
@@ -169,7 +180,7 @@ export function AlumnadoIncidenteView({ profesorId, targetStudentId, onActionCom
       });
     }
 
-    toast({ title: "Incidencia Registrada", description: "Se ha añadido al expediente disciplinario y se ha notificado al tutor." });
+    toast({ title: "Incidencia Registrada", description: "Se ha añadido al expediente disciplinario y se ha notificado al interesado." });
     setIsDialogOpen(false);
     setFormData({
       alumnoId: '',
