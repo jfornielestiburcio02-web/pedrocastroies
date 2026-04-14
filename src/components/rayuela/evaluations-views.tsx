@@ -139,7 +139,28 @@ export function EvaluationsView({ profesorId, type }: EvaluationsViewProps) {
     };
 
     addDocumentNonBlocking(collection(db, collectionName), data);
-    toast({ title: "Registro creado", description: "Ahora puede gestionar el detalle de los alumnos." });
+
+    // NOTIFICACIÓN AUTOMÁTICA A LOS ALUMNOS
+    if (currentSchedule?.alumnosIds && currentSchedule.alumnosIds.length > 0) {
+      const profUser = allUsers?.find(u => u.id === profesorId);
+      const profName = profUser?.nombrePersona || profUser?.usuario || profesorId;
+      const cosa = type === 'exam' ? `un EXAMEN (${formData.titulo})` : `una TAREA (${formData.titulo})`;
+      const fechaFormateada = format(new Date(selectedDate), 'dd/MM/yyyy', { locale: es });
+
+      currentSchedule.alumnosIds.forEach((alumnoId: string) => {
+        addDocumentNonBlocking(collection(db, 'mensajes'), {
+          remitenteId: 'SISTEMA',
+          destinatarioId: alumnoId,
+          asunto: type === 'exam' ? 'Atención: Nuevo Examen' : 'Atención: Nueva Tarea',
+          cuerpo: `Atención, el profesor ${profName} ha puesto ${cosa} el día ${fechaFormateada}.\n\nGrupo de atención de ${profName}`,
+          leido: false,
+          eliminado: false,
+          createdAt: new Date().toISOString()
+        });
+      });
+    }
+
+    toast({ title: "Registro creado", description: "Se ha notificado a los alumnos correctamente." });
     setIsCreating(false);
     setFormData({ titulo: '', mostrarAlumno: true, ponderacion: 5 });
   };
@@ -306,7 +327,7 @@ export function EvaluationsView({ profesorId, type }: EvaluationsViewProps) {
                     )}
                     
                     <div className="p-4 bg-blue-50 border border-blue-100 rounded-lg text-[10px] text-blue-800 font-bold uppercase leading-relaxed">
-                      Se asociará al grupo de {currentSchedule?.asignatura || 'esta sesión'} del día {format(new Date(selectedDate), 'd MMMM', { locale: es })}.
+                      Se asociará al grupo de {currentSchedule?.asignatura || 'esta sesión'} del día {format(new Date(selectedDate), 'd MMMM', { locale: es })} e informará a los alumnos por mensajería.
                     </div>
                   </div>
                 </div>
