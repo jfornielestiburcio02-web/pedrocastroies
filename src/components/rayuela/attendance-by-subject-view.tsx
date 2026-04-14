@@ -48,7 +48,6 @@ import {
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { 
-  addDocumentNonBlocking, 
   deleteDocumentNonBlocking, 
   setDocumentNonBlocking, 
   updateDocumentNonBlocking 
@@ -124,20 +123,20 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
     return allUsers.filter(u => currentSchedule.alumnosIds?.includes(u.id));
   }, [currentSchedule, allUsers]);
 
-  // Lógica de envío de mensaje diferido (15 segundos)
-  const scheduleDeferredMessage = (alumnoId: string, docRef: any) => {
+  // Lógica de envío de mensaje diferido (15 segundos) con ID determinista
+  const scheduleDeferredMessage = (alumnoId: string, attendanceId: string) => {
     if (!db || !currentSchedule) return;
 
     const profUser = allUsers?.find(u => u.id === profesorId);
     const profName = profUser?.nombrePersona || profUser?.usuario || profesorId;
 
     setTimeout(async () => {
-      // Consultar el estado actual del documento tras 15 segundos
+      const docRef = doc(db, 'asistenciasInasistencias', attendanceId);
       const freshSnap = await getDoc(docRef);
       
       if (freshSnap.exists() && freshSnap.data().tipo === 'I') {
-        // La falta sigue siendo Injustificada, enviamos mensaje
-        addDocumentNonBlocking(collection(db, 'mensajes'), {
+        // La falta sigue siendo Injustificada tras 15s, enviamos mensaje
+        setDocumentNonBlocking(doc(collection(db, 'mensajes')), {
           remitenteId: 'SISTEMA',
           destinatarioId: alumnoId,
           asunto: 'Aviso de Falta de Asistencia',
@@ -145,7 +144,7 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
           leido: false,
           eliminado: false,
           createdAt: new Date().toISOString()
-        });
+        }, { merge: true });
       }
     }, 15000);
   };
@@ -153,7 +152,11 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
   const handleCycleAttendance = (alumnoId: string) => {
     if (!db || !selectedScheduleId) return;
 
-    const existing = attendances?.find(a => a.alumnoId === alumnoId);
+    // ID DETERMINISTA: alumno_clase_fecha (Evita duplicados)
+    const attendanceId = `${alumnoId}_${selectedScheduleId}_${selectedDate}`;
+    const docRef = doc(db, 'asistenciasInasistencias', attendanceId);
+    
+    const existing = attendances?.find(a => a.id === attendanceId);
     const currentStatus = existing?.tipo || 'A';
     
     let nextStatus = 'A';
@@ -163,9 +166,9 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
 
     if (nextStatus === 'A') {
       if (existing?.motivo) {
-        updateDocumentNonBlocking(doc(db, 'asistenciasInasistencias', existing.id), { tipo: '' });
+        updateDocumentNonBlocking(docRef, { tipo: '' });
       } else if (existing) {
-        deleteDocumentNonBlocking(doc(db, 'asistenciasInasistencias', existing.id));
+        deleteDocumentNonBlocking(docRef);
       }
       return;
     }
@@ -180,29 +183,22 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
       createdAt: existing?.createdAt || new Date().toISOString()
     };
 
-    if (existing) {
-      const docRef = doc(db, 'asistenciasInasistencias', existing.id);
-      setDocumentNonBlocking(docRef, attendanceData, { merge: true });
-      if (nextStatus === 'I') {
-        scheduleDeferredMessage(alumnoId, docRef);
-      }
-    } else {
-      addDocumentNonBlocking(collection(db, 'asistenciasInasistencias'), attendanceData)
-        .then((docRef) => {
-          if (nextStatus === 'I' && docRef) {
-            scheduleDeferredMessage(alumnoId, docRef);
-          }
-        });
+    setDocumentNonBlocking(docRef, attendanceData, { merge: true });
+    
+    if (nextStatus === 'I') {
+      scheduleDeferredMessage(alumnoId, attendanceId);
     }
   };
 
   const handleToggleBehavior = (alumnoId: string, tipo: 'Positivo' | 'Negativo') => {
     if (!db || !selectedScheduleId) return;
 
-    const existing = behaviors?.find(b => b.alumnoId === alumnoId);
+    const behaviorId = `${alumnoId}_${selectedScheduleId}_${selectedDate}_behavior`;
+    const docRef = doc(db, 'comportamientos', behaviorId);
+    const existing = behaviors?.find(b => b.id === behaviorId);
     
     if (existing && existing.tipo === tipo) {
-      deleteDocumentNonBlocking(doc(db, 'comportamientos', existing.id));
+      deleteDocumentNonBlocking(docRef);
       return;
     }
 
@@ -216,37 +212,21 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
       createdAt: new Date().toISOString()
     };
 
-    if (existing) {
-      setDocumentNonBlocking(doc(db, 'comportamientos', existing.id), behaviorData, { merge: true });
-    } else {
-      addDocumentNonBlocking(collection(db, 'comportamientos'), behaviorData);
-    }
+    setDocumentNonBlocking(docRef, behaviorData, { merge: true });
   };
 
   const handleJustifyAbsence = () => {
-    if (!db || !viewingReason) return;
-    const existing = attendances?.find(a => a.alumnoId === viewingReason.alumnoId);
-    if (existing) {
-      updateDocumentNonBlocking(doc(db, 'asistenciasInasistencias', existing.id), {
-        tipo: 'J',
-        justifiedAt: new Date().toISOString()
-      });
-      toast({ title: "Falta Justificada", description: "Se ha validado el motivo del alumno." });
-      setViewingReason(null);
-    } else {
-      addDocumentNonBlocking(collection(db, 'asistenciasInasistencias'), {
-        alumnoId: viewingReason.alumnoId,
-        claseId: selectedScheduleId,
-        grupoId: currentSchedule?.grupoId || "",
-        fecha: selectedDate,
-        tipo: 'J',
-        motivo: viewingReason.reason,
-        profesorId,
-        justifiedAt: new Date().toISOString(),
-        createdAt: new Date().toISOString()
-      });
-      setViewingReason(null);
-    }
+    if (!db || !viewingReason || !selectedScheduleId) return;
+    const attendanceId = `${viewingReason.alumnoId}_${selectedScheduleId}_${selectedDate}`;
+    const docRef = doc(db, 'asistenciasInasistencias', attendanceId);
+    
+    updateDocumentNonBlocking(docRef, {
+      tipo: 'J',
+      justifiedAt: new Date().toISOString()
+    });
+    
+    toast({ title: "Falta Justificada", description: "Se ha validado el motivo del alumno." });
+    setViewingReason(null);
   };
 
   const getStatusText = (status: string) => {
@@ -335,9 +315,13 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 justify-items-center animate-in zoom-in-95 duration-300">
            {students.map(student => {
-             const studentAttendance = attendances?.find(a => a.alumnoId === student.id);
+             const attendanceId = `${student.id}_${selectedScheduleId}_${selectedDate}`;
+             const studentAttendance = attendances?.find(a => a.id === attendanceId);
              const currentStatus = studentAttendance?.tipo || 'A';
-             const studentBehavior = behaviors?.find(b => b.alumnoId === student.id);
+             
+             const behaviorId = `${student.id}_${selectedScheduleId}_${selectedDate}_behavior`;
+             const studentBehavior = behaviors?.find(b => b.id === behaviorId);
+             
              const behaviorDisabled = currentStatus === 'I' || currentStatus === 'J';
              const hasJustification = !!studentAttendance?.motivo;
 
