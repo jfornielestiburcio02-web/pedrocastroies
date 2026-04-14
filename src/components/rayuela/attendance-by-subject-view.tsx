@@ -124,6 +124,32 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
     return allUsers.filter(u => currentSchedule.alumnosIds?.includes(u.id));
   }, [currentSchedule, allUsers]);
 
+  // Lógica de envío de mensaje diferido (15 segundos)
+  const scheduleDeferredMessage = (alumnoId: string, docRef: any) => {
+    if (!db || !currentSchedule) return;
+
+    const profUser = allUsers?.find(u => u.id === profesorId);
+    const profName = profUser?.nombrePersona || profUser?.usuario || profesorId;
+
+    setTimeout(async () => {
+      // Consultar el estado actual del documento tras 15 segundos
+      const freshSnap = await getDoc(docRef);
+      
+      if (freshSnap.exists() && freshSnap.data().tipo === 'I') {
+        // La falta sigue siendo Injustificada, enviamos mensaje
+        addDocumentNonBlocking(collection(db, 'mensajes'), {
+          remitenteId: 'SISTEMA',
+          destinatarioId: alumnoId,
+          asunto: 'Aviso de Falta de Asistencia',
+          cuerpo: `Se ha registrado una nueva falta de asistencia a las ${currentSchedule.horaInicio}\n\nGrupo del horario de ${currentSchedule.asignatura}\nProfesor: ${profName}`,
+          leido: false,
+          eliminado: false,
+          createdAt: new Date().toISOString()
+        });
+      }
+    }, 15000);
+  };
+
   const handleCycleAttendance = (alumnoId: string) => {
     if (!db || !selectedScheduleId) return;
 
@@ -131,13 +157,11 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
     const currentStatus = existing?.tipo || 'A';
     
     let nextStatus = 'A';
-    // Ciclo: Asiste -> Injustificada -> Retraso -> Asiste
     if (currentStatus === 'A' || currentStatus === '') nextStatus = 'I';
     else if (currentStatus === 'I') nextStatus = 'R';
     else if (currentStatus === 'R') nextStatus = 'A';
 
     if (nextStatus === 'A') {
-      // Si el registro solo tiene motivo pero no tipo, lo mantenemos para no perder la notificación
       if (existing?.motivo) {
         updateDocumentNonBlocking(doc(db, 'asistenciasInasistencias', existing.id), { tipo: '' });
       } else if (existing) {
@@ -149,7 +173,7 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
     const attendanceData = {
       alumnoId,
       claseId: selectedScheduleId,
-      grupoId: currentSchedule?.grupoId || "", // Vincular al grupo para historial coherente
+      grupoId: currentSchedule?.grupoId || "",
       fecha: selectedDate,
       tipo: nextStatus,
       profesorId,
@@ -157,9 +181,18 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
     };
 
     if (existing) {
-      setDocumentNonBlocking(doc(db, 'asistenciasInasistencias', existing.id), attendanceData, { merge: true });
+      const docRef = doc(db, 'asistenciasInasistencias', existing.id);
+      setDocumentNonBlocking(docRef, attendanceData, { merge: true });
+      if (nextStatus === 'I') {
+        scheduleDeferredMessage(alumnoId, docRef);
+      }
     } else {
-      addDocumentNonBlocking(collection(db, 'asistenciasInasistencias'), attendanceData);
+      addDocumentNonBlocking(collection(db, 'asistenciasInasistencias'), attendanceData)
+        .then((docRef) => {
+          if (nextStatus === 'I' && docRef) {
+            scheduleDeferredMessage(alumnoId, docRef);
+          }
+        });
     }
   };
 
@@ -201,7 +234,6 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
       toast({ title: "Falta Justificada", description: "Se ha validado el motivo del alumno." });
       setViewingReason(null);
     } else {
-      // Caso raro donde hay motivo pero se borró el doc, lo recreamos como J
       addDocumentNonBlocking(collection(db, 'asistenciasInasistencias'), {
         alumnoId: viewingReason.alumnoId,
         claseId: selectedScheduleId,
@@ -442,7 +474,6 @@ function AttendanceHistoryDialog({ alumnoId, claseId, grupoId, onClose }: { alum
 
   const historyQuery = useMemoFirebase(() => {
     if (!db) return null;
-    // Si hay grupoId, mostramos el historial de todo el grupo (inter-dias)
     if (grupoId) {
       return query(
         collection(db, 'asistenciasInasistencias'),
@@ -451,7 +482,6 @@ function AttendanceHistoryDialog({ alumnoId, claseId, grupoId, onClose }: { alum
         orderBy('fecha', 'desc')
       );
     }
-    // Fallback: historial de la clase específica
     return query(
       collection(db, 'asistenciasInasistencias'),
       where('alumnoId', '==', alumnoId),
