@@ -34,6 +34,13 @@
             "enum": ["EsProfesor", "EsAlumno", "EsDireccion", "EsCau", "EsSecretaria"]
           }
         },
+        "perfilesAdicionales": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Subperfiles o coordinaciones (ej: Coordinacion IT, Extraescolares)."
+        },
         "cursoAlumno": {
           "type": "string",
           "description": "Curso asignado al alumno (ej: 4º ESO A)."

@@ -58,7 +58,7 @@ import { EvaluationsView } from '@/components/rayuela/evaluations-views';
 import { EvaluationOpeningView } from '@/components/rayuela/management-evaluation-views';
 import { TeacherGradingView } from '@/components/rayuela/teacher-grading-view';
 import { TutoringGradesView } from '@/components/rayuela/tutoring-grades-view';
-import { UserCreationView, UserManagementListView } from '@/components/rayuela/user-management-views';
+import { UserCreationView, UserManagementListView, UserProfilesManagementView } from '@/components/rayuela/user-management-views';
 import { EvaluationsSummaryView, IncidentsSummaryView } from '@/components/rayuela/management-summary-views';
 import { TeacherNotificationsView } from '@/components/rayuela/teacher-notifications-view';
 
@@ -115,7 +115,8 @@ export default function SeleccioneModuloAccesoPage() {
     'arqueo': false,
     'titulos': false,
     'sello': false,
-    'expedientes': false
+    'expedientes': false,
+    'perfil': false
   });
   
   const router = useRouter();
@@ -671,6 +672,15 @@ export default function SeleccioneModuloAccesoPage() {
                             </div>
                           )}
                         </div>
+
+                        <div className="flex flex-col">
+                          <SidebarHeading label="Perfil" expanded={expandedItems['perfil']} onClick={() => toggleExpanded('perfil')} />
+                          {expandedItems['perfil'] && (
+                            <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
+                              <SidebarItem color="#9c4d96" label="Agregar y quitar" isSubItem onClick={() => setActiveSubContent('Agregar y quitar Perfiles')} active={activeSubContent === 'Agregar y quitar Perfiles'} />
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -761,6 +771,8 @@ export default function SeleccioneModuloAccesoPage() {
                     <EvaluationsSummaryView />
                   ) : activeSubContent === 'Resumen Conductas' ? (
                     <IncidentsSummaryView />
+                  ) : activeSubContent === 'Agregar y quitar Perfiles' ? (
+                    <UserProfilesManagementView />
                   ) : activeSubContent === 'De Mis Alumnos' ? (
                     <TeacherNotificationsView profesorId={session.usuario} mode="my-students" />
                   ) : activeSubContent === 'De mi tutoría' ? (
