@@ -37,7 +37,8 @@ import {
   Key,
   Award,
   Book,
-  Layout
+  Layout,
+  RefreshCw
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -81,6 +82,14 @@ import {
   StudentScheduleView 
 } from '@/components/rayuela/student-views';
 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
 export default function SeleccioneModuloAccesoPage() {
   const [session, setSession] = useState<any>(null);
   const [userData, setUserData] = useState<any>(null);
@@ -89,6 +98,7 @@ export default function SeleccioneModuloAccesoPage() {
   const [activeRole, setActiveRole] = useState<string | null>(null);
   const [activeSubContent, setActiveSubContent] = useState<string | null>(null);
   const [sidebarMode, setSidebarMode] = useState<'ACADEMIC' | 'MESSAGING'>('ACADEMIC');
+  const [isChangeProfileOpen, setIsChangeProfileOpen] = useState(false);
   
   const [targetIncidentData, setTargetIncidentData] = useState<{ studentId: string } | null>(null);
 
@@ -177,6 +187,33 @@ export default function SeleccioneModuloAccesoPage() {
     }
   }, [router, db]);
 
+  // Lista de todos los perfiles (Roles + Adicionales)
+  const allAvailableProfiles = useMemo(() => {
+    if (!userData) return [];
+    
+    const roleMap: Record<string, string> = {
+      'EsDireccion': 'Dirección',
+      'EsCau': 'CAU',
+      'EsProfesor': 'Profesor',
+      'EsAlumno': 'Alumno',
+      'EsSecretaria': 'Secretaría'
+    };
+
+    const roles = (userData.rolesUsuario || []).map((r: string) => ({
+      id: r,
+      label: roleMap[r] || r,
+      type: 'ROLE'
+    }));
+
+    const additional = (userData.perfilesAdicionales || []).map((p: string) => ({
+      id: p,
+      label: p,
+      type: 'SUBPROFILE'
+    }));
+
+    return [...roles, ...additional];
+  }, [userData]);
+
   const unreadMessagesQuery = useMemoFirebase(() => {
     if (!db || !session?.usuario) return null;
     return query(
@@ -214,15 +251,6 @@ export default function SeleccioneModuloAccesoPage() {
   const handleLogout = () => {
     sessionStorage.removeItem('user_session');
     router.push('/login');
-  };
-
-  const getRoleDisplayName = (role: string) => {
-    if (role === 'EsDireccion') return 'Dirección';
-    if (role === 'EsCau') return 'CAU';
-    if (role === 'EsProfesor') return 'Profesor';
-    if (role === 'EsAlumno') return 'Alumno';
-    if (role === 'EsSecretaria') return 'Secretaría';
-    return role;
   };
 
   const handleNavigateToIncident = (studentId: string) => {
@@ -296,40 +324,49 @@ export default function SeleccioneModuloAccesoPage() {
 
           <div className="flex items-center gap-4 mt-4 md:mt-0 px-2">
             <div className="flex gap-2 items-center">
-              {userRoles.map((roleKey: string) => {
-                const displayName = getRoleDisplayName(roleKey);
-                const isActive = activeRole === displayName;
-                
-                return (
-                  <button 
-                    key={roleKey}
-                    onClick={() => { setActiveRole(displayName); setActiveSubContent(null); }}
-                    className={cn(
-                      "flex flex-col items-center group transition-all p-1 rounded-sm border",
-                      isActive 
-                        ? "bg-[#fb8500] border-[#fb8500] text-white" 
-                        : "bg-white border-gray-300 text-gray-400 hover:border-[#fb8500]/50"
-                    )}
-                  >
-                    <div className={cn(
-                      "p-1 rounded-sm",
-                      isActive ? "bg-white/20" : "bg-gray-100"
-                    )}>
-                      {roleKey === 'EsDireccion' && <ShieldCheck className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
-                      {roleKey === 'EsCau' && <LifeBuoy className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
-                      {roleKey === 'EsProfesor' && <Monitor className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
-                      {roleKey === 'EsAlumno' && <UserCircle className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
-                      {roleKey === 'EsSecretaria' && <Briefcase className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
-                    </div>
-                    <span className={cn(
-                      "text-[8px] font-bold uppercase mt-0.5 tracking-tighter",
-                      isActive ? "text-white" : "text-gray-500"
-                    )}>
-                      {displayName}
-                    </span>
-                  </button>
-                );
-              })}
+              {allAvailableProfiles.length > 5 ? (
+                <Button 
+                  onClick={() => setIsChangeProfileOpen(true)}
+                  className="bg-white border-gray-300 text-gray-600 hover:bg-gray-50 h-10 px-4 text-[10px] font-bold uppercase rounded-sm border gap-2"
+                >
+                  <RefreshCw className="h-3 w-3" /> Cambio Perfil
+                </Button>
+              ) : (
+                allAvailableProfiles.map((profile) => {
+                  const isActive = activeRole === profile.label;
+                  
+                  return (
+                    <button 
+                      key={profile.id}
+                      onClick={() => { setActiveRole(profile.label); setActiveSubContent(null); }}
+                      className={cn(
+                        "flex flex-col items-center group transition-all p-1 rounded-sm border min-w-[50px]",
+                        isActive 
+                          ? "bg-[#fb8500] border-[#fb8500] text-white" 
+                          : "bg-white border-gray-300 text-gray-400 hover:border-[#fb8500]/50"
+                      )}
+                    >
+                      <div className={cn(
+                        "p-1 rounded-sm",
+                        isActive ? "bg-white/20" : "bg-gray-100"
+                      )}>
+                        {profile.id === 'EsDireccion' && <ShieldCheck className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
+                        {profile.id === 'EsCau' && <LifeBuoy className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
+                        {profile.id === 'EsProfesor' && <Monitor className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
+                        {profile.id === 'EsAlumno' && <UserCircle className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
+                        {profile.id === 'EsSecretaria' && <Briefcase className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
+                        {profile.type === 'SUBPROFILE' && <UserCog className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
+                      </div>
+                      <span className={cn(
+                        "text-[8px] font-bold uppercase mt-0.5 tracking-tighter",
+                        isActive ? "text-white" : "text-gray-500"
+                      )}>
+                        {profile.label}
+                      </span>
+                    </button>
+                  );
+                })
+              )}
             </div>
 
             <div className="flex flex-col gap-1 border-l pl-4 border-gray-300">
@@ -345,6 +382,58 @@ export default function SeleccioneModuloAccesoPage() {
           </div>
         </div>
       )}
+
+      {/* DIALOGO DE CAMBIO DE PERFIL (PANTALLA COMPLETA) */}
+      <Dialog open={isChangeProfileOpen} onOpenChange={setIsChangeProfileOpen}>
+        <DialogContent className="max-w-4xl p-0 border-none overflow-hidden font-verdana bg-white/95 backdrop-blur-md">
+          <DialogHeader className="bg-[#fb8500] p-10 text-white text-center">
+             <DialogTitle className="text-3xl font-bold uppercase tracking-widest mb-2">Selección de Perfil</DialogTitle>
+             <DialogDescription className="text-white/80 text-lg uppercase font-medium">
+               Elija el perfil bajo el cual desea operar en la plataforma
+             </DialogDescription>
+          </DialogHeader>
+          
+          <div className="p-12">
+             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                {allAvailableProfiles.map((profile) => (
+                   <button
+                    key={profile.id}
+                    onClick={() => { setActiveRole(profile.label); setActiveSubContent(null); setIsChangeProfileOpen(false); }}
+                    className={cn(
+                      "flex flex-col items-center justify-center p-8 rounded-xl border-4 transition-all duration-300 hover:scale-105 active:scale-95 group",
+                      activeRole === profile.label 
+                        ? "bg-[#fb8500] border-[#fb8500] text-white shadow-xl" 
+                        : "bg-white border-gray-100 text-gray-400 hover:border-orange-200"
+                    )}
+                   >
+                      <div className={cn(
+                        "p-4 rounded-2xl mb-4 shadow-inner",
+                        activeRole === profile.label ? "bg-white/20" : "bg-gray-50 group-hover:bg-orange-50"
+                      )}>
+                         {profile.id === 'EsDireccion' && <ShieldCheck className="h-10 w-10" />}
+                         {profile.id === 'EsCau' && <LifeBuoy className="h-10 w-10" />}
+                         {profile.id === 'EsProfesor' && <Monitor className="h-10 w-10" />}
+                         {profile.id === 'EsAlumno' && <UserCircle className="h-10 w-10" />}
+                         {profile.id === 'EsSecretaria' && <Briefcase className="h-10 w-10" />}
+                         {profile.type === 'SUBPROFILE' && <UserCog className="h-10 w-10" />}
+                      </div>
+                      <span className="text-sm font-bold uppercase tracking-tight text-center leading-tight">
+                        {profile.label}
+                      </span>
+                      {activeRole === profile.label && (
+                        <Badge className="mt-3 bg-white text-[#fb8500] border-none font-bold text-[10px]">ACTIVO</Badge>
+                      )}
+                   </button>
+                ))}
+             </div>
+          </div>
+          <div className="bg-gray-50 p-6 flex justify-center border-t">
+             <Button variant="ghost" onClick={() => setIsChangeProfileOpen(false)} className="text-gray-400 uppercase font-bold text-xs hover:text-black">
+               Cancelar cambio
+             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {!selectedModule && (
         <div className="w-full p-6 flex items-center justify-between border-b border-gray-200 bg-white">
@@ -380,7 +469,7 @@ export default function SeleccioneModuloAccesoPage() {
       )}
 
       <div className="flex-1 flex w-full relative">
-        {selectedModule && (activeRole === 'Profesor' || activeRole === 'Dirección' || activeRole === 'Alumno' || activeRole === 'Secretaría') && (
+        {selectedModule && (activeRole === 'Profesor' || activeRole === 'Dirección' || activeRole === 'Alumno' || activeRole === 'Secretaría' || userData?.perfilesAdicionales?.includes(activeRole)) && (
           <div className="group relative z-40 bg-[#f4f4f4] border-r border-gray-300 w-[60px] hover:w-[250px] transition-all duration-300 ease-in-out flex flex-col min-h-full overflow-hidden">
             <div className="flex-1 flex flex-col">
               <div className="flex h-full">
@@ -403,12 +492,19 @@ export default function SeleccioneModuloAccesoPage() {
                       <div className="p-2 bg-[#fb8500] rounded-sm text-white"><Key className="h-5 w-5" /></div>
                       <div className="p-2 bg-gray-400 rounded-sm text-white" onClick={() => router.push('/configuracion')}><UserCog className="h-5 w-5" /></div>
                     </>
-                  ) : (
+                  ) : activeRole === 'Dirección' ? (
                     <>
                       <div className="p-2 bg-[#9c4d96] rounded-sm text-white"><Users className="h-5 w-5" /></div>
                       <div className="p-2 bg-[#9c4d96] rounded-sm text-white"><Clock className="h-5 w-5" /></div>
                       <div className="p-2 bg-[#9c4d96] rounded-sm text-white"><Files className="h-5 w-5" /></div>
                       <div className="p-2 bg-[#9c4d96] rounded-sm text-white"><ShieldCheck className="h-5 w-5" /></div>
+                      <div className="p-2 bg-gray-400 rounded-sm text-white" onClick={() => router.push('/configuracion')}><UserCog className="h-5 w-5" /></div>
+                    </>
+                  ) : (
+                    // Menu para coordinaciones o perfiles adicionales
+                    <>
+                      <div className="p-2 bg-[#fb8500] rounded-sm text-white"><UserCog className="h-5 w-5" /></div>
+                      <div className="p-2 bg-gray-400 rounded-sm text-white"><Files className="h-5 w-5" /></div>
                       <div className="p-2 bg-gray-400 rounded-sm text-white" onClick={() => router.push('/configuracion')}><UserCog className="h-5 w-5" /></div>
                     </>
                   )}
@@ -623,7 +719,7 @@ export default function SeleccioneModuloAccesoPage() {
 
                         <SidebarItem color="#fb8500" label="Entrega de credenciales" onClick={() => setActiveSubContent('Entrega de credenciales')} active={activeSubContent === 'Entrega de credenciales'} />
                       </div>
-                    ) : (
+                    ) : activeRole === 'Dirección' ? (
                       <div className="space-y-2">
                         <div className="flex flex-col">
                           <SidebarHeading label="Usuarios" expanded={expandedItems['usuarios']} onClick={() => toggleExpanded('usuarios')} />
@@ -681,6 +777,13 @@ export default function SeleccioneModuloAccesoPage() {
                             </div>
                           )}
                         </div>
+                      </div>
+                    ) : (
+                      // Sidebar para coordinaciones (act extraesc, IT, etc)
+                      <div className="space-y-2">
+                        <SidebarItem color="#fb8500" label="Panel de Coordinación" onClick={() => setActiveSubContent('Panel de Coordinación')} active={activeSubContent === 'Panel de Coordinación'} />
+                        <SidebarItem color="#fb8500" label="Documentación" onClick={() => setActiveSubContent('Documentación')} active={activeSubContent === 'Documentación'} />
+                        <SidebarItem color="#fb8500" label="Calendario de Actividades" onClick={() => setActiveSubContent('Calendario')} active={activeSubContent === 'Calendario'} />
                       </div>
                     )}
                   </div>
@@ -819,9 +922,9 @@ export default function SeleccioneModuloAccesoPage() {
                           )}>
                              <Files className="h-8 w-8" />
                           </div>
-                          <h2 className="text-2xl font-bold text-gray-800 uppercase tracking-tight">{activeSubContent}</h2>
+                          <h2 className="text-2xl font-bold text-gray-800 uppercase tracking-tight">{activeRole}: {activeSubContent}</h2>
                           <p className="text-gray-500 italic max-w-md">
-                            Contenido del módulo de {selectedModule?.toLowerCase()} para la sección de {activeSubContent.toLowerCase()}.
+                            Contenido del módulo de {selectedModule?.toLowerCase()} para la sección de {activeSubContent.toLowerCase()} gestionado como {activeRole}.
                           </p>
                        </div>
                     </div>
@@ -840,7 +943,7 @@ export default function SeleccioneModuloAccesoPage() {
                               ? "Entorno de secretaría virtual para trámites administrativos y expedientes."
                               : activeRole === 'CAU'
                               ? "Entorno de soporte técnico y atención de usuarios activo."
-                              : `Entorno de gestión activa para el perfil de ${activeRole}.`}
+                              : `Usted está operando con el perfil especial de ${activeRole}. Seleccione una opción del menú para gestionar sus responsabilidades.`}
                           </div>
                           <div className="flex justify-center pt-2">
                             <div className="flex items-center gap-2 px-3 py-1.5 bg-green-100 text-green-800 rounded-full text-[10px] font-bold uppercase tracking-wider">
