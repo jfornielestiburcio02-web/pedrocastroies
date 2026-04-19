@@ -5,40 +5,40 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   Loader2, 
-  ArrowLeft,
-  X,
-  Clock,
-  BookOpen,
-  MessageSquare,
-  Home,
-  Monitor,
-  UserCircle,
-  ShieldCheck,
-  LifeBuoy,
-  Briefcase,
-  Volume2,
-  Video,
-  Pin,
-  Files,
-  UserCog,
-  ChevronDown,
-  ChevronRight,
-  Users,
-  Megaphone,
-  Calendar,
-  GraduationCap,
-  BarChart2,
-  TrendingUp,
-  ShieldAlert,
-  ClipboardList,
-  AlertCircle,
-  Bell,
-  Coins,
-  Key,
-  Award,
-  Book,
-  Layout,
-  RefreshCw
+  ArrowLeft, 
+  X, 
+  Clock, 
+  BookOpen, 
+  MessageSquare, 
+  Home, 
+  Monitor, 
+  UserCircle, 
+  ShieldCheck, 
+  LifeBuoy, 
+  Briefcase, 
+  Volume2, 
+  Video, 
+  Pin, 
+  Files, 
+  UserCog, 
+  ChevronDown, 
+  ChevronRight, 
+  Users, 
+  Megaphone, 
+  Calendar, 
+  GraduationCap, 
+  BarChart2, 
+  TrendingUp, 
+  ShieldAlert, 
+  ClipboardList, 
+  AlertCircle, 
+  Bell, 
+  Coins, 
+  Key, 
+  Award, 
+  Book, 
+  Layout, 
+  RefreshCw 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -259,6 +259,40 @@ export default function SeleccioneModuloAccesoPage() {
     setTargetIncidentData({ studentId });
   };
 
+  const renderProfileButton = (profile: any) => {
+    const isActive = activeRole === profile.label;
+    return (
+      <button 
+        key={profile.id}
+        onClick={() => { setActiveRole(profile.label); setActiveSubContent(null); }}
+        className={cn(
+          "flex flex-col items-center group transition-all p-1 rounded-sm border min-w-[55px] h-[58px]",
+          isActive 
+            ? "bg-[#fb8500] border-[#fb8500] text-white" 
+            : "bg-white border-gray-300 text-gray-400 hover:border-[#fb8500]/50"
+        )}
+      >
+        <div className={cn(
+          "p-1 rounded-sm",
+          isActive ? "bg-white/20" : "bg-gray-100"
+        )}>
+          {profile.id === 'EsDireccion' && <ShieldCheck className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
+          {profile.id === 'EsCau' && <LifeBuoy className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
+          {profile.id === 'EsProfesor' && <Monitor className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
+          {profile.id === 'EsAlumno' && <UserCircle className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
+          {profile.id === 'EsSecretaria' && <Briefcase className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
+          {profile.type === 'SUBPROFILE' && <UserCog className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
+        </div>
+        <span className={cn(
+          "text-[8px] font-bold uppercase mt-0.5 tracking-tighter truncate w-full text-center",
+          isActive ? "text-white" : "text-gray-500"
+        )}>
+          {profile.label}
+        </span>
+      </button>
+    );
+  };
+
   if (isLoading || !session) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-white">
@@ -324,49 +358,24 @@ export default function SeleccioneModuloAccesoPage() {
           </div>
 
           <div className="flex items-center gap-4 mt-4 md:mt-0 px-2">
-            <div className="flex gap-2 items-center">
+            <div className="flex gap-1 items-center">
               {allAvailableProfiles.length > 5 ? (
-                <Button 
-                  onClick={() => setIsChangeProfileOpen(true)}
-                  className="bg-white border-gray-300 text-gray-600 hover:bg-gray-50 h-10 px-4 text-[10px] font-bold uppercase rounded-sm border gap-2"
-                >
-                  <RefreshCw className="h-3 w-3" /> Cambio Perfil
-                </Button>
+                <>
+                  {allAvailableProfiles.slice(0, 4).map(profile => renderProfileButton(profile))}
+                  <button 
+                    onClick={() => setIsChangeProfileOpen(true)}
+                    className="flex flex-col items-center justify-center group transition-all p-1 rounded-sm border min-w-[55px] h-[58px] bg-white border-gray-300 text-gray-400 hover:border-[#fb8500]/50"
+                  >
+                    <div className="p-1 rounded-sm bg-gray-100">
+                      <RefreshCw className="h-5 w-5 text-gray-500" />
+                    </div>
+                    <span className="text-[8px] font-bold uppercase mt-0.5 tracking-tighter text-gray-500">
+                      Cambio...
+                    </span>
+                  </button>
+                </>
               ) : (
-                allAvailableProfiles.map((profile) => {
-                  const isActive = activeRole === profile.label;
-                  
-                  return (
-                    <button 
-                      key={profile.id}
-                      onClick={() => { setActiveRole(profile.label); setActiveSubContent(null); }}
-                      className={cn(
-                        "flex flex-col items-center group transition-all p-1 rounded-sm border min-w-[50px]",
-                        isActive 
-                          ? "bg-[#fb8500] border-[#fb8500] text-white" 
-                          : "bg-white border-gray-300 text-gray-400 hover:border-[#fb8500]/50"
-                      )}
-                    >
-                      <div className={cn(
-                        "p-1 rounded-sm",
-                        isActive ? "bg-white/20" : "bg-gray-100"
-                      )}>
-                        {profile.id === 'EsDireccion' && <ShieldCheck className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
-                        {profile.id === 'EsCau' && <LifeBuoy className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
-                        {profile.id === 'EsProfesor' && <Monitor className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
-                        {profile.id === 'EsAlumno' && <UserCircle className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
-                        {profile.id === 'EsSecretaria' && <Briefcase className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
-                        {profile.type === 'SUBPROFILE' && <UserCog className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
-                      </div>
-                      <span className={cn(
-                        "text-[8px] font-bold uppercase mt-0.5 tracking-tighter",
-                        isActive ? "text-white" : "text-gray-500"
-                      )}>
-                        {profile.label}
-                      </span>
-                    </button>
-                  );
-                })
+                allAvailableProfiles.map(profile => renderProfileButton(profile))
               )}
             </div>
 
