@@ -127,7 +127,8 @@ export default function SeleccioneModuloAccesoPage() {
     'titulos': false,
     'sello': false,
     'expedientes': false,
-    'perfil': false
+    'perfil': false,
+    'pruebas_diag': false
   });
   
   const router = useRouter();
@@ -604,6 +605,21 @@ export default function SeleccioneModuloAccesoPage() {
                             </div>
 
                             <div className="flex flex-col">
+                              <SidebarHeading label="Pruebas de diagnóstico" expanded={expandedItems['pruebas_diag']} onClick={() => toggleExpanded('pruebas_diag')} />
+                              {expandedItems['pruebas_diag'] && (
+                                <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
+                                  <SidebarItem color="#89a54e" label="Como Profesor" isSubItem onClick={() => setActiveSubContent('Como Profesor')} active={activeSubContent === 'Como Profesor'} />
+                                  {isTeacherTutor && (
+                                    <SidebarItem color="#89a54e" label="Como tutor" isSubItem onClick={() => setActiveSubContent('Como tutor')} active={activeSubContent === 'Como tutor'} />
+                                  )}
+                                  {userRoles.includes('EsDireccion') && (
+                                    <SidebarItem color="#89a54e" label="Como cargo directivo del centro" isSubItem onClick={() => setActiveSubContent('Como cargo directivo del centro')} active={activeSubContent === 'Como cargo directivo del centro'} />
+                                  )}
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="flex flex-col">
                               <SidebarHeading label="Horario" expanded={expandedItems['horario_profesor']} onClick={() => toggleExpanded('horario_profesor')} />
                               {expandedItems['horario_profesor'] && (
                                 <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
@@ -922,6 +938,19 @@ export default function SeleccioneModuloAccesoPage() {
                     <CenterStudentsView />
                   ) : activeSubContent === 'Tasas por descuento' ? (
                     <SecretaryPlaceholderView title={activeSubContent} />
+                  ) : activeSubContent === 'Como Profesor' || activeSubContent === 'Como tutor' || activeSubContent === 'Como cargo directivo del centro' ? (
+                    <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
+                       <div className="bg-white border rounded-lg p-10 shadow-sm min-h-[400px] flex flex-col items-center justify-center text-center space-y-4">
+                          <div className="w-16 h-16 rounded-full bg-[#89a54e]/10 text-[#89a54e] flex items-center justify-center">
+                             <ClipboardList className="h-8 w-8" />
+                          </div>
+                          <h2 className="text-2xl font-bold text-gray-800 uppercase tracking-tight">Pruebas de Diagnóstico</h2>
+                          <p className="text-gray-500 italic max-w-md">
+                            Acceso a las pruebas de diagnóstico {activeSubContent.toLowerCase()}. Este módulo permite la gestión y visualización de resultados académicos externos.
+                          </p>
+                          <Badge className="bg-[#89a54e] text-white">MODO: {activeSubContent.toUpperCase()}</Badge>
+                       </div>
+                    </div>
                   ) : activeSubContent ? (
                     <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
                        <div className="bg-white border rounded-lg p-10 shadow-sm min-h-[400px] flex flex-col items-center justify-center text-center space-y-4">
