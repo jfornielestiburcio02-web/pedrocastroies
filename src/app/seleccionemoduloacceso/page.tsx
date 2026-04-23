@@ -40,7 +40,8 @@ import {
   Layout, 
   RefreshCw,
   Search,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Link as LinkIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -65,6 +66,7 @@ import { TutoringGradesView } from '@/components/rayuela/tutoring-grades-view';
 import { UserCreationView, UserManagementListView, UserProfilesManagementView } from '@/components/rayuela/user-management-views';
 import { EvaluationsSummaryView, IncidentsSummaryView } from '@/components/rayuela/management-summary-views';
 import { TeacherNotificationsView } from '@/components/rayuela/teacher-notifications-view';
+import { LinksOfInterestView } from '@/components/rayuela/links-of-interest-view';
 
 // Componentes de Pruebas de Diagnóstico
 import { DiagnosticOpeningView, DiagnosticGradingView, DiagnosticResultsView } from '@/components/rayuela/diagnostic-tests-views';
@@ -135,7 +137,8 @@ export default function SeleccioneModuloAccesoPage() {
     'perfil': false,
     'pruebas_diag': false,
     'pruebas_diag_root': false,
-    'resultados_diag': false
+    'resultados_diag': false,
+    'enlaces': false
   });
   
   const router = useRouter();
@@ -633,6 +636,15 @@ export default function SeleccioneModuloAccesoPage() {
                             </div>
 
                             <div className="flex flex-col">
+                              <SidebarHeading label="Enlaces de interes" expanded={expandedItems['enlaces']} onClick={() => toggleExpanded('enlaces')} />
+                              {expandedItems['enlaces'] && (
+                                <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
+                                  <SidebarItem color="#89a54e" label="Mis enlaces" isSubItem onClick={() => setActiveSubContent('Mis enlaces')} active={activeSubContent === 'Mis enlaces'} />
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="flex flex-col">
                               <SidebarHeading label="Horario" expanded={expandedItems['horario_profesor']} onClick={() => toggleExpanded('horario_profesor')} />
                               {expandedItems['horario_profesor'] && (
                                 <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
@@ -939,6 +951,8 @@ export default function SeleccioneModuloAccesoPage() {
                     <TeacherNotificationsView profesorId={session.usuario} mode="my-students" />
                   ) : activeSubContent === 'De mi tutoría' ? (
                     <TeacherNotificationsView profesorId={session.usuario} mode="tutoring" grupoTutorizado={userData?.esTutor} />
+                  ) : activeSubContent === 'Mis enlaces' ? (
+                    <LinksOfInterestView profesorId={session.usuario} />
                   ) : activeSubContent === 'Mis faltas' ? (
                     <StudentAttendanceView studentId={session.usuario} />
                   ) : activeSubContent === 'Justificar' ? (
@@ -1053,4 +1067,3 @@ export default function SeleccioneModuloAccesoPage() {
     </div>
   );
 }
-

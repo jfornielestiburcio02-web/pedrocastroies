@@ -205,6 +205,17 @@
         "observaciones": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       }
+    },
+    "EnlaceInteres": {
+      "title": "EnlaceInteres",
+      "type": "object",
+      "description": "Enlace externo de interés guardado por un profesor.",
+      "properties": {
+        "profesorId": { "type": "string" },
+        "titulo": { "type": "string" },
+        "url": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "auth": {
@@ -278,6 +289,12 @@
         "$ref": "#/backend/entities/CalificacionFinal"
       },
       "description": "Colección de calificaciones definitivas por periodo."
+    },
+    "/enlacesInteres/{enlaceId}": {
+      "schema": {
+        "$ref": "#/backend/entities/EnlaceInteres"
+      },
+      "description": "Colección de enlaces de interés personales del profesorado."
     }
   }
 }
