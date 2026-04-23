@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useState, useMemo } from 'react';
@@ -64,6 +65,9 @@ import { TutoringGradesView } from '@/components/rayuela/tutoring-grades-view';
 import { UserCreationView, UserManagementListView, UserProfilesManagementView } from '@/components/rayuela/user-management-views';
 import { EvaluationsSummaryView, IncidentsSummaryView } from '@/components/rayuela/management-summary-views';
 import { TeacherNotificationsView } from '@/components/rayuela/teacher-notifications-view';
+
+// Componentes de Pruebas de Diagnóstico
+import { DiagnosticOpeningView, DiagnosticGradingView, DiagnosticResultsView } from '@/components/rayuela/diagnostic-tests-views';
 
 // Componentes de Secretaría
 import { 
@@ -967,32 +971,18 @@ export default function SeleccioneModuloAccesoPage() {
                     <CenterStudentsView />
                   ) : activeSubContent === 'Tasas por descuento' ? (
                     <SecretaryPlaceholderView title={activeSubContent} />
-                  ) : activeSubContent === 'Como Profesor' || activeSubContent === 'Como tutor' || activeSubContent === 'Como cargo directivo del centro' ? (
-                    <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
-                       <div className="bg-white border rounded-lg p-10 shadow-sm min-h-[400px] flex flex-col items-center justify-center text-center space-y-4">
-                          <div className="w-16 h-16 rounded-full bg-[#89a54e]/10 text-[#89a54e] flex items-center justify-center">
-                             <ClipboardList className="h-8 w-8" />
-                          </div>
-                          <h2 className="text-2xl font-bold text-gray-800 uppercase tracking-tight">Pruebas de Diagnóstico</h2>
-                          <p className="text-gray-500 italic max-w-md">
-                            Acceso a las pruebas de diagnóstico {activeSubContent.toLowerCase()}. Este módulo permite la gestión y visualización de resultados académicos externos.
-                          </p>
-                          <Badge className="bg-[#89a54e] text-white">MODO: {activeSubContent.toUpperCase()}</Badge>
-                       </div>
-                    </div>
-                  ) : activeSubContent === 'Apertura de la evaluación (Diag)' || activeSubContent === 'Por curso (Diag)' || activeSubContent === 'Por alumno (Diag)' ? (
-                    <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
-                       <div className="bg-white border rounded-lg p-10 shadow-sm min-h-[400px] flex flex-col items-center justify-center text-center space-y-4">
-                          <div className="w-16 h-16 rounded-full bg-[#9c4d96]/10 text-[#9c4d96] flex items-center justify-center">
-                             <FileSpreadsheet className="h-8 w-8" />
-                          </div>
-                          <h2 className="text-2xl font-bold text-gray-800 uppercase tracking-tight">{activeSubContent.replace(' (Diag)', '')}</h2>
-                          <p className="text-gray-500 italic max-w-md">
-                            Módulo de Calificador Diagnóstico: Gestión de {activeSubContent.toLowerCase().replace(' (diag)', '')} para las pruebas oficiales del centro.
-                          </p>
-                          <Badge className="bg-[#9c4d96] text-white">MODO COORDINACIÓN</Badge>
-                       </div>
-                    </div>
+                  ) : activeSubContent === 'Apertura de la evaluación (Diag)' ? (
+                    <DiagnosticOpeningView />
+                  ) : activeSubContent === 'Como Profesor' ? (
+                    <DiagnosticGradingView profesorId={session.usuario} />
+                  ) : activeSubContent === 'Como tutor' ? (
+                    <DiagnosticResultsView mode="tutor" grupoTutorizado={userData?.esTutor} />
+                  ) : activeSubContent === 'Como cargo directivo del centro' ? (
+                    <DiagnosticResultsView mode="center" />
+                  ) : activeSubContent === 'Por curso (Diag)' ? (
+                    <DiagnosticResultsView mode="course" />
+                  ) : activeSubContent === 'Por alumno (Diag)' ? (
+                    <DiagnosticResultsView mode="student" />
                   ) : activeSubContent ? (
                     <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
                        <div className="bg-white border rounded-lg p-10 shadow-sm min-h-[400px] flex flex-col items-center justify-center text-center space-y-4">
@@ -1063,3 +1053,4 @@ export default function SeleccioneModuloAccesoPage() {
     </div>
   );
 }
+
