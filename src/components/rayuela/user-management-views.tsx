@@ -295,7 +295,7 @@ export function UserManagementListView() {
   const handleDeleteUser = (userId: string) => {
     if (confirm("¿Está seguro de eliminar este usuario?")) {
       deleteDocumentNonBlocking(doc(db!, 'usuarios', userId));
-      toast({ title: "Usuario Eliminado" });
+      toast({ title: "Usuario Eliminar" });
     }
   };
 
@@ -467,7 +467,8 @@ export function UserProfilesManagementView() {
     "Coordinacion IT",
     "Coordinacion Bilingüismo",
     "Coordinacion Bienestar",
-    "Responsable Biblioteca"
+    "Responsable Biblioteca",
+    "Calificador Diagnóstico (coord)"
   ];
 
   const handleToggleSubProfile = (teacherId: string, profile: string, isAssigned: boolean) => {
