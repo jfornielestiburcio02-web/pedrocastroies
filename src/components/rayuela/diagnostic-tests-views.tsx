@@ -176,7 +176,6 @@ export function DiagnosticGradingView({ profesorId }: { profesorId: string }) {
   const { toast } = useToast();
   const [selectedAperturaId, setSelectedAperturaId] = useState<string | null>(null);
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
-  const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(null);
 
   // 1. Obtener aperturas activas
   const aperturasQuery = useMemoFirebase(() => {
@@ -190,14 +189,12 @@ export function DiagnosticGradingView({ profesorId }: { profesorId: string }) {
     return aperturas?.filter(a => isWithinInterval(now, { start: parseISO(a.fechaInicio), end: parseISO(a.fechaFin) })) || [];
   }, [aperturas]);
 
-  // 2. Obtener horarios del profesor
+  // 2. Obtener horarios del profesor para sacar todos sus alumnos únicos
   const schedulesQuery = useMemoFirebase(() => {
     if (!db || !profesorId) return null;
     return query(collection(db, 'horarios'), where('profesorId', '==', profesorId), where('esGuardia', '==', false));
   }, [db, profesorId]);
   const { data: allSchedules } = useCollection(schedulesQuery);
-
-  const currentSchedule = useMemo(() => allSchedules?.find(s => s.id === selectedScheduleId), [allSchedules, selectedScheduleId]);
 
   // 3. Obtener alumnos
   const usersQuery = useMemoFirebase(() => {
@@ -207,30 +204,39 @@ export function DiagnosticGradingView({ profesorId }: { profesorId: string }) {
   const { data: allUsers } = useCollection(usersQuery);
 
   const students = useMemo(() => {
-    if (!currentSchedule || !allUsers) return [];
-    return allUsers.filter(u => currentSchedule.alumnosIds?.includes(u.id));
-  }, [currentSchedule, allUsers]);
+    if (!allSchedules || !allUsers) return [];
+    
+    // Obtener IDs únicos de alumnos que este profesor tiene en sus clases
+    const studentIds = new Set<string>();
+    allSchedules.forEach(s => {
+      s.alumnosIds?.forEach((id: string) => studentIds.add(id));
+    });
+
+    return allUsers.filter(u => studentIds.has(u.id));
+  }, [allSchedules, allUsers]);
 
   // 4. Obtener calificaciones existentes
   const gradesQuery = useMemoFirebase(() => {
-    if (!db || !selectedAperturaId || !selectedSubject || !selectedScheduleId) return null;
+    if (!db || !selectedAperturaId || !selectedSubject) return null;
     return query(
       collection(db, 'calificacionesDiagnostico'),
       where('aperturaId', '==', selectedAperturaId),
       where('materia', '==', selectedSubject),
-      where('claseId', '==', selectedScheduleId)
+      where('profesorId', '==', profesorId)
     );
-  }, [db, selectedAperturaId, selectedSubject, selectedScheduleId]);
+  }, [db, selectedAperturaId, selectedSubject, profesorId]);
   const { data: existingGrades } = useCollection(gradesQuery);
 
   const handleUpdateGrade = (alumnoId: string, value: string) => {
-    if (!db || !selectedAperturaId || !selectedSubject || !selectedScheduleId) return;
-    const gradeId = `${alumnoId}_${selectedAperturaId}_${selectedSubject}_${selectedScheduleId}`;
+    if (!db || !selectedAperturaId || !selectedSubject) return;
+    
+    // ID Determinista: alumno_prueba_materia (el profesor es quien la pone)
+    const gradeId = `${alumnoId}_${selectedAperturaId}_${selectedSubject}`;
+    
     setDocumentNonBlocking(doc(db, 'calificacionesDiagnostico', gradeId), {
       alumnoId,
       aperturaId: selectedAperturaId,
       materia: selectedSubject,
-      claseId: selectedScheduleId,
       profesorId,
       nota: value,
       updatedAt: new Date().toISOString()
@@ -256,7 +262,7 @@ export function DiagnosticGradingView({ profesorId }: { profesorId: string }) {
           <Label className="text-[10px] font-bold text-gray-400 uppercase">2. Materia</Label>
           <Select onValueChange={setSelectedSubject} value={selectedSubject || ""}>
             <SelectTrigger className="bg-white border-gray-300 h-10 text-xs font-bold">
-              <SelectValue placeholder="Matemáticas / Lengua..." />
+              <SelectValue placeholder="Seleccione materia..." />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="Matemáticas" className="text-xs font-bold">Matemáticas</SelectItem>
@@ -265,24 +271,12 @@ export function DiagnosticGradingView({ profesorId }: { profesorId: string }) {
             </SelectContent>
           </Select>
         </div>
-
-        <div className="space-y-2 flex-1">
-          <Label className="text-[10px] font-bold text-gray-400 uppercase">3. Grupo Lectivo</Label>
-          <Select onValueChange={setSelectedScheduleId} value={selectedScheduleId || ""}>
-            <SelectTrigger className="bg-white border-gray-300 h-10 text-xs font-bold">
-              <SelectValue placeholder="Seleccione grupo..." />
-            </SelectTrigger>
-            <SelectContent>
-              {allSchedules?.map(s => <SelectItem key={s.id} value={s.id} className="text-xs font-bold">{s.asignatura}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
       </div>
 
-      {!selectedScheduleId ? (
+      {!selectedSubject ? (
         <div className="py-20 text-center opacity-30 flex flex-col items-center">
           <BookOpen className="h-16 w-16 mb-4" />
-          <p className="italic text-sm">Configure los filtros superiores para comenzar la calificación.</p>
+          <p className="italic text-sm">Seleccione la prueba y la materia para comenzar la calificación.</p>
         </div>
       ) : (
         <div className="bg-white border rounded-xl shadow-sm overflow-hidden">
@@ -291,45 +285,53 @@ export function DiagnosticGradingView({ profesorId }: { profesorId: string }) {
                <div className="bg-white/20 p-2 rounded-lg"><GraduationCap className="h-5 w-5" /></div>
                <span className="text-sm font-bold uppercase tracking-tight">Calificación Diagnóstico: {selectedSubject}</span>
              </div>
-             <Badge className="bg-white text-[#89a54e] font-bold">{students.length} ALUMNOS</Badge>
+             <Badge className="bg-white text-[#89a54e] font-bold">{students.length} ALUMNOS TOTALES</Badge>
           </div>
           
           <table className="w-full text-left border-collapse">
             <thead className="bg-gray-50 border-b">
               <tr>
                 <th className="p-4 text-[10px] font-bold text-gray-400 uppercase">Alumno</th>
+                <th className="p-4 text-[10px] font-bold text-gray-400 uppercase">Curso Actual</th>
                 <th className="p-4 text-[10px] font-bold text-gray-400 uppercase text-center w-32">Nota (0-10)</th>
                 <th className="p-4 text-[10px] font-bold text-gray-400 uppercase text-right">Estado</th>
               </tr>
             </thead>
             <tbody>
-              {students.map(s => {
-                const grade = existingGrades?.find(g => g.alumnoId === s.id);
-                return (
-                  <tr key={s.id} className="border-b hover:bg-gray-50 transition-colors">
-                    <td className="p-4">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={s.imagenPerfil} />
-                          <AvatarFallback>{s.usuario?.substring(0,2).toUpperCase()}</AvatarFallback>
-                        </Avatar>
-                        <span className="text-xs font-bold text-gray-700 uppercase">{s.nombrePersona || s.usuario}</span>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <Input 
-                        type="number" step="0.1" min="0" max="10"
-                        className="h-9 text-center font-bold"
-                        value={grade?.nota || ""}
-                        onChange={(e) => handleUpdateGrade(s.id, e.target.value)}
-                      />
-                    </td>
-                    <td className="p-4 text-right">
-                       {grade ? <Badge className="bg-green-100 text-green-700 border-none font-bold text-[9px] uppercase">GUARDADO</Badge> : <Badge variant="outline" className="text-[9px] font-bold text-gray-300">PENDIENTE</Badge>}
-                    </td>
-                  </tr>
-                );
-              })}
+              {students.length === 0 ? (
+                <tr><td colSpan={4} className="p-10 text-center text-gray-400 italic text-sm">No tiene alumnos asignados en su horario oficial.</td></tr>
+              ) : (
+                students.map(s => {
+                  const grade = existingGrades?.find(g => g.alumnoId === s.id);
+                  return (
+                    <tr key={s.id} className="border-b hover:bg-gray-50 transition-colors">
+                      <td className="p-4">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage src={s.imagenPerfil} />
+                            <AvatarFallback>{s.usuario?.substring(0,2).toUpperCase()}</AvatarFallback>
+                          </Avatar>
+                          <span className="text-xs font-bold text-gray-700 uppercase">{s.nombrePersona || s.usuario}</span>
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <Badge variant="outline" className="text-[9px] font-bold border-gray-200">{s.cursoAlumno || 'S/C'}</Badge>
+                      </td>
+                      <td className="p-4">
+                        <Input 
+                          type="number" step="0.1" min="0" max="10"
+                          className="h-9 text-center font-bold"
+                          value={grade?.nota || ""}
+                          onChange={(e) => handleUpdateGrade(s.id, e.target.value)}
+                        />
+                      </td>
+                      <td className="p-4 text-right">
+                         {grade ? <Badge className="bg-green-100 text-green-700 border-none font-bold text-[9px] uppercase">GUARDADO</Badge> : <Badge variant="outline" className="text-[9px] font-bold text-gray-300">PENDIENTE</Badge>}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
           <div className="bg-gray-50 p-4 border-t flex items-center gap-2 px-8">
@@ -456,7 +458,7 @@ export function DiagnosticResultsView({ mode, grupoTutorizado }: { mode: 'tutor'
                           <td className="p-4">
                              <div className="flex justify-center">
                                 <Badge className={cn(
-                                  "text-[11px] font-bold px-3 border-none",
+                                  "text-[11px] font-bold px-3 py-0.5 border-none",
                                   parseFloat(r.nota) < 5 ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700"
                                 )}>
                                   {r.nota}
@@ -477,4 +479,3 @@ export function DiagnosticResultsView({ mode, grupoTutorizado }: { mode: 'tutor'
     </div>
   );
 }
-
