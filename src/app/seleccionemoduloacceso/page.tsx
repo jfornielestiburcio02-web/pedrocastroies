@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useEffect, useState, useMemo } from 'react';
@@ -38,7 +37,9 @@ import {
   Award, 
   Book, 
   Layout, 
-  RefreshCw 
+  RefreshCw,
+  Search,
+  FileSpreadsheet
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -128,7 +129,9 @@ export default function SeleccioneModuloAccesoPage() {
     'sello': false,
     'expedientes': false,
     'perfil': false,
-    'pruebas_diag': false
+    'pruebas_diag': false,
+    'pruebas_diag_root': false,
+    'resultados_diag': false
   });
   
   const router = useRouter();
@@ -511,6 +514,12 @@ export default function SeleccioneModuloAccesoPage() {
                       <div className="p-2 bg-[#9c4d96] rounded-sm text-white"><ShieldCheck className="h-5 w-5" /></div>
                       <div className="p-2 bg-gray-400 rounded-sm text-white" onClick={() => router.push('/configuracion')}><UserCog className="h-5 w-5" /></div>
                     </>
+                  ) : activeRole === 'Calificador Diagnóstico (coord)' ? (
+                    <>
+                      <div className="p-2 bg-[#9c4d96] rounded-sm text-white"><FileSpreadsheet className="h-5 w-5" /></div>
+                      <div className="p-2 bg-gray-400 rounded-sm text-white"><Files className="h-5 w-5" /></div>
+                      <div className="p-2 bg-gray-400 rounded-sm text-white" onClick={() => router.push('/configuracion')}><UserCog className="h-5 w-5" /></div>
+                    </>
                   ) : (
                     // Menu para coordinaciones o perfiles adicionales
                     <>
@@ -804,6 +813,26 @@ export default function SeleccioneModuloAccesoPage() {
                           )}
                         </div>
                       </div>
+                    ) : activeRole === 'Calificador Diagnóstico (coord)' ? (
+                      <div className="space-y-2">
+                        <div className="flex flex-col">
+                          <SidebarHeading label="Pruebas de diagnóstico" expanded={expandedItems['pruebas_diag_root']} onClick={() => toggleExpanded('pruebas_diag_root')} />
+                          {expandedItems['pruebas_diag_root'] && (
+                            <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
+                              <SidebarItem color="#9c4d96" label="Apertura de la evaluación" isSubItem onClick={() => setActiveSubContent('Apertura de la evaluación (Diag)')} active={activeSubContent === 'Apertura de la evaluación (Diag)'} />
+                              <div className="flex flex-col">
+                                <SidebarHeading label="Resultados" expanded={expandedItems['resultados_diag']} onClick={() => toggleExpanded('resultados_diag')} />
+                                {expandedItems['resultados_diag'] && (
+                                  <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
+                                    <SidebarItem color="#9c4d96" label="Por curso" isSubItem onClick={() => setActiveSubContent('Por curso (Diag)')} active={activeSubContent === 'Por curso (Diag)'} />
+                                    <SidebarItem color="#9c4d96" label="Por alumno" isSubItem onClick={() => setActiveSubContent('Por alumno (Diag)')} active={activeSubContent === 'Por alumno (Diag)'} />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     ) : (
                       // Sidebar para coordinaciones (act extraesc, IT, etc)
                       <div className="space-y-2">
@@ -951,6 +980,19 @@ export default function SeleccioneModuloAccesoPage() {
                           <Badge className="bg-[#89a54e] text-white">MODO: {activeSubContent.toUpperCase()}</Badge>
                        </div>
                     </div>
+                  ) : activeSubContent === 'Apertura de la evaluación (Diag)' || activeSubContent === 'Por curso (Diag)' || activeSubContent === 'Por alumno (Diag)' ? (
+                    <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
+                       <div className="bg-white border rounded-lg p-10 shadow-sm min-h-[400px] flex flex-col items-center justify-center text-center space-y-4">
+                          <div className="w-16 h-16 rounded-full bg-[#9c4d96]/10 text-[#9c4d96] flex items-center justify-center">
+                             <FileSpreadsheet className="h-8 w-8" />
+                          </div>
+                          <h2 className="text-2xl font-bold text-gray-800 uppercase tracking-tight">{activeSubContent.replace(' (Diag)', '')}</h2>
+                          <p className="text-gray-500 italic max-w-md">
+                            Módulo de Calificador Diagnóstico: Gestión de {activeSubContent.toLowerCase().replace(' (diag)', '')} para las pruebas oficiales del centro.
+                          </p>
+                          <Badge className="bg-[#9c4d96] text-white">MODO COORDINACIÓN</Badge>
+                       </div>
+                    </div>
                   ) : activeSubContent ? (
                     <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
                        <div className="bg-white border rounded-lg p-10 shadow-sm min-h-[400px] flex flex-col items-center justify-center text-center space-y-4">
@@ -982,6 +1024,8 @@ export default function SeleccioneModuloAccesoPage() {
                               ? "Entorno de secretaría virtual para trámites administrativos y expedientes."
                               : activeRole === 'CAU'
                               ? "Entorno de soporte técnico y atención de usuarios activo."
+                              : activeRole === 'Calificador Diagnóstico (coord)'
+                              ? "Entorno de coordinación para las pruebas de diagnóstico. Utilice el menú lateral morado para gestionar la apertura y resultados."
                               : `Usted está operando con el perfil especial de ${activeRole}. Seleccione una opción del menú para gestionar sus responsabilidades.`}
                           </div>
                           <div className="flex justify-center pt-2">
