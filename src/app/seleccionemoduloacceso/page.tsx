@@ -49,7 +49,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from '@/components/ui/badge';
-import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, getDoc, query, collection, where } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
 
@@ -105,7 +105,6 @@ import {
 
 export default function SeleccioneModuloAccesoPage() {
   const [session, setSession] = useState<any>(null);
-  const [userData, setUserData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedModule, setSelectedModule] = useState<string | null>(null);
   const [activeRole, setActiveRole] = useState<string | null>(null);
@@ -152,60 +151,47 @@ export default function SeleccioneModuloAccesoPage() {
   const router = useRouter();
   const db = useFirestore();
 
+  // Validar sesión inicial
   useEffect(() => {
-    const navigationEntries = performance.getEntriesByType('navigation');
-    const isReload = navigationEntries.length > 0 && (navigationEntries[0] as PerformanceNavigationTiming).type === 'reload';
-
-    if (isReload) {
-      alert("Sesión Caducada");
-      sessionStorage.removeItem('user_session');
+    const savedSessionStr = sessionStorage.getItem('user_session');
+    if (!savedSessionStr) {
       router.push('/login');
       return;
     }
-
-    const savedSessionStr = sessionStorage.getItem('user_session');
-    
-    if (!savedSessionStr) {
-      router.push('/error-solicitud-directa');
-      return;
-    }
-
     try {
       const sessionData = JSON.parse(savedSessionStr);
       if (!sessionData || !sessionData.usuario) {
-        router.push('/error-solicitud-directa');
+        router.push('/login');
         return;
       }
       setSession(sessionData);
-
-      const fetchUserData = async () => {
-        if (!db) return;
-        try {
-          const userRef = doc(db, 'usuarios', sessionData.usuario);
-          const userSnap = await getDoc(userRef);
-          if (userSnap.exists()) {
-            const data = userSnap.data();
-            setUserData(data);
-            
-            const roles = data.rolesUsuario || [];
-            if (roles.includes('EsDireccion')) setActiveRole('Dirección');
-            else if (roles.includes('EsCau')) setActiveRole('CAU');
-            else if (roles.includes('EsProfesor')) setActiveRole('Profesor');
-            else if (roles.includes('EsAlumno')) setActiveRole('Alumno');
-            else if (roles.includes('EsSecretaria')) setActiveRole('Secretaría');
-          }
-        } catch (error) {
-          console.error("Error validando sesión:", error);
-        } finally {
-          setIsLoading(false);
-        }
-      };
-
-      fetchUserData();
     } catch (e) {
       router.push('/login');
     }
-  }, [router, db]);
+  }, [router]);
+
+  // SUSCRIPCIÓN EN TIEMPO REAL A LOS DATOS DEL USUARIO
+  const userDocRef = useMemoFirebase(() => {
+    if (!db || !session?.usuario) return null;
+    return doc(db, 'usuarios', session.usuario);
+  }, [db, session?.usuario]);
+
+  const { data: userData, isLoading: loadingUserData } = useDoc(userDocRef);
+
+  // Establecer rol inicial por defecto al cargar los datos del usuario
+  useEffect(() => {
+    if (userData && !activeRole) {
+      const roles = userData.rolesUsuario || [];
+      if (roles.includes('EsDireccion')) setActiveRole('Dirección');
+      else if (roles.includes('EsCau')) setActiveRole('CAU');
+      else if (roles.includes('EsProfesor')) setActiveRole('Profesor');
+      else if (roles.includes('EsAlumno')) setActiveRole('Alumno');
+      else if (roles.includes('EsSecretaria')) setActiveRole('Secretaría');
+      setIsLoading(false);
+    } else if (userData) {
+      setIsLoading(false);
+    }
+  }, [userData, activeRole]);
 
   // Lista de todos los perfiles (Roles + Adicionales)
   const allAvailableProfiles = useMemo(() => {
@@ -251,6 +237,7 @@ export default function SeleccioneModuloAccesoPage() {
     setSelectedModule(label.toUpperCase());
     setActiveSubContent(null);
     setSidebarMode('ACADEMIC');
+    
     const roles = userData?.rolesUsuario || [];
     if (label === "Seguimiento") {
       if (roles.includes('EsProfesor')) setActiveRole('Profesor');
@@ -318,7 +305,7 @@ export default function SeleccioneModuloAccesoPage() {
     );
   };
 
-  if (isLoading || !session) {
+  if (isLoading || loadingUserData || !session) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-white">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
