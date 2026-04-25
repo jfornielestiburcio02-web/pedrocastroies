@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useMemo } from 'react';
@@ -16,14 +15,15 @@ import {
   Plus,
   Save,
   Trash2,
-  Layout
+  Layout,
+  Pencil
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, doc, deleteDoc } from 'firebase/firestore';
-import { updateDocumentNonBlocking, addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { collection, query, where, doc, getDocs } from 'firebase/firestore';
+import { updateDocumentNonBlocking, addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from '@/components/ui/badge';
@@ -45,7 +45,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 export function TeacherGroupsView({ profesorId }: { profesorId: string }) {
   const db = useFirestore();
   const { toast } = useToast();
-  const [isCreating, setIsCreating] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [formData, setFormData] = useState({ titulo: '', alumnosIds: [] as string[] });
 
   // 1. Obtener todos los alumnos del centro para seleccionar
@@ -62,27 +63,62 @@ export function TeacherGroupsView({ profesorId }: { profesorId: string }) {
   }, [db, profesorId]);
   const { data: myGroups, isLoading: loadingGroups } = useCollection(myGroupsQuery);
 
-  const handleCreateGroup = () => {
+  const openCreate = () => {
+    setEditingGroupId(null);
+    setFormData({ titulo: '', alumnosIds: [] });
+    setIsDialogOpen(true);
+  };
+
+  const openEdit = (group: any) => {
+    setEditingGroupId(group.id);
+    setFormData({ titulo: group.titulo, alumnosIds: group.alumnosIds || [] });
+    setIsDialogOpen(true);
+  };
+
+  const handleSaveGroup = async () => {
     if (!db || !formData.titulo || formData.alumnosIds.length === 0) {
       toast({ variant: "destructive", title: "Incompleto", description: "Asigne un título y seleccione alumnos." });
       return;
     }
 
-    addDocumentNonBlocking(collection(db, 'gruposAlumnos'), {
-      ...formData,
-      profesorId,
-      createdAt: new Date().toISOString()
-    });
+    if (editingGroupId) {
+      // ACTUALIZAR GRUPO
+      const groupRef = doc(db, 'gruposAlumnos', editingGroupId);
+      updateDocumentNonBlocking(groupRef, {
+        ...formData,
+        updatedAt: new Date().toISOString()
+      });
 
-    toast({ title: "Grupo Creado", description: `El grupo "${formData.titulo}" ya está disponible para horarios.` });
-    setIsCreating(false);
-    setFormData({ titulo: '', alumnosIds: [] });
+      // SINCRONIZAR HORARIOS: Buscar horarios que usen este grupo y actualizar sus alumnos
+      const horariosQuery = query(collection(db, 'horarios'), where('grupoId', '==', editingGroupId));
+      const schedulesSnap = await getDocs(horariosQuery);
+      schedulesSnap.forEach(scheduleDoc => {
+        updateDocumentNonBlocking(doc(db, 'horarios', scheduleDoc.id), {
+          alumnosIds: formData.alumnosIds,
+          asignatura: formData.titulo // Sincronizamos también el nombre si cambió
+        });
+      });
+
+      toast({ title: "Grupo Actualizado", description: "Se han sincronizado los cambios con sus horarios lectivos." });
+    } else {
+      // CREAR GRUPO
+      addDocumentNonBlocking(collection(db, 'gruposAlumnos'), {
+        ...formData,
+        profesorId,
+        createdAt: new Date().toISOString()
+      });
+      toast({ title: "Grupo Creado", description: `El grupo "${formData.titulo}" ya está disponible.` });
+    }
+
+    setIsDialogOpen(false);
   };
 
   const handleDeleteGroup = (id: string) => {
     if (!db) return;
-    deleteDocumentNonBlocking(doc(db, 'gruposAlumnos', id));
-    toast({ title: "Grupo eliminado" });
+    if (confirm("¿Está seguro de eliminar este grupo? Se desvinculará de los horarios pero los registros de asistencia permanecerán.")) {
+      deleteDocumentNonBlocking(doc(db, 'gruposAlumnos', id));
+      toast({ title: "Grupo eliminado" });
+    }
   };
 
   const toggleStudent = (id: string) => {
@@ -103,7 +139,7 @@ export function TeacherGroupsView({ profesorId }: { profesorId: string }) {
             <Layout className="h-5 w-5 text-[#89a54e]" />
             <h2 className="text-sm font-bold text-gray-700 uppercase">Mis Grupos de Alumnado</h2>
          </div>
-         <Button onClick={() => setIsCreating(true)} className="bg-[#89a54e] hover:bg-[#728a41] text-white text-[10px] font-bold uppercase h-8 px-4 gap-2">
+         <Button onClick={openCreate} className="bg-[#89a54e] hover:bg-[#728a41] text-white text-[10px] font-bold uppercase h-8 px-4 gap-2">
            <Plus className="h-3 w-3" /> Crear nuevo grupo
          </Button>
       </div>
@@ -118,16 +154,21 @@ export function TeacherGroupsView({ profesorId }: { profesorId: string }) {
              <div key={group.id} className="bg-white border rounded-xl overflow-hidden shadow-sm flex flex-col group hover:border-[#89a54e] transition-all">
                 <div className="bg-gray-50 p-4 border-b flex items-center justify-between">
                    <h3 className="text-xs font-bold text-gray-700 uppercase truncate pr-4">{group.titulo}</h3>
-                   <Button variant="ghost" size="icon" onClick={() => handleDeleteGroup(group.id)} className="h-7 w-7 text-gray-300 hover:text-red-600">
-                      <Trash2 className="h-3.5 w-3.5" />
-                   </Button>
+                   <div className="flex gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => openEdit(group)} className="h-7 w-7 text-blue-400 hover:text-blue-600 hover:bg-blue-50">
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => handleDeleteGroup(group.id)} className="h-7 w-7 text-gray-300 hover:text-red-600 hover:bg-red-50">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                   </div>
                 </div>
                 <div className="p-4 flex-1">
                    <div className="flex flex-wrap gap-1.5">
                       {group.alumnosIds.slice(0, 6).map((sid: string) => {
                         const student = allStudents?.find(s => s.id === sid);
                         return student ? (
-                          <Badge key={sid} variant="outline" className="text-[8px] font-bold py-0 h-5 border-gray-200 text-gray-500 bg-gray-50">
+                          <Badge key={sid} variant="outline" className="text-[8px] font-bold py-0 h-5 border-gray-200 text-gray-500 bg-gray-50 uppercase">
                             {student.nombrePersona || student.usuario}
                           </Badge>
                         ) : null;
@@ -145,29 +186,32 @@ export function TeacherGroupsView({ profesorId }: { profesorId: string }) {
         </div>
       )}
 
-      <Dialog open={isCreating} onOpenChange={setIsCreating}>
-        <DialogContent className="max-w-2xl font-verdana p-0 border-none overflow-hidden">
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-2xl font-verdana p-0 border-none overflow-hidden shadow-2xl">
           <DialogHeader className="bg-[#89a54e] p-6 text-white shrink-0">
              <DialogTitle className="text-sm font-bold uppercase tracking-widest flex items-center gap-2">
-               <Plus className="h-4 w-4" /> Configurar Nuevo Grupo
+               {editingGroupId ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+               {editingGroupId ? 'Editar Grupo de Alumnos' : 'Configurar Nuevo Grupo'}
              </DialogTitle>
-             <DialogDescription className="text-white/80 text-[10px] font-bold uppercase">Gestión de agrupaciones por materia</DialogDescription>
+             <DialogDescription className="text-white/80 text-[10px] font-bold uppercase">
+               {editingGroupId ? 'Los cambios se aplicarán a todos sus horarios vigentes' : 'Gestión de agrupaciones por materia'}
+             </DialogDescription>
           </DialogHeader>
 
           <div className="p-8 bg-white space-y-6">
              <div className="space-y-2">
-                <Label className="text-[10px] font-bold text-gray-400 uppercase">Título del Grupo (Ej: Matemáticas 2º ESO)</Label>
+                <Label className="text-[10px] font-bold text-gray-400 uppercase">Título del Grupo</Label>
                 <Input 
-                  placeholder="Nombre identificativo..." 
+                  placeholder="Ej: Matemáticas 2º ESO A..." 
                   value={formData.titulo}
                   onChange={(e) => setFormData({...formData, titulo: e.target.value})}
-                  className="h-10 border-gray-300 font-bold text-sm"
+                  className="h-10 border-gray-300 font-bold text-sm uppercase"
                 />
              </div>
 
              <div className="space-y-2">
                 <Label className="text-[10px] font-bold text-gray-400 uppercase flex justify-between">
-                  <span>Seleccione los alumnos</span>
+                  <span>Seleccione integrantes</span>
                   <span className="text-[#89a54e]">{formData.alumnosIds.length} seleccionados</span>
                 </Label>
                 <div className="border rounded-lg h-[250px] bg-gray-50/50 overflow-hidden flex flex-col">
@@ -184,13 +228,13 @@ export function TeacherGroupsView({ profesorId }: { profesorId: string }) {
                                 : "bg-transparent border-transparent hover:bg-white hover:border-gray-200"
                             )}
                            >
-                              <Checkbox checked={formData.alumnosIds.includes(s.id)} />
+                              <Checkbox checked={formData.alumnosIds.includes(s.id)} onCheckedChange={() => {}} />
                               <div className="flex items-center gap-2">
                                 <Avatar className="h-6 w-6">
                                   <AvatarImage src={s.imagenPerfil} />
                                   <AvatarFallback className="text-[8px]">{s.usuario?.substring(0,2).toUpperCase()}</AvatarFallback>
                                 </Avatar>
-                                <span className="text-[11px] font-bold text-gray-700">{s.nombrePersona || s.usuario}</span>
+                                <span className="text-[11px] font-bold text-gray-700 uppercase">{s.nombrePersona || s.usuario}</span>
                                 <Badge variant="outline" className="text-[8px] h-4 py-0 border-gray-200">{s.cursoAlumno || 'S/C'}</Badge>
                               </div>
                            </div>
@@ -202,9 +246,9 @@ export function TeacherGroupsView({ profesorId }: { profesorId: string }) {
           </div>
 
           <DialogFooter className="bg-gray-50 p-6 border-t gap-4 shrink-0">
-             <Button variant="outline" onClick={() => setIsCreating(false)} className="text-[11px] font-bold uppercase h-10 px-8">Cancelar</Button>
-             <Button onClick={handleCreateGroup} className="bg-[#89a54e] hover:bg-[#728a41] text-white text-[11px] font-bold uppercase h-10 px-8 gap-2 shadow-md">
-               <Save className="h-4 w-4" /> Guardar Grupo
+             <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="text-[11px] font-bold uppercase h-10 px-8">Cancelar</Button>
+             <Button onClick={handleSaveGroup} className="bg-[#89a54e] hover:bg-[#728a41] text-white text-[11px] font-bold uppercase h-10 px-8 gap-2 shadow-md">
+               <Save className="h-4 w-4" /> {editingGroupId ? 'Guardar y Sincronizar' : 'Crear Grupo'}
              </Button>
           </DialogFooter>
         </DialogContent>
