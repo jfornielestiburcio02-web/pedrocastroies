@@ -321,8 +321,8 @@ export default function SeleccioneModuloAccesoPage() {
 
   const isTeacherTutor = userData?.esTutor && userData?.esTutor !== "";
 
-  // Sincronización DAD: Si es PROFESORdad+, usamos el ID del titular para las consultas de seguimiento
-  const effectiveTeacherId = activeRole === 'PROFESORdad+' ? (userData?.esDADDe || session.usuario) : session.usuario;
+  // SINCRONIZACIÓN DAD/PROA+: Usamos el ID del titular si existe un vínculo, independientemente del perfil activo si es de apoyo
+  const effectiveTeacherId = (activeRole === 'PROFESORdad+' || activeRole === 'PROA+') ? (userData?.esDADDe || session.usuario) : session.usuario;
 
   return (
     <div className="min-h-screen bg-white font-verdana flex flex-col w-full overflow-x-hidden">
@@ -1081,7 +1081,7 @@ export default function SeleccioneModuloAccesoPage() {
                               : activeRole === 'PROFESORdad+'
                               ? `Usted está actuando como profesor de apoyo (DAD) vinculado a ${userData?.esDADDe}. Visualiza y gestiona su mismo horario y alumnado.`
                               : activeRole === 'PROA+'
-                              ? "Perfil de acompañamiento y refuerzo educativo activo. Gestione sus intervenciones desde el menú lateral verde."
+                              ? `Usted está actuando como profesor de refuerzo (PROA+). ${userData?.esDADDe ? 'Visualiza y gestiona el horario de ' + userData.esDADDe + '.' : 'Seleccione una opción para gestionar las medidas de apoyo.'}`
                               : activeRole === 'Alumno'
                               ? "Entorno de seguimiento académico activo para consulta de notas y asistencia personal."
                               : activeRole === 'Dirección'

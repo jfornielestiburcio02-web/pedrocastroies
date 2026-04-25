@@ -67,7 +67,7 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
     return days[new Date(selectedDate).getDay()];
   }, [selectedDate]);
 
-  // CARGA DE HORARIOS (Sincronizada con titular si es DAD)
+  // CARGA DE HORARIOS: Consulta simple para evitar fallos de índices
   const schedulesQuery = useMemoFirebase(() => {
     if (manualScheduleId || !db || !profesorId) return null;
     return query(
@@ -80,9 +80,10 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
   
   const schedules = useMemo(() => {
     if (!rawSchedules) return [];
+    // Filtramos por día en memoria para asegurar compatibilidad total
     return rawSchedules
       .filter(s => s.dia === dayOfWeek)
-      .sort((a, b) => a.horaInicio.localeCompare(b.horaInicio));
+      .sort((a, b) => (a.horaInicio || "").localeCompare(b.horaInicio || ""));
   }, [rawSchedules, dayOfWeek]);
 
   const manualScheduleQuery = useMemoFirebase(() => {
@@ -97,27 +98,29 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
     return schedules.find(s => s.id === selectedScheduleId);
   }, [schedules, selectedScheduleId, manualScheduleId, manualScheduleData]);
 
+  // CONSULTA DE ASISTENCIAS: Filtrado en memoria para evitar índices compuestos
   const attendanceQuery = useMemoFirebase(() => {
     if (!db || !selectedScheduleId) return null;
     return query(
       collection(db, 'asistenciasInasistencias'),
-      where('claseId', '==', selectedScheduleId),
-      where('fecha', '==', selectedDate)
+      where('claseId', '==', selectedScheduleId)
     );
-  }, [db, selectedScheduleId, selectedDate]);
+  }, [db, selectedScheduleId]);
 
-  const { data: attendances } = useCollection(attendanceQuery);
+  const { data: rawAttendances } = useCollection(attendanceQuery);
+  const attendances = useMemo(() => rawAttendances?.filter(a => a.fecha === selectedDate), [rawAttendances, selectedDate]);
 
+  // CONSULTA DE COMPORTAMIENTOS: Filtrado en memoria
   const behaviorQuery = useMemoFirebase(() => {
     if (!db || !selectedScheduleId) return null;
     return query(
       collection(db, 'comportamientos'),
-      where('claseId', '==', selectedScheduleId),
-      where('fecha', '==', selectedDate)
+      where('claseId', '==', selectedScheduleId)
     );
-  }, [db, selectedScheduleId, selectedDate]);
+  }, [db, selectedScheduleId]);
 
-  const { data: behaviors } = useCollection(behaviorQuery);
+  const { data: rawBehaviors } = useCollection(behaviorQuery);
+  const behaviors = useMemo(() => rawBehaviors?.filter(b => b.fecha === selectedDate), [rawBehaviors, selectedDate]);
 
   const usersQuery = useMemoFirebase(() => {
     if (!db) return null;
@@ -177,7 +180,7 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
       grupoId: currentSchedule?.grupoId || "",
       fecha: selectedDate,
       tipo: nextStatus,
-      profesorId, // Guardamos siempre bajo el ID del profesor efectivo (Titular)
+      profesorId, 
       createdAt: existing?.createdAt || new Date().toISOString()
     }, { merge: true });
     
@@ -199,7 +202,7 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
       grupoId: currentSchedule?.grupoId || "",
       fecha: selectedDate,
       tipo: tipo,
-      profesorId, // Guardamos bajo el titular para sincronización DAD
+      profesorId, 
       createdAt: new Date().toISOString()
     }, { merge: true });
   };
@@ -256,7 +259,7 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
         <div className="bg-blue-50 border border-blue-100 p-2 px-4 rounded-full w-fit flex items-center gap-2 animate-pulse">
            <UserCheck className="h-3.5 w-3.5 text-blue-600" />
            <span className="text-[9px] font-bold text-blue-800 uppercase tracking-widest">
-             Sincronización Activa: Registros vinculados al profesor {profesorId}
+             Registros vinculados al profesor: {profesorId}
            </span>
         </div>
       )}
