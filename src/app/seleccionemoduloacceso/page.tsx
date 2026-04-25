@@ -272,19 +272,21 @@ export default function SeleccioneModuloAccesoPage() {
 
   const renderProfileButton = (profile: any) => {
     const isActive = activeRole === profile.label;
+    const labelParts = profile.label.split(' ');
+
     return (
       <button 
         key={profile.id}
         onClick={() => { setActiveRole(profile.label); setActiveSubContent(null); }}
         className={cn(
-          "flex flex-col items-center group transition-all p-1 rounded-sm border min-w-[55px] h-[58px]",
+          "flex flex-col items-center group transition-all p-1 rounded-sm border min-w-[55px] h-auto min-h-[58px] justify-start",
           isActive 
             ? "bg-[#fb8500] border-[#fb8500] text-white" 
             : "bg-white border-gray-300 text-gray-400 hover:border-[#fb8500]/50"
         )}
       >
         <div className={cn(
-          "p-1 rounded-sm",
+          "p-1 rounded-sm mb-0.5",
           isActive ? "bg-white/20" : "bg-gray-100"
         )}>
           {profile.id === 'EsDireccion' && <ShieldCheck className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
@@ -294,12 +296,14 @@ export default function SeleccioneModuloAccesoPage() {
           {profile.id === 'EsSecretaria' && <Briefcase className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
           {profile.type === 'SUBPROFILE' && <UserCog className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
         </div>
-        <span className={cn(
-          "text-[8px] font-bold uppercase mt-0.5 tracking-tighter truncate w-full text-center",
+        <div className={cn(
+          "text-[8px] font-bold uppercase tracking-tighter w-full text-center leading-[1.1]",
           isActive ? "text-white" : "text-gray-500"
         )}>
-          {profile.label}
-        </span>
+          {labelParts.map((part: string, i: number) => (
+            <div key={i} className="truncate">{part}</div>
+          ))}
+        </div>
       </button>
     );
   };
@@ -375,13 +379,13 @@ export default function SeleccioneModuloAccesoPage() {
                   {allAvailableProfiles.slice(0, 4).map(profile => renderProfileButton(profile))}
                   <button 
                     onClick={() => setIsChangeProfileOpen(true)}
-                    className="flex flex-col items-center justify-center group transition-all p-1 rounded-sm border min-w-[55px] h-[58px] bg-white border-gray-300 text-gray-400 hover:border-[#fb8500]/50"
+                    className="flex flex-col items-center justify-center group transition-all p-1 rounded-sm border min-w-[55px] h-auto min-h-[58px] bg-white border-gray-300 text-gray-400 hover:border-[#fb8500]/50"
                   >
-                    <div className="p-1 rounded-sm bg-gray-100">
+                    <div className="p-1 rounded-sm bg-gray-100 mb-0.5">
                       <RefreshCw className="h-5 w-5 text-gray-500" />
                     </div>
-                    <span className="text-[8px] font-bold uppercase mt-0.5 tracking-tighter text-gray-500">
-                      Cambio...
+                    <span className="text-[8px] font-bold uppercase mt-0.5 tracking-tighter text-gray-500 leading-tight">
+                      Cambio<br/>Perfil
                     </span>
                   </button>
                 </>
@@ -438,9 +442,11 @@ export default function SeleccioneModuloAccesoPage() {
                          {profile.id === 'EsSecretaria' && <Briefcase className="h-10 w-10" />}
                          {profile.type === 'SUBPROFILE' && <UserCog className="h-10 w-10" />}
                       </div>
-                      <span className="text-sm font-bold uppercase tracking-tight text-center leading-tight">
-                        {profile.label}
-                      </span>
+                      <div className="text-sm font-bold uppercase tracking-tight text-center leading-tight">
+                        {profile.label.split(' ').map((word: string, i: number) => (
+                          <div key={i}>{word}</div>
+                        ))}
+                      </div>
                       {activeRole === profile.label && (
                         <Badge className="mt-3 bg-white text-[#fb8500] border-none font-bold text-[10px]">ACTIVO</Badge>
                       )}
