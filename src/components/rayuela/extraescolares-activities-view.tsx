@@ -101,9 +101,9 @@ export function ExtraescolaresActivitiesView() {
     horaInicio: '08:30',
     horaFin: '14:30',
     pais: 'España',
-    provincia: 'Badajoz',
-    municipio: 'Fregenal de la Sierra',
-    localidad: 'Fregenal de la Sierra',
+    provincia: 'Madrid',
+    municipio: 'Madrid',
+    localidad: 'Madrid',
     lugarDesarrollo: '',
     medioTransporte: 'Autobús'
   });
@@ -176,9 +176,9 @@ export function ExtraescolaresActivitiesView() {
       horaInicio: act.horaInicio || '08:30',
       horaFin: act.horaFin || '14:30',
       pais: act.pais || 'España',
-      provincia: act.provincia || 'Badajoz',
-      municipio: act.municipio || 'Fregenal de la Sierra',
-      localidad: act.localidad || 'Fregenal de la Sierra',
+      provincia: act.provincia || 'Madrid',
+      municipio: act.municipio || 'Madrid',
+      localidad: act.localidad || 'Madrid',
       lugarDesarrollo: act.lugarDesarrollo || '',
       medioTransporte: act.medioTransporte || 'Autobús'
     });
@@ -214,9 +214,9 @@ export function ExtraescolaresActivitiesView() {
       horaInicio: '08:30',
       horaFin: '14:30',
       pais: 'España',
-      provincia: 'Badajoz',
-      municipio: 'Fregenal de la Sierra',
-      localidad: 'Fregenal de la Sierra',
+      provincia: 'Madrid',
+      municipio: 'Madrid',
+      localidad: 'Madrid',
       lugarDesarrollo: '',
       medioTransporte: 'Autobús'
     });
@@ -404,7 +404,7 @@ export function ExtraescolaresActivitiesView() {
                    <h3 className="text-[#9c4d96] text-[11px] font-bold uppercase tracking-tight">Datos de participación</h3>
                    <div className="flex items-center gap-2 mb-4">
                       <Checkbox id="diag-bilingue" checked={formData.bilingue} onCheckedChange={(val) => setFormData({...formData, bilingue: !!val})} />
-                      <Label htmlFor="diag-bilingue" className="text-[10px] font-bold text-gray-500 uppercase cursor-pointer">Actividad sólo para alumnado bilingüe</Label>
+                      <Label htmlFor="diag-bilingue" className="text-[10px] font-bold text-gray-400 uppercase cursor-pointer">Actividad sólo para alumnado bilingüe</Label>
                    </div>
                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-[10px] font-bold uppercase text-gray-500">
                       <div className="flex items-center gap-2">
@@ -515,14 +515,24 @@ export function ExtraescolaresActivitiesView() {
                          <span>Provincia:</span>
                          <Select value={formData.provincia} onValueChange={(val) => setFormData({...formData, provincia: val})}>
                             <SelectTrigger className="h-7 text-[10px]"><SelectValue /></SelectTrigger>
-                            <SelectContent><SelectItem value="Badajoz">Badajoz</SelectItem><SelectItem value="Cáceres">Cáceres</SelectItem></SelectContent>
+                            <SelectContent>
+                              <SelectItem value="Madrid">Madrid</SelectItem>
+                              <SelectItem value="A Coruña">A Coruña</SelectItem>
+                              <SelectItem value="Lugo">Lugo</SelectItem>
+                              <SelectItem value="Ourense">Ourense</SelectItem>
+                              <SelectItem value="Pontevedra">Pontevedra</SelectItem>
+                            </SelectContent>
                          </Select>
                       </div>
                       <div className="space-y-1">
                          <span>Municipio:</span>
                          <Select value={formData.municipio} onValueChange={(val) => setFormData({...formData, municipio: val})}>
                             <SelectTrigger className="h-7 text-[10px]"><SelectValue /></SelectTrigger>
-                            <SelectContent><SelectItem value="Fregenal de la Sierra">Fregenal de la Sierra</SelectItem><SelectItem value="Mérida">Mérida</SelectItem></SelectContent>
+                            <SelectContent>
+                              <SelectItem value="Madrid">Madrid</SelectItem>
+                              <SelectItem value="Vigo">Vigo</SelectItem>
+                              <SelectItem value="Santiago de Compostela">Santiago de Compostela</SelectItem>
+                            </SelectContent>
                          </Select>
                       </div>
                    </div>
