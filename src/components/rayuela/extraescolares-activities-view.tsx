@@ -18,7 +18,8 @@ import {
   CheckCircle2,
   AlertTriangle,
   Search,
-  BookOpen
+  BookOpen,
+  Pencil
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,7 +46,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, doc, updateDoc, arrayUnion } from 'firebase/firestore';
-import { addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -56,6 +57,7 @@ export function ExtraescolaresActivitiesView() {
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [editingActivityId, setEditingActivityId] = useState<string | null>(null);
 
   // Obtener actividades
   const activitiesQuery = useMemoFirebase(() => {
@@ -115,30 +117,76 @@ export function ExtraescolaresActivitiesView() {
     const totalBudget = (formData.costePorAlumno * formData.alumnadoParticipante) + (formData.costePorDocente * formData.numDocentes) + formData.otrosCostes;
     const percentage = formData.alumnadoConvocado > 0 ? (formData.alumnadoParticipante / formData.alumnadoConvocado) * 100 : 0;
 
-    // 1. Guardar actividad
-    await addDocumentNonBlocking(collection(db, 'actividadesExtraescolares'), {
+    const dataToSave = {
       ...formData,
       totalPresupuesto: totalBudget,
       porcentajeParticipacion: percentage,
-      createdAt: new Date().toISOString()
-    });
+      updatedAt: new Date().toISOString()
+    };
 
-    // 2. ASIGNACIÓN AUTOMÁTICA DE PERFIL AL COORDINADOR
+    if (editingActivityId) {
+      // 1. Actualizar actividad existente
+      updateDocumentNonBlocking(doc(db, 'actividadesExtraescolares', editingActivityId), dataToSave);
+      toast({ title: "Actividad Actualizada", description: "Se han guardado los cambios correctamente." });
+    } else {
+      // 1. Guardar nueva actividad
+      await addDocumentNonBlocking(collection(db, 'actividadesExtraescolares'), {
+        ...dataToSave,
+        createdAt: new Date().toISOString()
+      });
+      toast({ title: "Actividad Registrada", description: "Se ha guardado la nueva actividad correctamente." });
+    }
+
+    // 2. ASIGNACIÓN AUTOMÁTICA DE PERFIL AL COORDINADOR (Si es necesario)
     const coordinatorRef = doc(db, 'usuarios', formData.coordinadorId);
     await updateDoc(coordinatorRef, {
       perfilesAdicionales: arrayUnion('act extraesc.(coord)')
     });
 
-    toast({ 
-      title: "Actividad Registrada", 
-      description: "Se ha guardado la actividad y asignado el perfil de coordinación al docente seleccionado." 
-    });
-    
     setIsDialogOpen(false);
     resetForm();
   };
 
+  const openEdit = (act: any) => {
+    setEditingActivityId(act.id);
+    setFormData({
+      añoAcademico: act.añoAcademico || '2025-2026',
+      tipoActividad: act.tipoActividad || 'Otras',
+      estado: act.estado || 'Borrador',
+      departamento: act.departamento || 'Geografía e Historia',
+      coordinadorId: act.coordinadorId || '',
+      titulo: act.titulo || '',
+      descripcion: act.descripcion || '',
+      bilingue: !!act.bilingue,
+      alumnadoConvocado: act.alumnadoConvocado || 0,
+      alumnadoParticipante: act.alumnadoParticipante || 0,
+      numDocentes: act.numDocentes || 1,
+      numGruposParticipantes: act.numGruposParticipantes || 1,
+      numCursosParticipantes: act.numCursosParticipantes || 1,
+      incluidaPGA: !!act.incluidaPGA,
+      fechaAprobacion: act.fechaAprobacion || '',
+      requiereCopago: !!act.requiereCopago,
+      costePorDocente: act.costePorDocente || 0,
+      costePorAlumno: act.costePorAlumno || 0,
+      otrosCostes: act.otrosCostes || 0,
+      objetivoDepartamento: act.objetivoDepartamento || '',
+      objetivoEspecifico: act.objetivoEspecifico || '',
+      fechaDesde: act.fechaDesde || new Date().toISOString().split('T')[0],
+      fechaHasta: act.fechaHasta || new Date().toISOString().split('T')[0],
+      horaInicio: act.horaInicio || '08:30',
+      horaFin: act.horaFin || '14:30',
+      pais: act.pais || 'España',
+      provincia: act.provincia || 'Badajoz',
+      municipio: act.municipio || 'Fregenal de la Sierra',
+      localidad: act.localidad || 'Fregenal de la Sierra',
+      lugarDesarrollo: act.lugarDesarrollo || '',
+      medioTransporte: act.medioTransporte || 'Autobús'
+    });
+    setIsDialogOpen(true);
+  };
+
   const resetForm = () => {
+    setEditingActivityId(null);
     setFormData({
       añoAcademico: '2025-2026',
       tipoActividad: 'Otras',
@@ -222,7 +270,7 @@ export function ExtraescolaresActivitiesView() {
                       <tr><td colSpan={4} className="p-10 text-center italic text-gray-400">No hay actividades registradas.</td></tr>
                     ) : (
                       filteredActivities.map(act => (
-                        <tr key={act.id} className="border-b hover:bg-gray-50 transition-colors">
+                        <tr key={act.id} className="border-b hover:bg-gray-50 transition-colors group">
                            <td className="p-4">
                               <div className="flex flex-col">
                                  <span className="text-xs font-bold text-gray-700 uppercase">{act.titulo}</span>
@@ -238,15 +286,22 @@ export function ExtraescolaresActivitiesView() {
                            <td className="p-4">
                               <Badge className={cn(
                                 "text-[8px] font-bold uppercase border-none",
-                                act.estado === 'Visada' ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"
+                                act.estado === 'Visada' ? "bg-green-100 text-green-700" : 
+                                act.estado === 'ACEPTADA POR COMISION' ? "bg-blue-100 text-blue-700" :
+                                "bg-orange-100 text-orange-700"
                               )}>
                                 {act.estado}
                               </Badge>
                            </td>
                            <td className="p-4 text-right">
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-300 hover:text-red-600" onClick={() => deleteDocumentNonBlocking(doc(db!, 'actividadesExtraescolares', act.id))}>
-                                 <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
+                              <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-300 hover:text-[#9c4d96]" onClick={() => openEdit(act)}>
+                                   <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-300 hover:text-red-600" onClick={() => deleteDocumentNonBlocking(doc(db!, 'actividadesExtraescolares', act.id))}>
+                                   <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
                            </td>
                         </tr>
                       ))
@@ -258,7 +313,7 @@ export function ExtraescolaresActivitiesView() {
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-4xl font-verdana p-0 border-none overflow-hidden max-h-[90vh] flex flex-col">
+        <DialogContent className="max-w-4xl font-verdana p-0 border-none overflow-hidden max-h-[90vh] flex flex-col shadow-2xl">
           <DialogHeader className="bg-gray-100 p-4 border-b shrink-0">
              <div className="flex flex-wrap items-center gap-x-8 gap-y-2 text-[11px] font-medium text-gray-600">
                 <div className="flex items-center gap-2">
@@ -268,7 +323,7 @@ export function ExtraescolaresActivitiesView() {
                 <div className="flex items-center gap-2">
                    <span>Tipo de actividad:</span>
                    <select 
-                    className="bg-white border border-gray-300 rounded px-2 h-7 font-bold"
+                    className="bg-white border border-gray-300 rounded px-2 h-7 font-bold text-[10px]"
                     value={formData.tipoActividad}
                     onChange={(e) => setFormData({...formData, tipoActividad: e.target.value})}
                    >
@@ -279,12 +334,21 @@ export function ExtraescolaresActivitiesView() {
                 </div>
                 <div className="flex items-center gap-2 ml-auto">
                    <span>Estado:</span>
-                   <span className="font-bold text-[#e63946]">{formData.estado}</span>
+                   <select 
+                    className="bg-white border border-gray-300 rounded px-2 h-7 font-bold text-[10px] text-[#e63946]"
+                    value={formData.estado}
+                    onChange={(e) => setFormData({...formData, estado: e.target.value})}
+                   >
+                      <option>Borrador</option>
+                      <option>ACEPTADA POR COMISION</option>
+                      <option>Visada</option>
+                      <option>Realizada</option>
+                      <option>Cancelada</option>
+                   </select>
                 </div>
              </div>
           </DialogHeader>
 
-          {/* ÁREA DESPLAZABLE MEJORADA */}
           <div className="flex-1 overflow-y-auto p-8 bg-[#fcfcfc] min-h-0">
              <div className="space-y-8 pb-4">
                 {/* Cabecera Form */}
@@ -311,7 +375,7 @@ export function ExtraescolaresActivitiesView() {
                           <SelectValue placeholder="Seleccione profesor..." />
                         </SelectTrigger>
                         <SelectContent>
-                          {professors.map(p => <SelectItem key={p.id} value={p.id}>{p.nombrePersona || p.usuario}</SelectItem>)}
+                          {professors.map(p => <SelectItem key={p.id} value={p.id} className="text-xs font-bold">{p.nombrePersona || p.usuario}</SelectItem>)}
                         </SelectContent>
                       </Select>
                    </div>
@@ -327,7 +391,7 @@ export function ExtraescolaresActivitiesView() {
                 </div>
 
                 <div className="space-y-2">
-                   <Label className="text-[10px] font-bold text-gray-400 uppercase flex items-center gap-2">Descripción: <Pencil className="h-3 w-3 text-[#e63946]" /></Label>
+                   <Label className="text-[10px] font-bold text-gray-400 uppercase flex items-center gap-2">Descripción:</Label>
                    <Textarea 
                     value={formData.descripcion} 
                     onChange={(e) => setFormData({...formData, descripcion: e.target.value})}
@@ -473,31 +537,11 @@ export function ExtraescolaresActivitiesView() {
           <DialogFooter className="bg-gray-50 p-4 border-t shrink-0">
              <Button variant="outline" size="sm" onClick={() => setIsDialogOpen(false)} className="text-[10px] font-bold uppercase">Cerrar</Button>
              <Button onClick={handleSave} size="sm" className="bg-[#9c4d96] text-white text-[10px] font-bold uppercase gap-2 px-8 shadow-md">
-                <Save className="h-3.5 w-3.5" /> Registrar Actividad
+                <Save className="h-3.5 w-3.5" /> {editingActivityId ? 'Actualizar Actividad' : 'Registrar Actividad'}
              </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
-  );
-}
-
-function Pencil({ className }: { className?: string }) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width="24" 
-      height="24" 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-      className={className}
-    >
-      <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-      <path d="m15 5 4 4" />
-    </svg>
   );
 }
