@@ -17,7 +17,8 @@ import {
   Image as ImageIcon,
   UserCircle,
   Plus,
-  X
+  X,
+  UserCog
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -47,6 +48,14 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
+const ROLES_OPTIONS = [
+  { id: 'EsProfesor', label: 'Profesor' },
+  { id: 'EsAlumno', label: 'Alumno' },
+  { id: 'EsDireccion', label: 'Dirección' },
+  { id: 'EsCau', label: 'CAU' },
+  { id: 'EsSecretaria', label: 'Secretaría' }
+];
+
 /**
  * Vista de Creación de Usuarios para Dirección.
  */
@@ -62,14 +71,6 @@ export function UserCreationView() {
     roles: [] as string[],
     curso: ''
   });
-
-  const rolesOptions = [
-    { id: 'EsProfesor', label: 'Profesor' },
-    { id: 'EsAlumno', label: 'Alumno' },
-    { id: 'EsDireccion', label: 'Dirección' },
-    { id: 'EsCau', label: 'CAU' },
-    { id: 'EsSecretaria', label: 'Secretaría' }
-  ];
 
   const handleCreate = async () => {
     if (!db || !formData.nombre || !formData.apellidos || formData.roles.length === 0) {
@@ -189,7 +190,7 @@ export function UserCreationView() {
               <div className="space-y-3">
                 <Label className="text-[10px] font-bold text-gray-400 uppercase">Asignación de Roles</Label>
                 <div className="grid grid-cols-2 gap-3">
-                  {rolesOptions.map(role => (
+                  {ROLES_OPTIONS.map(role => (
                     <div 
                       key={role.id} 
                       onClick={() => toggleRole(role.id)}
@@ -250,6 +251,7 @@ export function UserManagementListView() {
   const [searchTerm, setSearchTerm] = useState("");
   const [generatedPass, setGeneratedPass] = useState<{name: string, pass: string} | null>(null);
   const [designatingTutorId, setDesignatingTutorId] = useState<string | null>(null);
+  const [editingRolesUser, setEditingRolesUser] = useState<any | null>(null);
 
   const usersQuery = useMemoFirebase(() => {
     if (!db) return null;
@@ -261,8 +263,8 @@ export function UserManagementListView() {
   const filteredUsers = useMemo(() => {
     if (!allUsers) return [];
     return allUsers.filter(u => 
-      (u.nombrePersona || u.usuario).toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (u.usuario).toLowerCase().includes(searchTerm.toLowerCase())
+      (u.nombrePersona || u.usuario || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (u.usuario || "").toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [allUsers, searchTerm]);
 
@@ -371,6 +373,14 @@ export function UserManagementListView() {
                     </td>
                     <td className="p-4 text-right">
                       <div className="flex justify-end gap-2">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => setEditingRolesUser(user)}
+                          className="h-8 px-2 text-[9px] font-bold text-gray-500 uppercase hover:bg-gray-100"
+                        >
+                          <UserCog className="h-3 w-3 mr-1" /> Editar Roles
+                        </Button>
                         {user.rolesUsuario?.includes('EsProfesor') && (
                           <Button 
                             variant="ghost" 
@@ -443,7 +453,79 @@ export function UserManagementListView() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {editingRolesUser && (
+        <EditRolesDialog 
+          user={editingRolesUser} 
+          onClose={() => setEditingRolesUser(null)} 
+        />
+      )}
     </div>
+  );
+}
+
+function EditRolesDialog({ user, onClose }: { user: any, onClose: () => void }) {
+  const db = useFirestore();
+  const { toast } = useToast();
+  const [selectedRoles, setSelectedRoles] = useState<string[]>(user.rolesUsuario || []);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const toggleRole = (roleId: string) => {
+    setSelectedRoles(prev => 
+      prev.includes(roleId) ? prev.filter(r => r !== roleId) : [...prev, roleId]
+    );
+  };
+
+  const handleSave = () => {
+    if (!db) return;
+    setIsSaving(true);
+    updateDocumentNonBlocking(doc(db, 'usuarios', user.id), {
+      rolesUsuario: selectedRoles,
+      updatedAt: new Date().toISOString()
+    });
+    toast({ title: "Roles actualizados", description: "Los permisos de acceso han sido modificados." });
+    onClose();
+  };
+
+  return (
+    <Dialog open={true} onOpenChange={onClose}>
+      <DialogContent className="max-w-md font-verdana p-0 border-none overflow-hidden">
+        <DialogHeader className="bg-[#9c4d96] p-6 text-white shrink-0">
+           <DialogTitle className="text-sm font-bold uppercase tracking-widest flex items-center gap-2">
+             <UserCog className="h-4 w-4" /> Modificar Roles de Usuario
+           </DialogTitle>
+           <DialogDescription className="text-white/80 text-[10px] font-bold uppercase">Usuario: {user.nombrePersona || user.usuario}</DialogDescription>
+        </DialogHeader>
+
+        <div className="p-8 bg-white space-y-6">
+           <div className="grid grid-cols-1 gap-3">
+              {ROLES_OPTIONS.map(role => (
+                <div 
+                  key={role.id} 
+                  onClick={() => toggleRole(role.id)}
+                  className={cn(
+                    "flex items-center justify-between p-4 rounded-xl border cursor-pointer transition-all",
+                    selectedRoles.includes(role.id) 
+                      ? "bg-purple-50 border-[#9c4d96] shadow-sm" 
+                      : "bg-gray-50 border-transparent hover:bg-white hover:border-gray-200"
+                  )}
+                >
+                  <span className="text-xs font-bold text-gray-700 uppercase">{role.label}</span>
+                  <Checkbox checked={selectedRoles.includes(role.id)} />
+                </div>
+              ))}
+           </div>
+        </div>
+
+        <DialogFooter className="bg-gray-50 p-6 border-t gap-3">
+           <Button variant="outline" onClick={onClose} className="text-[11px] font-bold uppercase h-10 px-8">Cancelar</Button>
+           <Button onClick={handleSave} disabled={isSaving} className="bg-[#9c4d96] hover:bg-[#833d7d] text-white text-[11px] font-bold uppercase h-10 px-8 gap-2 shadow-md">
+             {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+             Guardar Cambios
+           </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -489,7 +571,7 @@ export function UserProfilesManagementView() {
   };
 
   const filteredTeachers = teachers?.filter(t => 
-    (t.nombrePersona || t.usuario).toLowerCase().includes(searchTerm.toLowerCase())
+    (t.nombrePersona || t.usuario || "").toLowerCase().includes(searchTerm.toLowerCase())
   ) || [];
 
   if (isLoading) return <div className="flex justify-center p-20"><Loader2 className="h-8 w-8 animate-spin text-[#9c4d96]" /></div>;
