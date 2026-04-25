@@ -189,7 +189,7 @@ export function ExtraescolaresActivitiesView() {
               <BookOpen className="h-5 w-5 text-[#9c4d96]" />
               <h2 className="text-sm font-bold text-gray-700 uppercase">Actividades Complementarias y Extraescolares</h2>
            </div>
-           <Button onClick={() => setIsDialogOpen(true)} size="icon" className="bg-[#9c4d96] hover:bg-[#833d7d] text-white rounded-full h-8 w-8 shadow-md">
+           <Button onClick={() => { resetForm(); setIsDialogOpen(true); }} size="icon" className="bg-[#9c4d96] hover:bg-[#833d7d] text-white rounded-full h-8 w-8 shadow-md">
              <Plus className="h-4 w-4" />
            </Button>
         </div>
@@ -284,8 +284,9 @@ export function ExtraescolaresActivitiesView() {
              </div>
           </DialogHeader>
 
-          <ScrollArea className="flex-1 p-8 bg-[#fcfcfc]">
-             <div className="space-y-8">
+          {/* ÁREA DESPLAZABLE MEJORADA */}
+          <div className="flex-1 overflow-y-auto p-8 bg-[#fcfcfc] min-h-0">
+             <div className="space-y-8 pb-4">
                 {/* Cabecera Form */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                    <div className="space-y-2">
@@ -338,8 +339,8 @@ export function ExtraescolaresActivitiesView() {
                 <div className="space-y-4 pt-4 border-t">
                    <h3 className="text-[#9c4d96] text-[11px] font-bold uppercase tracking-tight">Datos de participación</h3>
                    <div className="flex items-center gap-2 mb-4">
-                      <Checkbox checked={formData.bilingue} onCheckedChange={(val) => setFormData({...formData, bilingue: !!val})} />
-                      <span className="text-[10px] font-bold text-gray-500 uppercase">Actividad sólo para alumnado bilingüe</span>
+                      <Checkbox id="diag-bilingue" checked={formData.bilingue} onCheckedChange={(val) => setFormData({...formData, bilingue: !!val})} />
+                      <Label htmlFor="diag-bilingue" className="text-[10px] font-bold text-gray-500 uppercase cursor-pointer">Actividad sólo para alumnado bilingüe</Label>
                    </div>
                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-[10px] font-bold uppercase text-gray-500">
                       <div className="flex items-center gap-2">
@@ -363,24 +364,22 @@ export function ExtraescolaresActivitiesView() {
                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
                       <div className="flex items-center gap-4">
                         <span className="text-[10px] font-bold text-gray-500 uppercase">Incluida en la PGA:</span>
-                        <div className="flex items-center gap-2">
-                           <RadioGroup className="flex gap-4" value={formData.incluidaPGA ? 'si' : 'no'} onValueChange={(val) => setFormData({...formData, incluidaPGA: val === 'si'})}>
-                              <div className="flex items-center space-x-1">
-                                 <RadioGroupItem value="si" /> <Label className="text-[10px] font-bold uppercase">Sí</Label>
-                              </div>
-                              <div className="flex items-center space-x-1">
-                                 <RadioGroupItem value="no" /> <Label className="text-[10px] font-bold uppercase">No</Label>
-                              </div>
-                           </RadioGroup>
-                        </div>
+                        <RadioGroup className="flex gap-4" value={formData.incluidaPGA ? 'si' : 'no'} onValueChange={(val) => setFormData({...formData, incluidaPGA: val === 'si'})}>
+                          <div className="flex items-center space-x-1">
+                             <RadioGroupItem value="si" id="pga-si" /> <Label htmlFor="pga-si" className="text-[10px] font-bold uppercase">Sí</Label>
+                          </div>
+                          <div className="flex items-center space-x-1">
+                             <RadioGroupItem value="no" id="pga-no" /> <Label htmlFor="pga-no" className="text-[10px] font-bold uppercase">No</Label>
+                          </div>
+                        </RadioGroup>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] font-bold text-gray-500 uppercase">Fecha aprobación:</span>
                         <Input type="date" value={formData.fechaAprobacion} onChange={(e) => setFormData({...formData, fechaAprobacion: e.target.value})} className="h-7 w-32 text-[10px] font-bold" />
                       </div>
                       <div className="flex items-center gap-2">
-                         <Checkbox checked={formData.requiereCopago} onCheckedChange={(val) => setFormData({...formData, requiereCopago: !!val})} />
-                         <span className="text-[10px] font-bold text-gray-500 uppercase">Requiere copago</span>
+                         <Checkbox id="diag-copago" checked={formData.requiereCopago} onCheckedChange={(val) => setFormData({...formData, requiereCopago: !!val})} />
+                         <Label htmlFor="diag-copago" className="text-[10px] font-bold text-gray-500 uppercase cursor-pointer">Requiere copago</Label>
                       </div>
                    </div>
                 </div>
@@ -469,7 +468,7 @@ export function ExtraescolaresActivitiesView() {
                    </div>
                 </div>
              </div>
-          </ScrollArea>
+          </div>
 
           <DialogFooter className="bg-gray-50 p-4 border-t shrink-0">
              <Button variant="outline" size="sm" onClick={() => setIsDialogOpen(false)} className="text-[10px] font-bold uppercase">Cerrar</Button>
