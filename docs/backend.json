@@ -39,7 +39,7 @@
           "items": {
             "type": "string"
           },
-          "description": "Subperfiles o coordinaciones (ej: Coordinacion IT, Extraescolares)."
+          "description": "Subperfiles o coordinaciones (ej: Coordinacion IT, Extraescolares, PROA+, PROFESORdad+)."
         },
         "cursoAlumno": {
           "type": "string",
@@ -48,6 +48,10 @@
         "esTutor": {
           "type": "string",
           "description": "Grupo que tutela el profesor (ej: 2 ESO B)."
+        },
+        "esDADDe": {
+          "type": "string",
+          "description": "ID del profesor titular al que este usuario apoya como DAD."
         },
         "sesion": {
           "type": "string",

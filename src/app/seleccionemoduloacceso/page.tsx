@@ -41,7 +41,10 @@ import {
   RefreshCw,
   Search,
   FileSpreadsheet,
-  Link as LinkIcon
+  Link as LinkIcon,
+  ShieldPlus,
+  Stethoscope,
+  HeartHandshake
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -68,6 +71,7 @@ import { EvaluationsSummaryView, IncidentsSummaryView } from '@/components/rayue
 import { TeacherNotificationsView } from '@/components/rayuela/teacher-notifications-view';
 import { LinksOfInterestView } from '@/components/rayuela/links-of-interest-view';
 import { ExtraescolaresActivitiesView } from '@/components/rayuela/extraescolares-activities-view';
+import { ProaDesignationView } from '@/components/rayuela/proa-designation-view';
 
 // Componentes de Pruebas de Diagnóstico
 import { DiagnosticOpeningView, DiagnosticGradingView, DiagnosticResultsView } from '@/components/rayuela/diagnostic-tests-views';
@@ -140,7 +144,9 @@ export default function SeleccioneModuloAccesoPage() {
     'pruebas_diag_root': false,
     'resultados_diag': false,
     'enlaces': false,
-    'extraesc_root': false
+    'extraesc_root': false,
+    'proa_root': false,
+    'pt_root': false
   });
   
   const router = useRouter();
@@ -291,12 +297,14 @@ export default function SeleccioneModuloAccesoPage() {
           "p-1 rounded-sm mb-0.5",
           isActive ? "bg-white/20" : "bg-gray-100"
         )}>
-          {profile.id === 'EsDireccion' && <ShieldCheck className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
+          {profile.id === 'EsDireccion' && <ShieldCheck className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-50")} />}
           {profile.id === 'EsCau' && <LifeBuoy className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
           {profile.id === 'EsProfesor' && <Monitor className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
           {profile.id === 'EsAlumno' && <UserCircle className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
           {profile.id === 'EsSecretaria' && <Briefcase className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
-          {profile.type === 'SUBPROFILE' && <UserCog className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
+          {profile.label === 'PROA+' && <ShieldPlus className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
+          {profile.label === 'PROFESORdad+' && <HeartHandshake className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
+          {profile.type === 'SUBPROFILE' && profile.label !== 'PROA+' && profile.label !== 'PROFESORdad+' && <UserCog className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
         </div>
         <div className={cn(
           "text-[8px] font-bold uppercase tracking-tighter w-full text-center leading-[1.1]",
@@ -325,6 +333,9 @@ export default function SeleccioneModuloAccesoPage() {
   const canSeeCau = userRoles.includes('EsCau');
 
   const isTeacherTutor = userData?.esTutor && userData?.esTutor !== "";
+
+  // Sincronización DAD: Si es PROFESORdad+, usamos el ID del titular para las consultas de seguimiento
+  const effectiveTeacherId = activeRole === 'PROFESORdad+' ? (userData?.esDADDe || session.usuario) : session.usuario;
 
   return (
     <div className="min-h-screen bg-white font-verdana flex flex-col w-full overflow-x-hidden">
@@ -442,7 +453,9 @@ export default function SeleccioneModuloAccesoPage() {
                          {profile.id === 'EsProfesor' && <Monitor className="h-10 w-10" />}
                          {profile.id === 'EsAlumno' && <UserCircle className="h-10 w-10" />}
                          {profile.id === 'EsSecretaria' && <Briefcase className="h-10 w-10" />}
-                         {profile.type === 'SUBPROFILE' && <UserCog className="h-10 w-10" />}
+                         {profile.label === 'PROA+' && <ShieldPlus className="h-10 w-10" />}
+                         {profile.label === 'PROFESORdad+' && <HeartHandshake className="h-10 w-10" />}
+                         {profile.type === 'SUBPROFILE' && profile.label !== 'PROA+' && profile.label !== 'PROFESORdad+' && <UserCog className="h-10 w-10" />}
                       </div>
                       <div className="text-sm font-bold uppercase tracking-tight text-center leading-tight">
                         {profile.label.split(' ').map((word: string, i: number) => (
@@ -498,12 +511,12 @@ export default function SeleccioneModuloAccesoPage() {
       )}
 
       <div className="flex-1 flex w-full relative">
-        {selectedModule && (activeRole === 'Profesor' || activeRole === 'Dirección' || activeRole === 'Alumno' || activeRole === 'Secretaría' || userData?.perfilesAdicionales?.includes(activeRole)) && (
+        {selectedModule && (activeRole === 'Profesor' || activeRole === 'Dirección' || activeRole === 'Alumno' || activeRole === 'Secretaría' || activeRole === 'PROFESORdad+' || activeRole === 'PROA+' || userData?.perfilesAdicionales?.includes(activeRole)) && (
           <div className="group relative z-40 bg-[#f4f4f4] border-r border-gray-300 w-[60px] hover:w-[250px] transition-all duration-300 ease-in-out flex flex-col min-h-full overflow-hidden">
             <div className="flex-1 flex flex-col">
               <div className="flex h-full">
                 <div className="w-[60px] min-w-[60px] flex flex-col items-center py-4 gap-4 bg-[#f4f4f4] border-r border-gray-200/50">
-                  {(activeRole === 'Profesor' || activeRole === 'Alumno') ? (
+                  {(activeRole === 'Profesor' || activeRole === 'Alumno' || activeRole === 'PROFESORdad+' || activeRole === 'PROA+') ? (
                     <>
                       <div className={cn("p-2 rounded-sm text-white cursor-pointer transition-colors", sidebarMode === 'ACADEMIC' ? "bg-[#89a54e]" : "bg-gray-400")} onClick={() => setSidebarMode('ACADEMIC')}><BookOpen className="h-5 w-5" /></div>
                       <div className={cn("p-2 rounded-sm text-white cursor-pointer transition-colors", sidebarMode === 'MESSAGING' ? "bg-[#fb8500]" : "bg-gray-400")} onClick={() => setSidebarMode('MESSAGING')}><Megaphone className="h-5 w-5" /></div>
@@ -553,7 +566,7 @@ export default function SeleccioneModuloAccesoPage() {
                 
                 <div className="hidden group-hover:flex flex-col py-4 w-full bg-white animate-in fade-in slide-in-from-left-2 duration-300 overflow-y-auto">
                   <div className="px-2 space-y-0.5">
-                    {activeRole === 'Profesor' ? (
+                    {(activeRole === 'Profesor' || activeRole === 'PROFESORdad+' || activeRole === 'PROA+') ? (
                       <div className="flex flex-col space-y-2">
                         {sidebarMode === 'ACADEMIC' ? (
                           <>
@@ -808,6 +821,23 @@ export default function SeleccioneModuloAccesoPage() {
                         </div>
 
                         <div className="flex flex-col">
+                          <SidebarHeading label="Designacion PROA" expanded={expandedItems['proa_root']} onClick={() => toggleExpanded('proa_root')} />
+                          {expandedItems['proa_root'] && (
+                            <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
+                               <div className="flex flex-col">
+                                  <SidebarHeading label="PT" expanded={expandedItems['pt_root']} onClick={() => toggleExpanded('pt_root')} />
+                                  {expandedItems['pt_root'] && (
+                                    <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
+                                       <SidebarItem color="#9c4d96" label="Designar" isSubItem onClick={() => setActiveSubContent('Designar PROA+')} active={activeSubContent === 'Designar PROA+'} />
+                                       <SidebarItem color="#9c4d96" label="Designar Profesor DAD" isSubItem onClick={() => setActiveSubContent('Designar Profesor DAD')} active={activeSubContent === 'Designar Profesor DAD'} />
+                                    </div>
+                                  )}
+                               </div>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex flex-col">
                           <SidebarHeading label="Evaluaciones" expanded={expandedItems['evaluaciones_dir']} onClick={() => toggleExpanded('evaluaciones_dir')} />
                           {expandedItems['evaluaciones_dir'] && (
                             <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
@@ -935,21 +965,21 @@ export default function SeleccioneModuloAccesoPage() {
                   ) : activeSubContent === 'Ver Horarios' ? (
                     <ScheduleListView />
                   ) : activeSubContent === 'Mi Horario Personal' ? (
-                    <MyScheduleView profesorId={session.usuario} />
+                    <MyScheduleView profesorId={effectiveTeacherId} />
                   ) : activeSubContent === 'Por materia' ? (
-                    <AttendanceBySubjectView profesorId={session.usuario} />
+                    <AttendanceBySubjectView profesorId={effectiveTeacherId} />
                   ) : activeSubContent === 'Funcion tutorial' ? (
-                    <TutorialFunctionView profesorId={session.usuario} grupoTutorizado={userData?.esTutor} />
+                    <TutorialFunctionView profesorId={effectiveTeacherId} grupoTutorizado={userData?.esTutor} />
                   ) : activeSubContent === 'Guardias' ? (
-                    <GuardDutyView profesorId={session.usuario} />
+                    <GuardDutyView profesorId={effectiveTeacherId} />
                   ) : activeSubContent === 'Alumnado Incidente' ? (
                     <AlumnadoIncidenteView 
-                      profesorId={session.usuario} 
+                      profesorId={effectiveTeacherId} 
                       targetStudentId={targetIncidentData?.studentId} 
                       onActionComplete={() => setTargetIncidentData(null)}
                     />
                   ) : activeSubContent === 'Gestión de Grupos' ? (
-                    <TeacherGroupsView profesorId={session.usuario} />
+                    <TeacherGroupsView profesorId={effectiveTeacherId} />
                   ) : activeSubContent === 'Mis Mensajes' ? (
                     <MessagingView 
                       mode="inbox" 
@@ -963,11 +993,11 @@ export default function SeleccioneModuloAccesoPage() {
                   ) : activeSubContent === 'Alumnado del centro' ? (
                     <CenterStudentsView />
                   ) : activeSubContent === 'Exámenes' ? (
-                    <EvaluationsView profesorId={session.usuario} type="exam" />
+                    <EvaluationsView profesorId={effectiveTeacherId} type="exam" />
                   ) : activeSubContent === 'Tareas' ? (
-                    <EvaluationsView profesorId={session.usuario} type="task" />
+                    <EvaluationsView profesorId={effectiveTeacherId} type="task" />
                   ) : activeSubContent === 'Calificar' ? (
-                    <TeacherGradingView profesorId={session.usuario} />
+                    <TeacherGradingView profesorId={effectiveTeacherId} />
                   ) : activeSubContent === 'Evaluación como tutor' ? (
                     <TutoringGradesView grupoTutorizado={userData?.esTutor} />
                   ) : activeSubContent === 'Creación de Usuarios' ? (
@@ -983,9 +1013,9 @@ export default function SeleccioneModuloAccesoPage() {
                   ) : activeSubContent === 'Agregar y quitar Perfiles' ? (
                     <UserProfilesManagementView />
                   ) : activeSubContent === 'De Mis Alumnos' ? (
-                    <TeacherNotificationsView profesorId={session.usuario} mode="my-students" />
+                    <TeacherNotificationsView profesorId={effectiveTeacherId} mode="my-students" />
                   ) : activeSubContent === 'De mi tutoría' ? (
-                    <TeacherNotificationsView profesorId={session.usuario} mode="tutoring" grupoTutorizado={userData?.esTutor} />
+                    <TeacherNotificationsView profesorId={effectiveTeacherId} mode="tutoring" grupoTutorizado={userData?.esTutor} />
                   ) : activeSubContent === 'Mis enlaces' ? (
                     <LinksOfInterestView profesorId={session.usuario} />
                   ) : activeSubContent === 'Mis faltas' ? (
@@ -1023,7 +1053,7 @@ export default function SeleccioneModuloAccesoPage() {
                   ) : activeSubContent === 'Apertura de la evaluación (Diag)' ? (
                     <DiagnosticOpeningView />
                   ) : activeSubContent === 'Como Profesor' ? (
-                    <DiagnosticGradingView profesorId={session.usuario} />
+                    <DiagnosticGradingView profesorId={effectiveTeacherId} />
                   ) : activeSubContent === 'Como tutor' ? (
                     <DiagnosticResultsView mode="tutor" grupoTutorizado={userData?.esTutor} />
                   ) : activeSubContent === 'Como cargo directivo del centro' ? (
@@ -1034,6 +1064,10 @@ export default function SeleccioneModuloAccesoPage() {
                     <DiagnosticResultsView mode="student" />
                   ) : activeSubContent === 'Actividades Extraescolares' ? (
                     <ExtraescolaresActivitiesView />
+                  ) : activeSubContent === 'Designar PROA+' ? (
+                    <ProaDesignationView mode="proa" />
+                  ) : activeSubContent === 'Designar Profesor DAD' ? (
+                    <ProaDesignationView mode="dad" />
                   ) : activeSubContent ? (
                     <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
                        <div className="bg-white border rounded-lg p-10 shadow-sm min-h-[400px] flex flex-col items-center justify-center text-center space-y-4">
@@ -1057,6 +1091,10 @@ export default function SeleccioneModuloAccesoPage() {
                           <div className="bg-white p-8 rounded-xl border border-200 text-base text-gray-700 italic leading-relaxed shadow-sm max-w-3xl mx-auto">
                             {activeRole === 'Profesor' 
                               ? "Seleccione una option del menú lateral para comenzar el seguimiento de sus alumnos." 
+                              : activeRole === 'PROFESORdad+'
+                              ? `Usted está actuando como profesor de apoyo (DAD) vinculado a ${userData?.esDADDe}. Visualiza y gestiona su mismo horario y alumnado.`
+                              : activeRole === 'PROA+'
+                              ? "Perfil de acompañamiento y refuerzo educativo activo. Gestione sus intervenciones desde el menú lateral verde."
                               : activeRole === 'Alumno'
                               ? "Entorno de seguimiento académico activo para consulta de notas y asistencia personal."
                               : activeRole === 'Dirección'
