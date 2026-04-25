@@ -10,7 +10,8 @@ import {
   CheckCircle2, 
   MessageSquare,
   AlertTriangle,
-  BookOpen
+  Users,
+  Layout
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,7 +27,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, doc, setDoc } from 'firebase/firestore';
+import { collection, query, where, doc } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -35,7 +36,7 @@ import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 export function TeacherGradingView({ profesorId }: { profesorId: string }) {
   const db = useFirestore();
   const { toast } = useToast();
-  const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(null);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
 
   // 1. Obtener periodos de evaluación abiertos para profesores
   const periodosQuery = useMemoFirebase(() => {
@@ -49,32 +50,20 @@ export function TeacherGradingView({ profesorId }: { profesorId: string }) {
   const { data: periodos, isLoading: loadingPeriodos } = useCollection(periodosQuery);
   const activePeriodo = periodos?.[0]; // Tomamos el primero abierto
 
-  // 2. Obtener horarios del profesor para seleccionar materia
-  const schedulesQuery = useMemoFirebase(() => {
+  // 2. Obtener GRUPOS del profesor
+  const groupsQuery = useMemoFirebase(() => {
     if (!db || !profesorId) return null;
     return query(
-      collection(db, 'horarios'),
-      where('profesorId', '==', profesorId),
-      where('esGuardia', '==', false)
+      collection(db, 'gruposAlumnos'),
+      where('profesorId', '==', profesorId)
     );
   }, [db, profesorId]);
 
-  const { data: allSchedules } = useCollection(schedulesQuery);
+  const { data: myGroups, isLoading: loadingGroups } = useCollection(groupsQuery);
   
-  // Agrupar horarios por materia para no repetir en el select
-  const uniqueSchedules = useMemo(() => {
-    if (!allSchedules) return [];
-    const seen = new Set();
-    return allSchedules.filter(s => {
-      const duplicate = seen.has(s.asignatura);
-      seen.add(s.asignatura);
-      return !duplicate;
-    });
-  }, [allSchedules]);
+  const currentGroup = useMemo(() => myGroups?.find(g => g.id === selectedGroupId), [myGroups, selectedGroupId]);
 
-  const currentSchedule = useMemo(() => allSchedules?.find(s => s.id === selectedScheduleId), [allSchedules, selectedScheduleId]);
-
-  // 3. Obtener alumnos y sus notas existentes
+  // 3. Obtener alumnos del grupo y sus notas existentes
   const usersQuery = useMemoFirebase(() => {
     if (!db) return null;
     return collection(db, 'usuarios');
@@ -82,25 +71,25 @@ export function TeacherGradingView({ profesorId }: { profesorId: string }) {
   const { data: allUsers } = useCollection(usersQuery);
 
   const students = useMemo(() => {
-    if (!currentSchedule || !allUsers) return [];
-    return allUsers.filter(u => currentSchedule.alumnosIds?.includes(u.id));
-  }, [currentSchedule, allUsers]);
+    if (!currentGroup || !allUsers) return [];
+    return allUsers.filter(u => currentGroup.alumnosIds?.includes(u.id));
+  }, [currentGroup, allUsers]);
 
   const gradesQuery = useMemoFirebase(() => {
-    if (!db || !selectedScheduleId || !activePeriodo) return null;
+    if (!db || !selectedGroupId || !activePeriodo) return null;
     return query(
       collection(db, 'calificacionesFinales'),
-      where('claseId', '==', selectedScheduleId),
+      where('claseId', '==', selectedGroupId),
       where('periodoId', '==', activePeriodo.id)
     );
-  }, [db, selectedScheduleId, activePeriodo]);
+  }, [db, selectedGroupId, activePeriodo]);
 
   const { data: existingGrades } = useCollection(gradesQuery);
 
   const handleUpdateGrade = (alumnoId: string, field: 'nota' | 'observaciones', value: string) => {
-    if (!db || !activePeriodo || !selectedScheduleId) return;
+    if (!db || !activePeriodo || !selectedGroupId) return;
 
-    const gradeId = `${alumnoId}_${selectedScheduleId}_${activePeriodo.id}`;
+    const gradeId = `${alumnoId}_${selectedGroupId}_${activePeriodo.id}`;
     const gradeRef = doc(db, 'calificacionesFinales', gradeId);
     
     const currentGrade = existingGrades?.find(g => g.id === gradeId);
@@ -108,7 +97,7 @@ export function TeacherGradingView({ profesorId }: { profesorId: string }) {
     const updateData = {
       alumnoId,
       profesorId,
-      claseId: selectedScheduleId,
+      claseId: selectedGroupId, // Usamos el ID del grupo como referencia de clase
       periodoId: activePeriodo.id,
       nota: currentGrade?.nota || "",
       observaciones: currentGrade?.observaciones || "",
@@ -119,7 +108,7 @@ export function TeacherGradingView({ profesorId }: { profesorId: string }) {
     setDocumentNonBlocking(gradeRef, updateData, { merge: true });
   };
 
-  if (loadingPeriodos) {
+  if (loadingPeriodos || loadingGroups) {
     return (
       <div className="flex justify-center p-20">
         <Loader2 className="h-8 w-8 animate-spin text-[#89a54e]" />
@@ -136,7 +125,7 @@ export function TeacherGradingView({ profesorId }: { profesorId: string }) {
         <div className="space-y-2">
           <h2 className="text-xl font-bold text-gray-800 uppercase tracking-tight">Evaluación Cerrada</h2>
           <p className="text-gray-400 italic max-w-sm mx-auto leading-relaxed">
-            No existe ningún periodo de evaluación abierto por Dirección para la entrada de notas.
+            No existe ningún periodo de evaluación abierto por Dirección para la entrada de notas finales.
           </p>
         </div>
       </div>
@@ -152,30 +141,32 @@ export function TeacherGradingView({ profesorId }: { profesorId: string }) {
           <div className="flex items-center gap-4">
             <div className="bg-white/20 p-3 rounded-lg"><Unlock className="h-6 w-6" /></div>
             <div>
-              <h2 className="text-lg font-bold uppercase tracking-tight">Calificar: {activePeriodo.periodo}ª EVALUACIÓN</h2>
-              <p className="text-white/80 text-[10px] font-bold uppercase">Sistema: {activePeriodo.tipoCalificacion} | Curso {activePeriodo.cursoEscolar}</p>
+              <h2 className="text-lg font-bold uppercase tracking-tight">Calificar Notas Finales: {activePeriodo.periodo}ª EVAL</h2>
+              <p className="text-white/80 text-[10px] font-bold uppercase">Sistema: {activePeriodo.tipoCalificacion} | {activePeriodo.cursoEscolar}</p>
             </div>
           </div>
           
           <div className="flex items-center gap-3 w-full md:w-auto">
-             <Label className="text-[10px] font-bold text-white/70 uppercase shrink-0">Materia:</Label>
-             <Select onValueChange={setSelectedScheduleId} value={selectedScheduleId || ""}>
-               <SelectTrigger className="h-10 bg-white/10 border-white/20 text-white font-bold text-xs min-w-[200px]">
-                 <SelectValue placeholder="Seleccione grupo..." />
+             <Label className="text-[10px] font-bold text-white/70 uppercase shrink-0">Seleccione Grupo:</Label>
+             <Select onValueChange={setSelectedGroupId} value={selectedGroupId || ""}>
+               <SelectTrigger className="h-10 bg-white/10 border-white/20 text-white font-bold text-xs min-w-[220px]">
+                 <SelectValue placeholder="Elija un grupo de alumnos..." />
                </SelectTrigger>
                <SelectContent>
-                 {uniqueSchedules.map(s => (
-                   <SelectItem key={s.id} value={s.id} className="text-xs font-bold">{s.asignatura}</SelectItem>
+                 {myGroups?.map(g => (
+                   <SelectItem key={g.id} value={g.id} className="text-xs font-bold">{g.titulo}</SelectItem>
                  ))}
                </SelectContent>
              </Select>
           </div>
         </div>
 
-        {!selectedScheduleId ? (
+        {!selectedGroupId ? (
           <div className="p-20 text-center space-y-4 opacity-40">
-             <BookOpen className="h-16 w-16 mx-auto text-gray-300" />
-             <p className="text-sm italic text-gray-500">Seleccione una materia para comenzar la calificación del alumnado.</p>
+             <div className="bg-gray-100 h-16 w-16 rounded-full flex items-center justify-center mx-auto text-gray-300">
+               <Users className="h-8 w-8" />
+             </div>
+             <p className="text-sm italic text-gray-500">Seleccione un grupo de alumnos para cargar la sábana de notas finales.</p>
           </div>
         ) : (
           <ScrollArea className="h-[600px]">
@@ -184,13 +175,13 @@ export function TeacherGradingView({ profesorId }: { profesorId: string }) {
                   <thead className="bg-gray-50 border-b sticky top-0 z-10">
                     <tr>
                       <th className="p-4 text-[10px] font-bold text-gray-400 uppercase w-1/4">Alumno</th>
-                      <th className="p-4 text-[10px] font-bold text-gray-400 uppercase text-center w-32">Nota</th>
+                      <th className="p-4 text-[10px] font-bold text-gray-400 uppercase text-center w-32">Nota Final</th>
                       <th className="p-4 text-[10px] font-bold text-gray-400 uppercase">Observaciones Pedagógicas</th>
                     </tr>
                   </thead>
                   <tbody>
                     {students.map((student) => {
-                      const gradeId = `${student.id}_${selectedScheduleId}_${activePeriodo.id}`;
+                      const gradeId = `${student.id}_${selectedGroupId}_${activePeriodo.id}`;
                       const currentGrade = existingGrades?.find(g => g.id === gradeId);
                       
                       return (
@@ -203,7 +194,7 @@ export function TeacherGradingView({ profesorId }: { profesorId: string }) {
                               </Avatar>
                               <div className="flex flex-col">
                                 <span className="text-xs font-bold text-gray-700">{student.nombrePersona || student.usuario}</span>
-                                <span className="text-[10px] text-gray-400 font-medium">{student.cursoAlumno}</span>
+                                <span className="text-[10px] text-gray-400 font-medium">Exp: {student.id.substring(0,6)}</span>
                               </div>
                             </div>
                           </td>
@@ -235,7 +226,7 @@ export function TeacherGradingView({ profesorId }: { profesorId: string }) {
                             <div className="relative group">
                                <Textarea 
                                  className="min-h-[40px] h-9 text-[11px] py-2 resize-none border-gray-200 focus:min-h-[80px] transition-all bg-white"
-                                 placeholder="Añada una observación..."
+                                 placeholder="Introduzca comentarios para el boletín..."
                                  value={currentGrade?.observaciones || ""}
                                  onChange={(e) => handleUpdateGrade(student.id, 'observaciones', e.target.value)}
                                />
@@ -254,12 +245,12 @@ export function TeacherGradingView({ profesorId }: { profesorId: string }) {
         <div className="bg-gray-50 border-t p-4 flex items-center justify-between px-8">
            <div className="flex items-center gap-2 text-[10px] text-gray-400 font-bold uppercase">
              <CheckCircle2 className="h-4 w-4 text-green-500" />
-             Grabación automática activa vía Rayuela
+             Guardado automático activo - Rayuela CM
            </div>
            <div className="flex items-center gap-4">
               <div className="flex items-center gap-2 text-[10px] text-blue-600 bg-blue-50 px-3 py-1 rounded-full font-bold uppercase">
                 <AlertTriangle className="h-3.5 w-3.5" />
-                Los cambios son definitivos para el boletín
+                Los cambios se verán reflejados en la Secretaría Virtual del Alumno
               </div>
            </div>
         </div>

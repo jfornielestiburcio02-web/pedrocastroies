@@ -11,7 +11,9 @@ import {
   Calendar,
   AlertCircle,
   Users,
-  Layout
+  Layout,
+  Pencil,
+  X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -44,13 +46,23 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { 
   addDocumentNonBlocking, 
+  updateDocumentNonBlocking, 
   deleteDocumentNonBlocking 
 } from '@/firebase/non-blocking-updates';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter
+} from "@/components/ui/dialog";
 import { cn } from '@/lib/utils';
 
 export function ScheduleListView() {
   const db = useFirestore();
   const { toast } = useToast();
+  const [editingSchedule, setEditingSchedule] = useState<any>(null);
 
   const horariosQuery = useMemoFirebase(() => {
     if (!db) return null;
@@ -73,12 +85,14 @@ export function ScheduleListView() {
 
   const handleDelete = (id: string) => {
     if (!db) return;
-    const docRef = doc(db, 'horarios', id);
-    deleteDocumentNonBlocking(docRef);
-    toast({
-      title: "Horario eliminado",
-      description: "El registro ha sido borrado correctamente de Rayuela.",
-    });
+    if (confirm("¿Está seguro de eliminar este horario lectivo?")) {
+      const docRef = doc(db, 'horarios', id);
+      deleteDocumentNonBlocking(docRef);
+      toast({
+        title: "Horario eliminado",
+        description: "El registro ha sido borrado correctamente de Rayuela.",
+      });
+    }
   };
 
   if (loadingSchedules) {
@@ -117,7 +131,7 @@ export function ScheduleListView() {
             <TableBody>
               {schedules && schedules.length > 0 ? (
                 schedules.map((item) => (
-                  <TableRow key={item.id} className="hover:bg-gray-50/50 transition-colors">
+                  <TableRow key={item.id} className="hover:bg-gray-50/50 transition-colors group">
                     <TableCell className="font-bold text-gray-700 text-xs">{item.dia}</TableCell>
                     <TableCell className="text-xs text-gray-600 font-mono">
                       {item.horaInicio} - {item.horaFin}
@@ -128,7 +142,7 @@ export function ScheduleListView() {
                         {item.esGuardia ? (
                           <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 text-[9px] font-bold">GUARDIA</Badge>
                         ) : (
-                          <span className="text-xs font-semibold text-gray-800">{item.asignatura}</span>
+                          <span className="text-xs font-semibold text-gray-800 uppercase">{item.asignatura}</span>
                         )}
                       </div>
                     </TableCell>
@@ -138,14 +152,24 @@ export function ScheduleListView() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => handleDelete(item.id)}
-                        className="h-8 w-8 p-0 text-gray-400 hover:text-destructive hover:bg-destructive/10"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+                      <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => setEditingSchedule(item)}
+                          className="h-8 w-8 p-0 text-blue-500 hover:text-blue-700 hover:bg-blue-50"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => handleDelete(item.id)}
+                          className="h-8 w-8 p-0 text-gray-400 hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -160,7 +184,158 @@ export function ScheduleListView() {
           </Table>
         </div>
       </div>
+
+      {editingSchedule && (
+        <EditScheduleDialog 
+          schedule={editingSchedule} 
+          onClose={() => setEditingSchedule(null)} 
+          allUsers={allUsers || []}
+        />
+      )}
     </div>
+  );
+}
+
+function EditScheduleDialog({ schedule, onClose, allUsers }: { schedule: any, onClose: () => void, allUsers: any[] }) {
+  const db = useFirestore();
+  const { toast } = useToast();
+  const [formData, setFormData] = useState({ ...schedule });
+  const [isSaving, setIsSaving] = useState(false);
+
+  const professors = useMemo(() => allUsers.filter(u => u.rolesUsuario?.includes('EsProfesor')), [allUsers]);
+
+  const professorGroupsQuery = useMemoFirebase(() => {
+    if (!db || !formData.profesorId) return null;
+    return query(collection(db, 'gruposAlumnos'), where('profesorId', '==', formData.profesorId));
+  }, [db, formData.profesorId]);
+  const { data: professorGroups } = useCollection(professorGroupsQuery);
+
+  const handleUpdate = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!db) return;
+    setIsSaving(true);
+    
+    updateDocumentNonBlocking(doc(db, 'horarios', schedule.id), {
+      ...formData,
+      updatedAt: new Date().toISOString()
+    });
+
+    toast({ title: "Horario actualizado", description: "Los cambios se han guardado correctamente." });
+    onClose();
+  };
+
+  const handleGroupChange = (val: string) => {
+    const selectedGroup = professorGroups?.find(g => g.id === val);
+    if (selectedGroup) {
+      setFormData(prev => ({ 
+        ...prev, 
+        grupoId: val, 
+        alumnosIds: selectedGroup.alumnosIds,
+        asignatura: selectedGroup.titulo 
+      }));
+    }
+  };
+
+  const daysOptions = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+
+  return (
+    <Dialog open={true} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl font-verdana p-0 border-none overflow-hidden">
+        <DialogHeader className="bg-[#9c4d96] p-6 text-white shrink-0">
+           <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                 <Pencil className="h-5 w-5" />
+                 <DialogTitle className="text-sm font-bold uppercase tracking-widest">Editar Horario Lectivo</DialogTitle>
+              </div>
+              <Button variant="ghost" size="icon" onClick={onClose} className="text-white hover:bg-white/20"><X className="h-4 w-4" /></Button>
+           </div>
+        </DialogHeader>
+
+        <form onSubmit={handleUpdate} className="p-8 space-y-6 bg-white">
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-4">
+                 <div className="space-y-1.5">
+                    <Label className="text-[10px] font-bold text-gray-400 uppercase">Profesor Asignado</Label>
+                    <Select onValueChange={(val) => setFormData({...formData, profesorId: val})} value={formData.profesorId}>
+                       <SelectTrigger className="border-gray-300 font-bold text-xs h-9">
+                          <SelectValue />
+                       </SelectTrigger>
+                       <SelectContent>
+                          {professors.map(p => <SelectItem key={p.id} value={p.id} className="text-xs">{p.nombrePersona || p.usuario}</SelectItem>)}
+                       </SelectContent>
+                    </Select>
+                 </div>
+
+                 <div className="space-y-1.5">
+                    <Label className="text-[10px] font-bold text-gray-400 uppercase">Día lectivo</Label>
+                    <Select onValueChange={(val) => setFormData({...formData, dia: val})} value={formData.dia}>
+                       <SelectTrigger className="border-gray-300 font-bold text-xs h-9">
+                          <SelectValue />
+                       </SelectTrigger>
+                       <SelectContent>
+                          {daysOptions.map(d => <SelectItem key={d} value={d} className="text-xs">{d}</SelectItem>)}
+                       </SelectContent>
+                    </Select>
+                 </div>
+
+                 <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                       <Label className="text-[10px] font-bold text-gray-400 uppercase">Hora Inicio</Label>
+                       <Input type="time" value={formData.horaInicio} onChange={(e) => setFormData({...formData, horaInicio: e.target.value})} className="h-9 font-bold border-gray-300" />
+                    </div>
+                    <div className="space-y-1.5">
+                       <Label className="text-[10px] font-bold text-gray-400 uppercase">Hora Fin</Label>
+                       <Input type="time" value={formData.horaFin} onChange={(e) => setFormData({...formData, horaFin: e.target.value})} className="h-9 font-bold border-gray-300" />
+                    </div>
+                 </div>
+              </div>
+
+              <div className="space-y-4">
+                 <div className="flex items-center space-x-2 bg-gray-50 p-4 rounded-lg border border-dashed border-gray-200">
+                    <Checkbox id="edit-guardia" checked={formData.esGuardia} onCheckedChange={(val) => setFormData({...formData, esGuardia: !!val, asignatura: val ? 'GUARDIA' : '', grupoId: '', alumnosIds: []})} />
+                    <Label htmlFor="edit-guardia" className="text-xs font-bold text-gray-600 uppercase cursor-pointer">Es una sesión de GUARDIA</Label>
+                 </div>
+
+                 {!formData.esGuardia && (
+                   <div className="space-y-4 animate-in fade-in duration-300">
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] font-bold text-gray-400 uppercase">Grupo de Alumnos</Label>
+                        <Select onValueChange={handleGroupChange} value={formData.grupoId}>
+                           <SelectTrigger className="border-gray-300 font-bold text-xs h-9">
+                              <SelectValue placeholder="Seleccione grupo..." />
+                           </SelectTrigger>
+                           <SelectContent>
+                              {professorGroups?.map(g => <SelectItem key={g.id} value={g.id} className="text-xs">{g.titulo}</SelectItem>)}
+                           </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] font-bold text-gray-400 uppercase">Materia / Asignatura</Label>
+                        <Input value={formData.asignatura} onChange={(e) => setFormData({...formData, asignatura: e.target.value})} className="h-9 font-bold border-gray-300 uppercase" />
+                      </div>
+
+                      {formData.alumnosIds?.length > 0 && (
+                        <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 flex items-center justify-between">
+                           <span className="text-[10px] font-bold text-blue-700 uppercase">{formData.alumnosIds.length} Alumnos en grupo</span>
+                           <Badge className="bg-blue-600 text-white text-[8px]">VINCULADO</Badge>
+                        </div>
+                      )}
+                   </div>
+                 )}
+              </div>
+           </div>
+
+           <div className="pt-6 border-t flex justify-end gap-3">
+              <Button variant="outline" onClick={onClose} className="text-[10px] font-bold uppercase h-10 px-6">Cancelar</Button>
+              <Button type="submit" disabled={isSaving} className="bg-[#9c4d96] hover:bg-[#833d7d] text-white text-[10px] font-bold uppercase h-10 px-8 gap-2">
+                 {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                 Actualizar Registro
+              </Button>
+           </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
