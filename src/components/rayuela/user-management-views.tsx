@@ -468,6 +468,7 @@ function EditRolesDialog({ user, onClose }: { user: any, onClose: () => void }) 
   const db = useFirestore();
   const { toast } = useToast();
   const [selectedRoles, setSelectedRoles] = useState<string[]>(user.rolesUsuario || []);
+  const [curso, setCurso] = useState(user.cursoAlumno || '');
   const [isSaving, setIsSaving] = useState(false);
 
   const toggleRole = (roleId: string) => {
@@ -481,47 +482,66 @@ function EditRolesDialog({ user, onClose }: { user: any, onClose: () => void }) 
     setIsSaving(true);
     updateDocumentNonBlocking(doc(db, 'usuarios', user.id), {
       rolesUsuario: selectedRoles,
+      cursoAlumno: selectedRoles.includes('EsAlumno') ? curso : '',
       updatedAt: new Date().toISOString()
     });
-    toast({ title: "Roles actualizados", description: "Los permisos de acceso han sido modificados." });
+    toast({ title: "Perfil actualizado", description: "Los cambios se han guardado en el censo oficial." });
     onClose();
   };
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="max-w-md font-verdana p-0 border-none overflow-hidden">
+      <DialogContent className="max-w-md font-verdana p-0 border-none overflow-hidden shadow-2xl">
         <DialogHeader className="bg-[#9c4d96] p-6 text-white shrink-0">
            <DialogTitle className="text-sm font-bold uppercase tracking-widest flex items-center gap-2">
-             <UserCog className="h-4 w-4" /> Modificar Roles de Usuario
+             <UserCog className="h-4 w-4" /> Modificar Perfil de Usuario
            </DialogTitle>
            <DialogDescription className="text-white/80 text-[10px] font-bold uppercase">Usuario: {user.nombrePersona || user.usuario}</DialogDescription>
         </DialogHeader>
 
-        <div className="p-8 bg-white space-y-6">
-           <div className="grid grid-cols-1 gap-3">
-              {ROLES_OPTIONS.map(role => (
-                <div 
-                  key={role.id} 
-                  onClick={() => toggleRole(role.id)}
-                  className={cn(
-                    "flex items-center justify-between p-4 rounded-xl border cursor-pointer transition-all",
-                    selectedRoles.includes(role.id) 
-                      ? "bg-purple-50 border-[#9c4d96] shadow-sm" 
-                      : "bg-gray-50 border-transparent hover:bg-white hover:border-gray-200"
-                  )}
-                >
-                  <span className="text-xs font-bold text-gray-700 uppercase">{role.label}</span>
-                  <Checkbox checked={selectedRoles.includes(role.id)} />
-                </div>
-              ))}
+        <div className="p-8 bg-white space-y-8">
+           <div className="space-y-4">
+              <Label className="text-[10px] font-bold text-gray-400 uppercase">Roles de Acceso</Label>
+              <div className="grid grid-cols-1 gap-3">
+                 {ROLES_OPTIONS.map(role => (
+                   <div 
+                     key={role.id} 
+                     onClick={() => toggleRole(role.id)}
+                     className={cn(
+                       "flex items-center justify-between p-4 rounded-xl border cursor-pointer transition-all",
+                       selectedRoles.includes(role.id) 
+                         ? "bg-purple-50 border-[#9c4d96] shadow-sm" 
+                         : "bg-gray-50 border-transparent hover:bg-white hover:border-gray-200"
+                     )}
+                   >
+                     <span className="text-xs font-bold text-gray-700 uppercase">{role.label}</span>
+                     <Checkbox checked={selectedRoles.includes(role.id)} onCheckedChange={() => {}} />
+                   </div>
+                 ))}
+              </div>
            </div>
+
+           {selectedRoles.includes('EsAlumno') && (
+             <div className="space-y-3 pt-4 border-t animate-in slide-in-from-top-2 duration-300">
+                <Label className="text-[10px] font-bold text-gray-400 uppercase">Configuración de Alumnado</Label>
+                <div className="space-y-1.5">
+                   <Label className="text-[9px] font-bold text-gray-500 uppercase ml-1">Curso Académico:</Label>
+                   <Input 
+                     placeholder="Ej: 2º ESO B..." 
+                     value={curso}
+                     onChange={(e) => setCurso(e.target.value)}
+                     className="h-10 border-gray-300 font-bold text-sm bg-blue-50/20"
+                   />
+                </div>
+             </div>
+           )}
         </div>
 
         <DialogFooter className="bg-gray-50 p-6 border-t gap-3">
            <Button variant="outline" onClick={onClose} className="text-[11px] font-bold uppercase h-10 px-8">Cancelar</Button>
            <Button onClick={handleSave} disabled={isSaving} className="bg-[#9c4d96] hover:bg-[#833d7d] text-white text-[11px] font-bold uppercase h-10 px-8 gap-2 shadow-md">
              {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-             Guardar Cambios
+             Guardar Perfil
            </Button>
         </DialogFooter>
       </DialogContent>
