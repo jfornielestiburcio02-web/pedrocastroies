@@ -216,6 +216,47 @@
         "url": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       }
+    },
+    "ActividadExtraescolar": {
+      "title": "ActividadExtraescolar",
+      "type": "object",
+      "description": "Registro oficial de una actividad complementaria o extraescolar.",
+      "properties": {
+        "añoAcademico": { "type": "string" },
+        "tipoActividad": { "type": "string" },
+        "estado": { "type": "string" },
+        "departamento": { "type": "string" },
+        "coordinadorId": { "type": "string" },
+        "titulo": { "type": "string" },
+        "descripcion": { "type": "string" },
+        "bilingue": { "type": "boolean" },
+        "alumnadoConvocado": { "type": "number" },
+        "alumnadoParticipante": { "type": "number" },
+        "porcentajeParticipacion": { "type": "number" },
+        "numDocentes": { "type": "number" },
+        "numGruposParticipantes": { "type": "number" },
+        "numCursosParticipantes": { "type": "number" },
+        "incluidaPGA": { "type": "boolean" },
+        "fechaAprobacion": { "type": "string" },
+        "requiereCopago": { "type": "boolean" },
+        "costePorDocente": { "type": "number" },
+        "costePorAlumno": { "type": "number" },
+        "otrosCostes": { "type": "number" },
+        "totalPresupuesto": { "type": "number" },
+        "objetivoDepartamento": { "type": "string" },
+        "objetivoEspecifico": { "type": "string" },
+        "fechaDesde": { "type": "string" },
+        "fechaHasta": { "type": "string" },
+        "horaInicio": { "type": "string" },
+        "horaFin": { "type": "string" },
+        "pais": { "type": "string" },
+        "provincia": { "type": "string" },
+        "municipio": { "type": "string" },
+        "localidad": { "type": "string" },
+        "lugarDesarrollo": { "type": "string" },
+        "medioTransporte": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "auth": {
@@ -295,6 +336,12 @@
         "$ref": "#/backend/entities/EnlaceInteres"
       },
       "description": "Colección de enlaces de interés personales del profesorado."
+    },
+    "/actividadesExtraescolares/{actividadId}": {
+      "schema": {
+        "$ref": "#/backend/entities/ActividadExtraescolar"
+      },
+      "description": "Colección de actividades complementarias y extraescolares del centro."
     }
   }
 }

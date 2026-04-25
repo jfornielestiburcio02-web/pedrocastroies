@@ -67,6 +67,7 @@ import { UserCreationView, UserManagementListView, UserProfilesManagementView } 
 import { EvaluationsSummaryView, IncidentsSummaryView } from '@/components/rayuela/management-summary-views';
 import { TeacherNotificationsView } from '@/components/rayuela/teacher-notifications-view';
 import { LinksOfInterestView } from '@/components/rayuela/links-of-interest-view';
+import { ExtraescolaresActivitiesView } from '@/components/rayuela/extraescolares-activities-view';
 
 // Componentes de Pruebas de Diagnóstico
 import { DiagnosticOpeningView, DiagnosticGradingView, DiagnosticResultsView } from '@/components/rayuela/diagnostic-tests-views';
@@ -1032,17 +1033,7 @@ export default function SeleccioneModuloAccesoPage() {
                   ) : activeSubContent === 'Por alumno (Diag)' ? (
                     <DiagnosticResultsView mode="student" />
                   ) : activeSubContent === 'Actividades Extraescolares' ? (
-                    <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
-                       <div className="bg-white border rounded-lg p-10 shadow-sm min-h-[400px] flex flex-col items-center justify-center text-center space-y-4">
-                          <div className="w-16 h-16 rounded-full flex items-center justify-center bg-[#9c4d96]/10 text-[#9c4d96]">
-                             <Calendar className="h-8 w-8" />
-                          </div>
-                          <h2 className="text-2xl font-bold text-gray-800 uppercase tracking-tight">Gestión de Actividades</h2>
-                          <p className="text-gray-500 italic max-w-md">
-                            Módulo de planificación y registro de actividades complementarias y extraescolares del centro.
-                          </p>
-                       </div>
-                    </div>
+                    <ExtraescolaresActivitiesView />
                   ) : activeSubContent ? (
                     <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
                        <div className="bg-white border rounded-lg p-10 shadow-sm min-h-[400px] flex flex-col items-center justify-center text-center space-y-4">
