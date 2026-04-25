@@ -68,6 +68,18 @@
         "email"
       ]
     },
+    "Designacion": {
+      "title": "Designacion",
+      "type": "object",
+      "description": "Registro histórico de designaciones PROA y DAD realizadas por dirección.",
+      "properties": {
+        "tipo": { "type": "string", "enum": ["PROA", "DAD"] },
+        "profesorId": { "type": "string" },
+        "titularId": { "type": "string", "description": "Solo para DAD" },
+        "fecha": { "type": "string", "format": "date-time" },
+        "autor": { "type": "string" }
+      }
+    },
     "GrupoAlumnos": {
       "title": "GrupoAlumnos",
       "type": "object",
@@ -274,6 +286,12 @@
         "$ref": "#/backend/entities/Usuario"
       },
       "description": "Colección de usuarios con gestión de sesión manual."
+    },
+    "/designaciones/{designacionId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Designacion"
+      },
+      "description": "Registro de nombramientos PROA+ y DAD realizados por dirección."
     },
     "/gruposAlumnos/{grupoId}": {
       "schema": {

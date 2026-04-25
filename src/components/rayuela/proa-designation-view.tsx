@@ -23,8 +23,8 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, doc } from 'firebase/firestore';
-import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { collection, query, where, doc, updateDoc } from 'firebase/firestore';
+import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from '@/lib/utils';
@@ -52,9 +52,19 @@ export function ProaDesignationView({ mode }: { mode: 'proa' | 'dad' }) {
     const currentProfiles = teacher?.perfilesAdicionales || [];
     
     if (!currentProfiles.includes('PROA+')) {
-      updateDocumentNonBlocking(doc(db, 'usuarios', selectedTeacherId), {
+      // 1. Guardar en Colección Usuarios
+      await updateDoc(doc(db, 'usuarios', selectedTeacherId), {
         perfilesAdicionales: [...currentProfiles, 'PROA+']
       });
+
+      // 2. Guardar en Colección Designaciones (Histórico)
+      await addDocumentNonBlocking(collection(db, 'designaciones'), {
+        tipo: 'PROA',
+        profesorId: selectedTeacherId,
+        fecha: new Date().toISOString(),
+        autor: 'DIRECCION'
+      });
+
       toast({ title: "Designación PROA+ Exitosa", description: "El profesor ya dispone del perfil PROA+." });
     } else {
       toast({ title: "Información", description: "El profesor ya tiene asignado este perfil." });
@@ -74,9 +84,19 @@ export function ProaDesignationView({ mode }: { mode: 'proa' | 'dad' }) {
     const supportTeacher = teachers?.find(t => t.id === selectedTeacherId);
     const currentProfiles = supportTeacher?.perfilesAdicionales || [];
 
-    updateDocumentNonBlocking(doc(db, 'usuarios', selectedTeacherId), {
+    // 1. Guardar en Colección Usuarios (Dato Crítico para Lógica)
+    await updateDoc(doc(db, 'usuarios', selectedTeacherId), {
       perfilesAdicionales: Array.from(new Set([...currentProfiles, 'PROFESORdad+'])),
       esDADDe: selectedTargetId
+    });
+
+    // 2. Guardar en Colección Designaciones (Histórico Solicitado)
+    await addDocumentNonBlocking(collection(db, 'designaciones'), {
+      tipo: 'DAD',
+      profesorId: selectedTeacherId,
+      titularId: selectedTargetId,
+      fecha: new Date().toISOString(),
+      autor: 'DIRECCION'
     });
 
     const targetName = teachers?.find(t => t.id === selectedTargetId)?.nombrePersona;
@@ -101,7 +121,7 @@ export function ProaDesignationView({ mode }: { mode: 'proa' | 'dad' }) {
             <div className="bg-white/20 p-4 rounded-2xl"><ShieldCheck className="h-10 w-10" /></div>
             <div>
               <h2 className="text-2xl font-bold uppercase tracking-tight">
-                {mode === 'proa' ? 'Designación e Instrucción PROA+' : 'Designación e Profesor DAD'}
+                {mode === 'proa' ? 'Designación e Instrucción PROA+' : 'Designación de Profesor DAD'}
               </h2>
               <p className="text-white/80 text-sm font-medium">Programa de Cooperación Territorial para la Equidad Educativa</p>
             </div>

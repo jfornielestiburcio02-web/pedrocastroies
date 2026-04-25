@@ -13,7 +13,8 @@ import {
   AlertCircle,
   X,
   CheckCircle2,
-  Layout
+  Layout,
+  UserCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -58,7 +59,6 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(manualScheduleId || null);
   const [historyAlumnoId, setHistoryAlumnoId] = useState<string | null>(null);
-  const [viewingReason, setViewingReason] = useState<{name: string, reason: string, alumnoId: string} | null>(null);
   const db = useFirestore();
   const { toast } = useToast();
 
@@ -67,7 +67,7 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
     return days[new Date(selectedDate).getDay()];
   }, [selectedDate]);
 
-  // Consulta simplificada para evitar errores de índices
+  // CARGA DE HORARIOS (Sincronizada con titular si es DAD)
   const schedulesQuery = useMemoFirebase(() => {
     if (manualScheduleId || !db || !profesorId) return null;
     return query(
@@ -177,7 +177,7 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
       grupoId: currentSchedule?.grupoId || "",
       fecha: selectedDate,
       tipo: nextStatus,
-      profesorId,
+      profesorId, // Guardamos siempre bajo el ID del profesor efectivo (Titular)
       createdAt: existing?.createdAt || new Date().toISOString()
     }, { merge: true });
     
@@ -199,43 +199,43 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
       grupoId: currentSchedule?.grupoId || "",
       fecha: selectedDate,
       tipo: tipo,
-      profesorId,
+      profesorId, // Guardamos bajo el titular para sincronización DAD
       createdAt: new Date().toISOString()
     }, { merge: true });
   };
 
   return (
     <div className="animate-in fade-in duration-500 space-y-6 max-w-7xl mx-auto w-full font-verdana">
-      <div className="bg-[#f2f2f2] border p-4 flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm">
+      <div className="bg-[#f2f2f2] border p-4 flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm rounded-lg">
         <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
           {!manualScheduleId && (
             <div className="flex items-center gap-2">
-              <Label className="text-[11px] font-bold text-gray-600">Fecha:</Label>
+              <Label className="text-[11px] font-bold text-gray-600 uppercase">Fecha:</Label>
               <Input 
                 type="date" 
                 value={selectedDate} 
                 onChange={(e) => { setSelectedDate(e.target.value); setSelectedScheduleId(null); }}
-                className="h-8 border-gray-300 w-[150px] text-[11px]"
+                className="h-8 border-gray-300 w-[150px] text-[11px] font-bold"
               />
             </div>
           )}
 
           <div className="flex items-center gap-2 min-w-[300px]">
-            <Label className="text-[11px] font-bold text-gray-600">Sesión:</Label>
+            <Label className="text-[11px] font-bold text-gray-600 uppercase">Sesión:</Label>
             {loadingSchedules ? (
               <Loader2 className="h-4 w-4 animate-spin text-[#89a54e]" />
             ) : manualScheduleId ? (
-              <div className="h-8 flex items-center px-3 border border-gray-300 rounded-md bg-white text-[11px] font-bold w-full">
+              <div className="h-8 flex items-center px-3 border border-gray-300 rounded-md bg-white text-[11px] font-bold w-full uppercase">
                 {manualScheduleData?.horaInicio}-{manualScheduleData?.horaFin} | {manualScheduleData?.asignatura}
               </div>
             ) : (
               <Select onValueChange={setSelectedScheduleId} value={selectedScheduleId || ""}>
-                <SelectTrigger className="h-8 border-gray-300 text-[11px]">
+                <SelectTrigger className="h-8 border-gray-300 text-[11px] font-bold">
                   <SelectValue placeholder={schedules.length > 0 ? "Seleccione sesión..." : "Sin horario este día"} />
                 </SelectTrigger>
                 <SelectContent>
                   {schedules.map(s => (
-                    <SelectItem key={s.id} value={s.id} className="text-[11px]">
+                    <SelectItem key={s.id} value={s.id} className="text-[11px] font-bold uppercase">
                       {s.horaInicio}-{s.horaFin} | {s.asignatura}
                     </SelectItem>
                   ))}
@@ -251,6 +251,15 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
            <div className="flex items-center gap-1.5"><div className="w-3 h-3 bg-[#78B64E] rounded-sm"></div><span className="text-[10px] font-bold text-gray-500 uppercase">Justificada</span></div>
         </div>
       </div>
+
+      {selectedScheduleId && (
+        <div className="bg-blue-50 border border-blue-100 p-2 px-4 rounded-full w-fit flex items-center gap-2 animate-pulse">
+           <UserCheck className="h-3.5 w-3.5 text-blue-600" />
+           <span className="text-[9px] font-bold text-blue-800 uppercase tracking-widest">
+             Sincronización Activa: Registros vinculados al profesor {profesorId}
+           </span>
+        </div>
+      )}
 
       {!selectedScheduleId ? (
         <div className="py-20 text-center opacity-30 flex flex-col items-center">
@@ -285,15 +294,6 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
                </div>
              );
            })}
-        </div>
-      )}
-
-      {historyAlumnoId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white p-6 rounded-lg max-w-md w-full">
-            <h3 className="font-bold mb-4">Historial cargando...</h3>
-            <Button onClick={() => setHistoryAlumnoId(null)}>Cerrar</Button>
-          </div>
         </div>
       )}
     </div>
