@@ -39,7 +39,6 @@ import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { 
   collection, 
   query, 
-  orderBy, 
   doc,
   where
 } from 'firebase/firestore';
@@ -66,10 +65,21 @@ export function ScheduleListView() {
 
   const horariosQuery = useMemoFirebase(() => {
     if (!db) return null;
-    return query(collection(db, 'horarios'), orderBy('dia'), orderBy('horaInicio'));
+    return collection(db, 'horarios');
   }, [db]);
 
-  const { data: schedules, isLoading: loadingSchedules } = useCollection(horariosQuery);
+  const { data: rawSchedules, isLoading: loadingSchedules } = useCollection(horariosQuery);
+
+  // Ordenación en memoria para evitar errores de índices
+  const schedules = useMemo(() => {
+    if (!rawSchedules) return [];
+    const daysOrder = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+    return [...rawSchedules].sort((a, b) => {
+      const dayDiff = daysOrder.indexOf(a.dia) - daysOrder.indexOf(b.dia);
+      if (dayDiff !== 0) return dayDiff;
+      return a.horaInicio.localeCompare(b.horaInicio);
+    });
+  }, [rawSchedules]);
 
   const usersQuery = useMemoFirebase(() => {
     if (!db) return null;
@@ -112,7 +122,7 @@ export function ScheduleListView() {
             <h2 className="font-bold text-lg uppercase tracking-tight">Listado General de Horarios</h2>
           </div>
           <span className="text-[10px] font-bold uppercase bg-white/20 px-3 py-1 rounded">
-            {schedules?.length || 0} Registros activos
+            {schedules.length} Registros activos
           </span>
         </div>
 
@@ -129,7 +139,7 @@ export function ScheduleListView() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {schedules && schedules.length > 0 ? (
+              {schedules.length > 0 ? (
                 schedules.map((item) => (
                   <TableRow key={item.id} className="hover:bg-gray-50/50 transition-colors group">
                     <TableCell className="font-bold text-gray-700 text-xs">{item.dia}</TableCell>
@@ -346,13 +356,11 @@ export function MyScheduleView({ profesorId }: { profesorId: string }) {
     if (!db || !profesorId) return null;
     return query(
       collection(db, 'horarios'),
-      where('profesorId', '==', profesorId),
-      orderBy('dia'),
-      orderBy('horaInicio')
+      where('profesorId', '==', profesorId)
     );
   }, [db, profesorId]);
 
-  const { data: schedules, isLoading } = useCollection(schedulesQuery);
+  const { data: rawSchedules, isLoading } = useCollection(schedulesQuery);
 
   const days = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
 
@@ -385,40 +393,46 @@ export function MyScheduleView({ profesorId }: { profesorId: string }) {
             </TableHeader>
             <TableBody>
               <TableRow>
-                {days.map(day => (
-                  <TableCell key={day} className="p-2 align-top border-r last:border-r-0 bg-gray-50/30">
-                    <div className="space-y-2">
-                      {schedules?.filter(s => s.dia === day).length === 0 ? (
-                        <div className="py-8 text-center text-[10px] text-gray-300 italic">Sin sesiones</div>
-                      ) : (
-                        schedules?.filter(s => s.dia === day).map(session => (
-                          <div key={session.id} className={cn(
-                            "p-3 rounded-lg border shadow-sm transition-all hover:shadow-md",
-                            session.esGuardia ? "bg-red-50 border-red-100" : "bg-white border-gray-100"
-                          )}>
-                            <div className="flex flex-col gap-1">
-                              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">
-                                {session.horaInicio} - {session.horaFin}
-                              </span>
-                              <span className={cn(
-                                "text-[11px] font-bold leading-tight uppercase",
-                                session.esGuardia ? "text-red-700" : "text-gray-800"
-                              )}>
-                                {session.asignatura}
-                              </span>
-                              {session.alumnosIds?.length > 0 && (
-                                <div className="mt-1 flex items-center gap-1 text-[8px] font-bold text-blue-600 uppercase">
-                                  <Users className="h-2.5 w-2.5" />
-                                  {session.alumnosIds.length} Alum.
-                                </div>
-                              )}
+                {days.map(day => {
+                  const daySessions = rawSchedules
+                    ?.filter(s => s.dia === day)
+                    .sort((a, b) => a.horaInicio.localeCompare(b.horaInicio)) || [];
+
+                  return (
+                    <TableCell key={day} className="p-2 align-top border-r last:border-r-0 bg-gray-50/30">
+                      <div className="space-y-2">
+                        {daySessions.length === 0 ? (
+                          <div className="py-8 text-center text-[10px] text-gray-300 italic">Sin sesiones</div>
+                        ) : (
+                          daySessions.map(session => (
+                            <div key={session.id} className={cn(
+                              "p-3 rounded-lg border shadow-sm transition-all hover:shadow-md",
+                              session.esGuardia ? "bg-red-50 border-red-100" : "bg-white border-gray-100"
+                            )}>
+                              <div className="flex flex-col gap-1">
+                                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">
+                                  {session.horaInicio} - {session.horaFin}
+                                </span>
+                                <span className={cn(
+                                  "text-[11px] font-bold leading-tight uppercase",
+                                  session.esGuardia ? "text-red-700" : "text-gray-800"
+                                )}>
+                                  {session.asignatura}
+                                </span>
+                                {session.alumnosIds?.length > 0 && (
+                                  <div className="mt-1 flex items-center gap-1 text-[8px] font-bold text-blue-600 uppercase">
+                                    <Users className="h-2.5 w-2.5" />
+                                    {session.alumnosIds.length} Alum.
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </TableCell>
-                ))}
+                          ))
+                        )}
+                      </div>
+                    </TableCell>
+                  );
+                })}
               </TableRow>
             </TableBody>
           </Table>
@@ -428,7 +442,7 @@ export function MyScheduleView({ profesorId }: { profesorId: string }) {
       <div className="bg-blue-50 border border-blue-100 p-4 rounded-lg flex items-start gap-3 max-w-6xl mx-auto">
         <AlertCircle className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
         <p className="text-[11px] text-blue-800 leading-relaxed font-medium">
-          <strong>Aviso de Coordinación:</strong> Este horario refleja sus sesiones lectivas y guardias oficiales registradas en Rayuela. Si detecta alguna discrepancia, por favor póngase en contacto con Jefatura de Estudios.
+          <strong>Aviso de Coordinación:</strong> Este horario refleja las sesiones oficiales registradas. El perfil de apoyo (DAD) visualiza automáticamente el mismo horario que el profesor titular vinculado.
         </p>
       </div>
     </div>
@@ -458,7 +472,6 @@ export function ScheduleCreationView() {
     alumnosIds: [] as string[]
   });
 
-  // Query para obtener los grupos del profesor seleccionado
   const professorGroupsQuery = useMemoFirebase(() => {
     if (!db || !formData.profesorId) return null;
     return query(collection(db, 'gruposAlumnos'), where('profesorId', '==', formData.profesorId));
@@ -478,7 +491,7 @@ export function ScheduleCreationView() {
         ...prev, 
         grupoId: val, 
         alumnosIds: selectedGroup.alumnosIds,
-        asignatura: selectedGroup.titulo // Sugerir el título del grupo como asignatura
+        asignatura: selectedGroup.titulo 
       }));
     }
   };
@@ -492,11 +505,6 @@ export function ScheduleCreationView() {
         title: "Error de validación",
         description: "Debe seleccionar un profesor y asignar una materia o marcar como guardia."
       });
-      return;
-    }
-
-    if (!formData.esGuardia && formData.alumnosIds.length === 0) {
-      toast({ variant: "destructive", title: "Sin Alumnos", description: "El horario lectivo debe tener un grupo de alumnos asociado." });
       return;
     }
 
@@ -587,7 +595,7 @@ export function ScheduleCreationView() {
             </div>
 
             <div className="space-y-6">
-              <div className="flex items-center space-x-2 bg-gray-50 p-4 rounded-lg border border-dashed border-gray-300">
+              <div className="flex items-center space-x-2 bg-gray-50 p-4 rounded-lg border border-dashed border-gray-200">
                 <Checkbox 
                   id="esGuardia" 
                   checked={formData.esGuardia}
@@ -614,9 +622,6 @@ export function ScheduleCreationView() {
                         )}
                       </SelectContent>
                     </Select>
-                    {formData.profesorId && (
-                      <p className="text-[9px] text-gray-400 italic">Los grupos se gestionan desde el menú "Mi Alumnado" del profesor.</p>
-                    )}
                   </div>
 
                   <div className="space-y-2">
