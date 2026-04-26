@@ -70,7 +70,7 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
     return days[new Date(selectedDate).getDay()];
   }, [selectedDate]);
 
-  // CARGA DE HORARIOS: Consulta simple
+  // CARGA DE HORARIOS
   const schedulesQuery = useMemoFirebase(() => {
     if (manualScheduleId || !db || !profesorId) return null;
     return query(
@@ -136,43 +136,29 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
     return allUsers.filter(u => currentSchedule.alumnosIds?.includes(u.id));
   }, [currentSchedule, allUsers]);
 
-  const scheduleDeferredMessage = (alumnoId: string, attendanceId: string) => {
-    if (!db || !currentSchedule) return;
-    const profUser = allUsers?.find(u => u.id === profesorId);
-    const profName = profUser?.nombrePersona || profUser?.usuario || profesorId;
-
-    setTimeout(async () => {
-      const docRef = doc(db, 'asistenciasInasistencias', attendanceId);
-      const freshSnap = await getDoc(docRef);
-      if (freshSnap.exists() && freshSnap.data().tipo === 'I') {
-        setDocumentNonBlocking(doc(collection(db, 'mensajes')), {
-          remitenteId: 'SISTEMA',
-          destinatarioId: alumnoId,
-          asunto: 'Aviso de Falta de Asistencia',
-          cuerpo: `Se ha registrado una nueva falta de asistencia a las ${currentSchedule.horaInicio}\n\nGrupo: ${currentSchedule.asignatura}\nProfesor: ${profName}`,
-          leido: false,
-          eliminado: false,
-          createdAt: new Date().toISOString()
-        }, { merge: true });
-      }
-    }, 15000);
-  };
-
   const handleCycleAttendance = (alumnoId: string) => {
     if (!db || !selectedScheduleId) return;
     const attendanceId = `${alumnoId}_${selectedScheduleId}_${selectedDate}`;
     const docRef = doc(db, 'asistenciasInasistencias', attendanceId);
     const existing = attendances?.find(a => a.id === attendanceId);
-    const currentStatus = existing?.tipo || 'A';
     
+    // Ciclo: A (Nada/Aviso) -> I (Injustificada) -> R (Retraso) -> J (Justificada) -> A (Presente)
+    const currentStatus = existing?.tipo || 'A';
     let nextStatus = 'A';
+
     if (currentStatus === 'A' || currentStatus === '') nextStatus = 'I';
     else if (currentStatus === 'I') nextStatus = 'R';
-    else if (currentStatus === 'R') nextStatus = 'A';
+    else if (currentStatus === 'R') nextStatus = 'J';
+    else if (currentStatus === 'J') nextStatus = 'A';
 
     if (nextStatus === 'A') {
-      if (existing?.motivo) updateDocumentNonBlocking(docRef, { tipo: '' });
-      else if (existing) deleteDocumentNonBlocking(docRef);
+      // Si el profesor vuelve a Presente, limpiamos el tipo. 
+      // Si habia un motivo previo del alumno (notificación), lo dejamos como aviso (tipo '')
+      if (existing?.motivo) {
+        updateDocumentNonBlocking(docRef, { tipo: '' });
+      } else {
+        deleteDocumentNonBlocking(docRef);
+      }
       return;
     }
 
@@ -183,23 +169,23 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
       fecha: selectedDate,
       tipo: nextStatus,
       profesorId, 
-      createdAt: existing?.createdAt || new Date().toISOString()
+      createdAt: existing?.createdAt || new Date().toISOString(),
+      motivo: existing?.motivo || ""
     }, { merge: true });
-    
-    if (nextStatus === 'I') scheduleDeferredMessage(alumnoId, attendanceId);
   };
 
   const handleToggleBehavior = (alumnoId: string, tipo: 'Positivo' | 'Negativo') => {
     if (!db || !selectedScheduleId) return;
     
-    // VALIDACIÓN CRÍTICA: No permitir negativos/positivos si el alumno no está
     const attendanceId = `${alumnoId}_${selectedScheduleId}_${selectedDate}`;
     const attendance = attendances?.find(a => a.id === attendanceId);
+    
+    // Bloquear si el alumno está marcado como ausente
     if (attendance?.tipo === 'I' || attendance?.tipo === 'J') {
       toast({ 
         variant: "destructive", 
         title: "Operación no permitida", 
-        description: "No puede registrar conductas para un alumno marcado como ausente." 
+        description: "El alumno está marcado como ausente." 
       });
       return;
     }
@@ -207,10 +193,12 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
     const behaviorId = `${alumnoId}_${selectedScheduleId}_${selectedDate}_behavior`;
     const docRef = doc(db, 'comportamientos', behaviorId);
     const existing = behaviors?.find(b => b.id === behaviorId);
+    
     if (existing && existing.tipo === tipo) {
       deleteDocumentNonBlocking(docRef);
       return;
     }
+
     setDocumentNonBlocking(docRef, {
       alumnoId,
       claseId: selectedScheduleId,
@@ -274,7 +262,7 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
         <div className="bg-blue-50 border border-blue-100 p-2 px-4 rounded-full w-fit flex items-center gap-2 animate-pulse">
            <UserCheck className="h-3.5 w-3.5 text-blue-600" />
            <span className="text-[9px] font-bold text-blue-800 uppercase tracking-widest">
-             Registros vinculados al profesor: {profesorId}
+             Sesión conectada con Rayuela - Profesor ID: {profesorId}
            </span>
         </div>
       )}
@@ -289,19 +277,23 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
            {students.map(student => {
              const attendanceId = `${student.id}_${selectedScheduleId}_${selectedDate}`;
              const studentAttendance = attendances?.find(a => a.id === attendanceId);
+             
+             // Lógica visual del bultito rojo de notificación (Aviso del alumno)
+             const hasNotification = studentAttendance?.tipo === '' && !!studentAttendance?.motivo;
+             
              const currentStatus = studentAttendance?.tipo || 'A';
              const isAbsent = currentStatus === 'I' || currentStatus === 'J';
-             const hasNotification = studentAttendance?.tipo === '' && studentAttendance?.motivo;
              
              const behaviorId = `${student.id}_${selectedScheduleId}_${selectedDate}_behavior`;
              const studentBehavior = behaviors?.find(b => b.id === behaviorId);
              
              return (
                <div key={student.id} className="itemAlumnoEnClase relative group pt-3">
+                  {/* BULTITO ROJO DE NOTIFICACIÓN */}
                   {hasNotification && (
                     <div className="absolute -top-1 -right-1 z-20">
-                      <div className="bg-red-600 text-white rounded-full p-1 shadow-lg animate-bounce border-2 border-white">
-                        <Bell className="h-3 w-3" />
+                      <div className="bg-red-600 text-white rounded-full p-1.5 shadow-lg animate-bounce border-2 border-white">
+                        <Bell className="h-3.5 w-3.5" />
                       </div>
                     </div>
                   )}
@@ -313,19 +305,25 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
                        <History className="h-6 w-6 text-white" />
                     </div>
                   </Avatar>
+                  
                   <div className="nombreAlumno px-2 mt-2">{student.nombrePersona || student.usuario}</div>
+                  
                   <div className="w-full px-2 mt-1">
                     <button 
-                      onClick={() => currentStatus !== 'J' && handleCycleAttendance(student.id)} 
+                      onClick={() => handleCycleAttendance(student.id)} 
                       data-state={currentStatus || 'A'} 
                       className={cn(
-                        "botonFalta h-8 font-bold relative",
-                        hasNotification && "border-red-500 text-red-700"
+                        "botonFalta h-8 font-bold relative transition-all",
+                        hasNotification && currentStatus === '' && "border-red-500 text-red-700 bg-red-50"
                       )}
                     >
-                      {currentStatus === 'I' ? 'Injustif.' : currentStatus === 'R' ? 'Retraso' : currentStatus === 'J' ? 'Justif.' : hasNotification ? 'Aviso' : 'Asiste'}
+                      {currentStatus === 'I' ? 'Injustif.' : 
+                       currentStatus === 'R' ? 'Retraso' : 
+                       currentStatus === 'J' ? 'Justif.' : 
+                       hasNotification ? 'Aviso' : 'Asiste'}
                     </button>
                   </div>
+
                   <div className="flex items-center justify-center gap-4 mt-2">
                      <button 
                       onClick={() => handleToggleBehavior(student.id, 'Positivo')} 
@@ -389,7 +387,9 @@ function StudentHistoryDialog({ alumnoId, onClose, claseId }: { alumnoId: string
   const { data: rawHistory, isLoading } = useCollection(historyQuery);
   
   const history = useMemo(() => {
-    return (rawHistory || []).sort((a, b) => b.fecha.localeCompare(a.fecha));
+    return (rawHistory || [])
+      .filter(h => h.tipo !== '') // Solo mostramos faltas reales en el historial rápido
+      .sort((a, b) => b.fecha.localeCompare(a.fecha));
   }, [rawHistory]);
 
   return (
@@ -415,7 +415,7 @@ function StudentHistoryDialog({ alumnoId, onClose, claseId }: { alumnoId: string
               {isLoading ? (
                 <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-[#89a54e]" /></div>
               ) : history.length === 0 ? (
-                <div className="py-20 text-center text-gray-400 italic text-sm">No constan faltas previas en esta materia.</div>
+                <div className="py-20 text-center text-gray-400 italic text-sm">No constan faltas ni retrasos previos en esta materia.</div>
               ) : (
                 <div className="flex flex-col">
                    {history.map((record) => (
@@ -441,7 +441,7 @@ function StudentHistoryDialog({ alumnoId, onClose, claseId }: { alumnoId: string
                              record.tipo === 'J' ? "bg-green-100 text-green-700" :
                              "bg-blue-50 text-blue-600"
                            )}>
-                             {record.tipo === 'I' ? 'Falta' : record.tipo === 'R' ? 'Retraso' : record.tipo === 'J' ? 'Justif.' : 'Aviso'}
+                             {record.tipo === 'I' ? 'Falta' : record.tipo === 'R' ? 'Retraso' : record.tipo === 'J' ? 'Justificada' : 'Notificada'}
                            </Badge>
                         </div>
                      </div>
