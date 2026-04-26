@@ -571,7 +571,7 @@ export default function SeleccioneModuloAccesoPage() {
                             </div>
 
                             <div className="flex flex-col">
-                               <SidebarHeading label="Conductas contrarias" expanded={expandedItems['conductas']} onClick={() => toggleExpanded('conductas')} />
+                               <SidebarHeading label="Convivencia Escolar" expanded={expandedItems['conductas']} onClick={() => toggleExpanded('conductas')} />
                               {expandedItems['conductas'] && (
                                 <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
                                    <div className="flex flex-col">
