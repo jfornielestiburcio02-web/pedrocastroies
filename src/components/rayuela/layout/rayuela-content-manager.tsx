@@ -73,7 +73,7 @@ export function RayuelaContentManager({
   const renderView = () => {
     switch (activeSubContent) {
       case 'Modificar / crear Horarios': return <ScheduleCreationView />;
-      case 'Ver Horarios': return <ScheduleListView />;
+      case 'Ver Horarios': return <ScheduleListView activeRole={activeRole} />;
       case 'Mi Horario Personal': return <MyScheduleView profesorId={effectiveTeacherId} />;
       case 'Por materia': return <AttendanceBySubjectView profesorId={effectiveTeacherId} />;
       case 'Funcion tutorial': return <TutorialFunctionView profesorId={effectiveTeacherId} grupoTutorizado={userData?.esTutor} />;

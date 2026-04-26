@@ -58,10 +58,12 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from '@/lib/utils';
 
-export function ScheduleListView() {
+export function ScheduleListView({ activeRole }: { activeRole?: string | null }) {
   const db = useFirestore();
   const { toast } = useToast();
   const [editingSchedule, setEditingSchedule] = useState<any>(null);
+
+  const isReadOnly = activeRole === 'Profesor Gestión';
 
   const horariosQuery = useMemoFirebase(() => {
     if (!db) return null;
@@ -70,7 +72,6 @@ export function ScheduleListView() {
 
   const { data: rawSchedules, isLoading: loadingSchedules } = useCollection(horariosQuery);
 
-  // Ordenación en memoria para evitar errores de índices
   const schedules = useMemo(() => {
     if (!rawSchedules) return [];
     const daysOrder = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
@@ -121,9 +122,14 @@ export function ScheduleListView() {
             <Clock className="h-5 w-5" />
             <h2 className="font-bold text-lg uppercase tracking-tight">Listado General de Horarios</h2>
           </div>
-          <span className="text-[10px] font-bold uppercase bg-white/20 px-3 py-1 rounded">
-            {schedules.length} Registros activos
-          </span>
+          <div className="flex items-center gap-4">
+            {isReadOnly && (
+              <Badge className="bg-white/20 text-white border-none font-bold text-[9px] uppercase tracking-wider">Modo Solo Lectura</Badge>
+            )}
+            <span className="text-[10px] font-bold uppercase bg-white/20 px-3 py-1 rounded">
+              {schedules.length} Registros activos
+            </span>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -135,7 +141,9 @@ export function ScheduleListView() {
                 <TableHead className="font-bold text-[#9c4d96] uppercase text-[10px]">Profesor</TableHead>
                 <TableHead className="font-bold text-[#9c4d96] uppercase text-[10px]">Asignatura / Actividad</TableHead>
                 <TableHead className="font-bold text-[#9c4d96] uppercase text-[10px]">Alumnos</TableHead>
-                <TableHead className="text-right font-bold text-[#9c4d96] uppercase text-[10px]">Acciones</TableHead>
+                {!isReadOnly && (
+                  <TableHead className="text-right font-bold text-[#9c4d96] uppercase text-[10px]">Acciones</TableHead>
+                )}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -161,31 +169,33 @@ export function ScheduleListView() {
                         {item.alumnosIds?.length || 0} PERS.
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => setEditingSchedule(item)}
-                          className="h-8 w-8 p-0 text-blue-500 hover:text-blue-700 hover:bg-blue-50"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => handleDelete(item.id)}
-                          className="h-8 w-8 p-0 text-gray-400 hover:text-destructive hover:bg-destructive/10"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </TableCell>
+                    {!isReadOnly && (
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => setEditingSchedule(item)}
+                            className="h-8 w-8 p-0 text-blue-500 hover:text-blue-700 hover:bg-blue-50"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => handleDelete(item.id)}
+                            className="h-8 w-8 p-0 text-gray-400 hover:text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-40 text-center text-muted-foreground italic text-sm">
+                  <TableCell colSpan={isReadOnly ? 5 : 6} className="h-40 text-center text-muted-foreground italic text-sm">
                     No hay horarios registrados en la plataforma.
                   </TableCell>
                 </TableRow>
