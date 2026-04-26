@@ -1,22 +1,21 @@
 "use client";
 
-import React from "react";
+import { useEffect, useState } from "react";
 
 export default function Home() {
-  const lines = Array.from({ length: 500 });
+  const [hasCrashed, setHasCrashed] = useState(false);
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-black overflow-hidden">
-      <div className="text-center">
-        {lines.map((_, i) => (
-          <p
-            key={i}
-            className="text-red-600 font-bold text-sm animate-pulse"
-          >
-            HACKEADO JOEL
-          </p>
-        ))}
-      </div>
-    </div>
-  );
+  useEffect(() => {
+    // Esto se ejecuta una sola vez al cargar
+    setHasCrashed(true);
+  }, []);
+
+  if (hasCrashed) {
+    // Esto detiene el renderizado y lanza el error 500/502
+    // En producción verás una pantalla blanca o la de error por defecto
+    throw new Error("502 Bad Gateway");
+  }
+
+  // Mientras no ha crasheado (milisegundos), devuelve un fragmento vacío (pantalla blanca)
+  return null;
 }
