@@ -2,7 +2,7 @@
 "use client";
 
 import React from 'react';
-import { Files, ArrowLeft } from 'lucide-react';
+import { Files, ArrowLeft, Award } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -26,6 +26,8 @@ import { ExtraescolaresActivitiesView } from '@/components/rayuela/extraescolare
 import { ProaDesignationView } from '@/components/rayuela/proa-designation-view';
 import { DiagnosticOpeningView, DiagnosticGradingView, DiagnosticResultsView } from '@/components/rayuela/diagnostic-tests-views';
 import { ProfileSyncView } from '@/components/rayuela/profile-sync-view';
+import { SecodexCitizenView } from '@/components/rayuela/secodex-citizen-view';
+import { SecodexAdminView } from '@/components/rayuela/secodex-admin-view';
 import { 
   CredentialDeliveryView, 
   SecretaryPlaceholderView, 
@@ -124,6 +126,8 @@ export function RayuelaContentManager({
       case 'Gastos y ganancias': return <EconomyManagementView />;
       case 'Arqueo de caja (Control)': return <CashClosingView />;
       case 'seCODEX': return <SecodexView />;
+      case 'secodex_admin': return <SecodexAdminView />;
+      case 'Sello de buena práctica SECODEX': return <SecodexCitizenView usuarioId={usuarioId} />;
       case 'Título de bachillerato': return <SecretaryErrorView code="19832" title={activeSubContent} />;
       case 'Formación Profesional': return <SecretaryPlaceholderView title={activeSubContent} />;
       case 'Por Alumno':
@@ -159,6 +163,46 @@ export function RayuelaContentManager({
             </div>
           );
         }
+
+        // PANEL DE INICIO PARA CIUDADANO (Sin sidebar)
+        if (activeRole === 'Ciudadano') {
+           return (
+             <div className="flex-1 flex flex-col items-center justify-center py-10 animate-in fade-in duration-700">
+                <div className="max-w-4xl w-full space-y-10">
+                   <div className="text-center space-y-2">
+                      <h2 className="text-3xl font-bold text-gray-800 uppercase tracking-tighter">Bienvenido a la Secretaría Virtual</h2>
+                      <p className="text-gray-500 italic">Entorno de trámites públicos y servicios al ciudadano</p>
+                   </div>
+                   
+                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 justify-items-center px-4">
+                      <button 
+                        onClick={() => onSetActiveSubContent('Sello de buena práctica SECODEX')}
+                        className="w-full h-64 border-4 border-[#fb8500]/30 bg-white flex flex-col items-center justify-center p-8 text-[#fb8500] font-bold hover:bg-[#fb8500] hover:text-white hover:border-[#fb8500] transition-all text-center leading-tight shadow-xl active:scale-95 group rounded-2xl"
+                      >
+                         <div className="bg-orange-50 p-5 rounded-full mb-4 group-hover:bg-white/20 transition-colors">
+                            <Award className="h-12 w-12" />
+                         </div>
+                         <span className="text-xl uppercase tracking-tighter">Sello de buena práctica SECODEX</span>
+                         <span className="text-[10px] font-normal opacity-70 mt-4 uppercase">Trámite de reconocimiento oficial</span>
+                      </button>
+                      
+                      <div className="w-full h-64 border-4 border-gray-100 bg-gray-50/50 flex flex-col items-center justify-center p-8 text-gray-300 font-bold text-center leading-tight rounded-2xl cursor-not-allowed">
+                         <Files className="h-12 w-12 mb-4" />
+                         <span className="text-xl uppercase tracking-tighter">Admisión de Alumnado</span>
+                         <span className="text-[10px] font-normal opacity-70 mt-4 uppercase">Periodo cerrado</span>
+                      </div>
+
+                      <div className="w-full h-64 border-4 border-gray-100 bg-gray-50/50 flex flex-col items-center justify-center p-8 text-gray-300 font-bold text-center leading-tight rounded-2xl cursor-not-allowed">
+                         <Files className="h-12 w-12 mb-4" />
+                         <span className="text-xl uppercase tracking-tighter">Becas y Ayudas</span>
+                         <span className="text-[10px] font-normal opacity-70 mt-4 uppercase">Próxima convocatoria</span>
+                      </div>
+                   </div>
+                </div>
+             </div>
+           );
+        }
+
         return (
           <div className="flex-1 flex flex-col items-center justify-center">
             <div className="p-12 border-2 border-gray-100 bg-gray-50/30 rounded-3xl w-full text-center space-y-6 shadow-inner">

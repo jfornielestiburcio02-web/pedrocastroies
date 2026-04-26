@@ -21,7 +21,8 @@ import {
   Home,
   Gavel,
   ShieldAlert,
-  RefreshCw
+  RefreshCw,
+  Inbox
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SidebarItem, SidebarHeading } from '../shared-components';
@@ -76,6 +77,7 @@ export function RayuelaSidebar({
             ) : activeRole === 'Secretaría' ? (
               <>
                 <div className="p-2 bg-[#fb8500] rounded-sm text-white"><Briefcase className="h-5 w-5" /></div>
+                <div className="p-2 bg-[#fb8500] rounded-sm text-white"><Inbox className="h-5 w-5" /></div>
                 <div className="p-2 bg-[#fb8500] rounded-sm text-white"><Coins className="h-5 w-5" /></div>
                 <div className="p-2 bg-[#fb8500] rounded-sm text-white"><Award className="h-5 w-5" /></div>
                 <div className="p-2 bg-[#fb8500] rounded-sm text-white"><Files className="h-5 w-5" /></div>
@@ -324,6 +326,15 @@ export function RayuelaSidebar({
                 </div>
               ) : activeRole === 'Secretaría' ? (
                 <div className="space-y-2">
+                  <div className="flex flex-col">
+                    <SidebarHeading label="Solicitudes recibidas" expanded={expandedItems['solicitudes_root']} onClick={() => onToggleExpanded('solicitudes_root')} />
+                    {expandedItems['solicitudes_root'] && (
+                      <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
+                         <SidebarItem color="#fb8500" label="secodex" isSubItem onClick={() => onSetActiveSubContent('secodex_admin')} active={activeSubContent === 'secodex_admin'} />
+                      </div>
+                    )}
+                  </div>
+
                   <div className="flex flex-col">
                     <SidebarHeading label="Arqueo de caja" expanded={expandedItems['arqueo']} onClick={() => onToggleExpanded('arqueo')} />
                     {expandedItems['arqueo'] && (
