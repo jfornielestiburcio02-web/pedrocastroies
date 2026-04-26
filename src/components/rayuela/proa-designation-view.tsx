@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useMemo } from 'react';
@@ -81,16 +80,13 @@ export function ProaDesignationView({ mode }: { mode: 'proa' | 'dad' }) {
     }
     setIsSaving(true);
 
-    const supportTeacher = teachers?.find(t => t.id === selectedTeacherId);
-    const currentProfiles = supportTeacher?.perfilesAdicionales || [];
-
-    // 1. Guardar en Colección Usuarios (Dato Crítico para Lógica)
+    // 1. Vincular al profesor de apoyo con el titular (SIN cambiar su rol o añadir perfil DAD)
+    // El apoyo verá el horario bajo su rol normal de EsProfesor
     await updateDoc(doc(db, 'usuarios', selectedTeacherId), {
-      perfilesAdicionales: Array.from(new Set([...currentProfiles, 'PROFESORdad+'])),
       esDADDe: selectedTargetId
     });
 
-    // 2. Guardar en Colección Designaciones (Histórico Solicitado)
+    // 2. Guardar en Colección Designaciones (Histórico)
     await addDocumentNonBlocking(collection(db, 'designaciones'), {
       tipo: 'DAD',
       profesorId: selectedTeacherId,
@@ -103,7 +99,7 @@ export function ProaDesignationView({ mode }: { mode: 'proa' | 'dad' }) {
     
     toast({ 
       title: "Desdoble DAD Configurado", 
-      description: `El profesor de apoyo ahora está vinculado a ${targetName}.` 
+      description: `El profesor de apoyo ahora está vinculado a ${targetName}. Verá su horario en su rol de profesor.` 
     });
 
     setIsSaving(false);
@@ -121,7 +117,7 @@ export function ProaDesignationView({ mode }: { mode: 'proa' | 'dad' }) {
             <div className="bg-white/20 p-4 rounded-2xl"><ShieldCheck className="h-10 w-10" /></div>
             <div>
               <h2 className="text-2xl font-bold uppercase tracking-tight">
-                {mode === 'proa' ? 'Designación e Instrucción PROA+' : 'Designación de Profesor DAD'}
+                {mode === 'proa' ? 'Designación e Instrucción PROA+' : 'Designación de Profesor Apoyo'}
               </h2>
               <p className="text-white/80 text-sm font-medium">Programa de Cooperación Territorial para la Equidad Educativa</p>
             </div>
@@ -163,7 +159,7 @@ export function ProaDesignationView({ mode }: { mode: 'proa' | 'dad' }) {
             <div className="space-y-10">
               <div className="grid grid-cols-1 md:grid-cols-[1fr,auto,1fr] items-center gap-6">
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-bold text-gray-400 uppercase">1. Profesor de Apoyo (DAD)</Label>
+                  <Label className="text-[10px] font-bold text-gray-400 uppercase">1. Profesor de Apoyo</Label>
                   <Select onValueChange={setSelectedGroupId} value={selectedTeacherId || ""}>
                     <SelectTrigger className="h-12 border-gray-300 font-bold text-sm">
                       <SelectValue placeholder="Elegir apoyo..." />
@@ -196,9 +192,9 @@ export function ProaDesignationView({ mode }: { mode: 'proa' | 'dad' }) {
               <div className="bg-orange-50 border border-orange-100 p-6 rounded-xl flex items-start gap-4">
                  <UserCircle className="h-6 w-6 text-orange-600 shrink-0 mt-1" />
                  <div className="space-y-1">
-                    <h4 className="text-sm font-bold text-orange-800 uppercase tracking-tight">Sincronización de Apoyo (DAD)</h4>
+                    <h4 className="text-sm font-bold text-orange-800 uppercase tracking-tight">Sincronización de Apoyo</h4>
                     <p className="text-[10px] text-orange-700 leading-relaxed font-medium uppercase">
-                      El profesor designado como DAD tendrá acceso al **mismo horario** que el profesor titular. Podrá pasar lista y poner faltas que se sincronizarán automáticamente entre ambos perfiles en Rayuela.
+                      El profesor designado como apoyo compartirá el **mismo horario** que el profesor titular. Podrá pasar lista y poner faltas que se sincronizarán automáticamente bajo su rol de Profesor normal.
                     </p>
                  </div>
               </div>
@@ -206,7 +202,7 @@ export function ProaDesignationView({ mode }: { mode: 'proa' | 'dad' }) {
               <div className="flex justify-end pt-4">
                  <Button onClick={handleDesignateDad} disabled={!selectedTeacherId || !selectedTargetId || isSaving} className="bg-[#9c4d96] hover:bg-[#833d7d] text-white px-12 h-12 text-[11px] font-bold uppercase tracking-widest gap-2 shadow-xl">
                    {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                   Vincular Apoyo DAD
+                   Vincular Apoyo
                  </Button>
               </div>
             </div>
