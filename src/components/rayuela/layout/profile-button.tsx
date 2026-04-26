@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from 'react';
@@ -10,7 +11,8 @@ import {
   ShieldPlus, 
   HeartHandshake, 
   UserCog,
-  Gavel
+  Gavel,
+  Globe
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -44,6 +46,7 @@ export function ProfileButton({ profile, activeRole, onSetActiveRole, onSetActiv
         {profile.id === 'EsProfesor' && <Monitor className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
         {profile.id === 'EsAlumno' && <UserCircle className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
         {profile.id === 'EsSecretaria' && <Briefcase className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
+        {profile.id === 'EsCiudadano' && <Globe className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
         {profile.label === 'PROA+' && <ShieldPlus className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
         {profile.label === 'Profesor Gestión' && <Gavel className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
         {profile.type === 'SUBPROFILE' && profile.label !== 'PROA+' && profile.label !== 'Profesor Gestión' && <UserCog className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}

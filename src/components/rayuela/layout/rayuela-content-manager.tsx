@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from 'react';
@@ -24,6 +25,7 @@ import { LinksOfInterestView } from '@/components/rayuela/links-of-interest-view
 import { ExtraescolaresActivitiesView } from '@/components/rayuela/extraescolares-activities-view';
 import { ProaDesignationView } from '@/components/rayuela/proa-designation-view';
 import { DiagnosticOpeningView, DiagnosticGradingView, DiagnosticResultsView } from '@/components/rayuela/diagnostic-tests-views';
+import { ProfileSyncView } from '@/components/rayuela/profile-sync-view';
 import { 
   CredentialDeliveryView, 
   SecretaryPlaceholderView, 
@@ -136,6 +138,7 @@ export function RayuelaContentManager({
       case 'Actividades Extraescolares': return <ExtraescolaresActivitiesView />;
       case 'Designar PROA+': return <ProaDesignationView mode="proa" />;
       case 'Designar Profesor DAD': return <ProaDesignationView mode="dad" />;
+      case 'Sincronizacion Perfiles': return <ProfileSyncView />;
       default:
         if (activeSubContent) {
           return (
@@ -175,6 +178,8 @@ export function RayuelaContentManager({
                     ? "Entorno de secretaría virtual para trámites administrativos y expedientes."
                     : activeRole === 'CAU'
                     ? "Entorno de soporte técnico y atención de usuarios activo."
+                    : activeRole === 'Ciudadano'
+                    ? "Entorno de trámites públicos y servicios al ciudadano. Este perfil no requiere menú lateral para facilitar la navegación directa."
                     : activeRole === 'Calificador Diagnóstico (coord)'
                     ? "Entorno de coordinación para las pruebas de diagnóstico. Utilice el menú lateral morado para gestionar la apertura y resultados."
                     : activeRole === 'act extraesc.(coord)'

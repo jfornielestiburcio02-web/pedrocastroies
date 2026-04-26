@@ -69,7 +69,8 @@ export default function SeleccioneModuloAccesoPage() {
     'enlaces': false,
     'extraesc_root': false,
     'proa_root': false,
-    'pt_root': false
+    'pt_root': false,
+    'sincro_root': false
   });
   
   const router = useRouter();
@@ -108,6 +109,7 @@ export default function SeleccioneModuloAccesoPage() {
       else if (roles.includes('EsProfesor')) setActiveRole('Profesor');
       else if (roles.includes('EsAlumno')) setActiveRole('Alumno');
       else if (roles.includes('EsSecretaria')) setActiveRole('Secretaría');
+      else if (roles.includes('EsCiudadano')) setActiveRole('Ciudadano');
       setIsLoading(false);
     } else if (userData) {
       setIsLoading(false);
@@ -122,7 +124,8 @@ export default function SeleccioneModuloAccesoPage() {
       'EsCau': 'CAU',
       'EsProfesor': 'Profesor',
       'EsAlumno': 'Alumno',
-      'EsSecretaria': 'Secretaría'
+      'EsSecretaria': 'Secretaría',
+      'EsCiudadano': 'Ciudadano'
     };
 
     const baseRoles = (userData.rolesUsuario || []);
@@ -219,6 +222,17 @@ export default function SeleccioneModuloAccesoPage() {
   // Sincronización de horario de apoyo (DAD/PROA+): Se usa el ID del titular si existe vínculo.
   const effectiveTeacherId = userData?.esDADDe || session.usuario;
 
+  // Lógica de visualización del sidebar: No mostrar en perfil "Ciudadano"
+  const showSidebar = selectedModule && 
+    activeRole !== 'Ciudadano' &&
+    (activeRole === 'Profesor' || 
+     activeRole === 'Dirección' || 
+     activeRole === 'Alumno' || 
+     activeRole === 'Secretaría' || 
+     activeRole === 'PROA+' || 
+     activeRole === 'Profesor Gestión' || 
+     userData?.perfilesAdicionales?.includes(activeRole));
+
   return (
     <div className="min-h-screen bg-white font-verdana flex flex-col w-full overflow-x-hidden">
       {selectedModule && (
@@ -311,7 +325,7 @@ export default function SeleccioneModuloAccesoPage() {
       )}
 
       <div className="flex-1 flex w-full relative">
-        {selectedModule && (activeRole === 'Profesor' || activeRole === 'Dirección' || activeRole === 'Alumno' || activeRole === 'Secretaría' || activeRole === 'PROA+' || activeRole === 'Profesor Gestión' || userData?.perfilesAdicionales?.includes(activeRole)) && (
+        {showSidebar && (
           <RayuelaSidebar 
             activeRole={activeRole}
             sidebarMode={sidebarMode}

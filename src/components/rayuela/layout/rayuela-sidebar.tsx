@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from 'react';
@@ -19,7 +20,8 @@ import {
   FileSpreadsheet, 
   Home,
   Gavel,
-  ShieldAlert
+  ShieldAlert,
+  RefreshCw
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SidebarItem, SidebarHeading } from '../shared-components';
@@ -85,7 +87,7 @@ export function RayuelaSidebar({
                 <div className="p-2 bg-[#9c4d96] rounded-sm text-white"><Users className="h-5 w-5" /></div>
                 <div className="p-2 bg-[#9c4d96] rounded-sm text-white"><Clock className="h-5 w-5" /></div>
                 <div className="p-2 bg-[#9c4d96] rounded-sm text-white"><Files className="h-5 w-5" /></div>
-                <div className="p-2 bg-[#9c4d96] rounded-sm text-white"><ShieldCheck className="h-5 w-5" /></div>
+                <div className="p-2 bg-[#9c4d96] rounded-sm text-white"><RefreshCw className="h-5 w-5" /></div>
                 <div className="p-2 bg-gray-400 rounded-sm text-white cursor-pointer" onClick={() => router.push('/configuracion')}><UserCog className="h-5 w-5" /></div>
               </>
             ) : activeRole === 'Calificador Diagnóstico (coord)' ? (
@@ -403,6 +405,8 @@ export function RayuelaSidebar({
                       </div>
                     )}
                   </div>
+
+                  <SidebarItem color="#9c4d96" label="Sincronizacion Perfiles" onClick={() => onSetActiveSubContent('Sincronizacion Perfiles')} active={activeSubContent === 'Sincronizacion Perfiles'} />
 
                   <div className="flex flex-col">
                     <SidebarHeading label="Evaluaciones" expanded={expandedItems['evaluaciones_dir']} onClick={() => onToggleExpanded('evaluaciones_dir')} />
