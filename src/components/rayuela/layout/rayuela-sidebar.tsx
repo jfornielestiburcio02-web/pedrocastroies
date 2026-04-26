@@ -18,7 +18,8 @@ import {
   Key, 
   FileSpreadsheet, 
   Home,
-  Gavel
+  Gavel,
+  ShieldAlert
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SidebarItem, SidebarHeading } from '../shared-components';
@@ -57,6 +58,7 @@ export function RayuelaSidebar({
               <>
                 <div className="p-2 bg-[#9c4d96] rounded-sm text-white"><Gavel className="h-5 w-5" /></div>
                 <div className="p-2 bg-[#9c4d96] rounded-sm text-white"><Clock className="h-5 w-5" /></div>
+                <div className="p-2 bg-[#9c4d96] rounded-sm text-white"><ShieldAlert className="h-5 w-5" /></div>
                 <div className="p-2 bg-[#9c4d96] rounded-sm text-white"><Files className="h-5 w-5" /></div>
                 <div className="p-2 bg-gray-400 rounded-sm text-white" onClick={() => router.push('/configuracion')}><UserCog className="h-5 w-5" /></div>
               </>
@@ -120,6 +122,23 @@ export function RayuelaSidebar({
                         </div>
                       )}
                    </div>
+
+                   <div className="flex flex-col">
+                      <SidebarHeading label="Convivencia Escolar" expanded={expandedItems['conductas']} onClick={() => onToggleExpanded('conductas')} />
+                      {expandedItems['conductas'] && (
+                        <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
+                           <div className="flex flex-col">
+                              <SidebarHeading label="Conductas contrarias y graves" expanded={expandedItems['graves']} onClick={() => onToggleExpanded('graves')} />
+                              {expandedItems['graves'] && (
+                                <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
+                                   <SidebarItem color="#9c4d96" label="Alumnado Incidente" isSubItem onClick={() => onSetActiveSubContent('Alumnado Incidente')} active={activeSubContent === 'Alumnado Incidente'} />
+                                </div>
+                              )}
+                           </div>
+                        </div>
+                      )}
+                   </div>
+
                    <div className="flex flex-col">
                       <SidebarHeading label="Alumnado Centro" expanded={expandedItems['miAlumnado']} onClick={() => onToggleExpanded('miAlumnado')} />
                       {expandedItems['miAlumnado'] && (
