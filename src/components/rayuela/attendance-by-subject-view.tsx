@@ -14,7 +14,9 @@ import {
   X,
   CheckCircle2,
   Layout,
-  UserCheck
+  UserCheck,
+  Calendar,
+  Clock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,7 +38,7 @@ import {
   DialogTitle,
   DialogFooter
 } from "@/components/ui/dialog";
-import { Textarea } from '@/components/ui/textarea';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
 import { 
   doc, 
@@ -67,7 +69,7 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
     return days[new Date(selectedDate).getDay()];
   }, [selectedDate]);
 
-  // CARGA DE HORARIOS: Consulta simple para evitar fallos de índices
+  // CARGA DE HORARIOS: Consulta simple
   const schedulesQuery = useMemoFirebase(() => {
     if (manualScheduleId || !db || !profesorId) return null;
     return query(
@@ -80,7 +82,6 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
   
   const schedules = useMemo(() => {
     if (!rawSchedules) return [];
-    // Filtramos por día en memoria para asegurar compatibilidad total
     return rawSchedules
       .filter(s => s.dia === dayOfWeek)
       .sort((a, b) => (a.horaInicio || "").localeCompare(b.horaInicio || ""));
@@ -98,7 +99,7 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
     return schedules.find(s => s.id === selectedScheduleId);
   }, [schedules, selectedScheduleId, manualScheduleId, manualScheduleData]);
 
-  // CONSULTA DE ASISTENCIAS: Filtrado en memoria para evitar índices compuestos
+  // CONSULTA DE ASISTENCIAS
   const attendanceQuery = useMemoFirebase(() => {
     if (!db || !selectedScheduleId) return null;
     return query(
@@ -110,7 +111,7 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
   const { data: rawAttendances } = useCollection(attendanceQuery);
   const attendances = useMemo(() => rawAttendances?.filter(a => a.fecha === selectedDate), [rawAttendances, selectedDate]);
 
-  // CONSULTA DE COMPORTAMIENTOS: Filtrado en memoria
+  // CONSULTA DE COMPORTAMIENTOS
   const behaviorQuery = useMemoFirebase(() => {
     if (!db || !selectedScheduleId) return null;
     return query(
@@ -189,6 +190,19 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
 
   const handleToggleBehavior = (alumnoId: string, tipo: 'Positivo' | 'Negativo') => {
     if (!db || !selectedScheduleId) return;
+    
+    // VALIDACIÓN CRÍTICA: No permitir negativos/positivos si el alumno no está
+    const attendanceId = `${alumnoId}_${selectedScheduleId}_${selectedDate}`;
+    const attendance = attendances?.find(a => a.id === attendanceId);
+    if (attendance?.tipo === 'I' || attendance?.tipo === 'J') {
+      toast({ 
+        variant: "destructive", 
+        title: "Operación no permitida", 
+        description: "No puede registrar conductas para un alumno marcado como ausente." 
+      });
+      return;
+    }
+
     const behaviorId = `${alumnoId}_${selectedScheduleId}_${selectedDate}_behavior`;
     const docRef = doc(db, 'comportamientos', behaviorId);
     const existing = behaviors?.find(b => b.id === behaviorId);
@@ -275,14 +289,19 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
              const attendanceId = `${student.id}_${selectedScheduleId}_${selectedDate}`;
              const studentAttendance = attendances?.find(a => a.id === attendanceId);
              const currentStatus = studentAttendance?.tipo || 'A';
+             const isAbsent = currentStatus === 'I' || currentStatus === 'J';
+             
              const behaviorId = `${student.id}_${selectedScheduleId}_${selectedDate}_behavior`;
              const studentBehavior = behaviors?.find(b => b.id === behaviorId);
              
              return (
                <div key={student.id} className="itemAlumnoEnClase relative group pt-3">
-                  <Avatar className="imagenAlumnoEnClase" onClick={() => setHistoryAlumnoId(student.id)}>
+                  <Avatar className="imagenAlumnoEnClase relative" onClick={() => setHistoryAlumnoId(student.id)}>
                     <AvatarImage src={student.imagenPerfil} />
                     <AvatarFallback>{student.usuario?.substring(0, 2).toUpperCase()}</AvatarFallback>
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-full">
+                       <History className="h-6 w-6 text-white" />
+                    </div>
                   </Avatar>
                   <div className="nombreAlumno px-2 mt-2">{student.nombrePersona || student.usuario}</div>
                   <div className="w-full px-2 mt-1">
@@ -291,14 +310,133 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
                     </button>
                   </div>
                   <div className="flex items-center justify-center gap-4 mt-2">
-                     <button onClick={() => handleToggleBehavior(student.id, 'Positivo')} className={cn("transition-transform hover:scale-110", studentBehavior?.tipo === 'Positivo' ? "text-green-600 scale-125" : "text-gray-300")}><ThumbsUp className="h-5 w-5" /></button>
-                     <button onClick={() => handleToggleBehavior(student.id, 'Negativo')} className={cn("transition-transform hover:scale-110", studentBehavior?.tipo === 'Negativo' ? "text-red-600 scale-125" : "text-gray-300")}><ThumbsDown className="h-5 w-5" /></button>
+                     <button 
+                      onClick={() => handleToggleBehavior(student.id, 'Positivo')} 
+                      disabled={isAbsent}
+                      className={cn(
+                        "transition-all", 
+                        studentBehavior?.tipo === 'Positivo' ? "text-green-600 scale-125" : "text-gray-300 hover:text-green-400",
+                        isAbsent && "opacity-20 cursor-not-allowed"
+                      )}
+                     >
+                       <ThumbsUp className="h-5 w-5" />
+                     </button>
+                     <button 
+                      onClick={() => handleToggleBehavior(student.id, 'Negativo')} 
+                      disabled={isAbsent}
+                      className={cn(
+                        "transition-all", 
+                        studentBehavior?.tipo === 'Negativo' ? "text-red-600 scale-125" : "text-gray-300 hover:text-red-400",
+                        isAbsent && "opacity-20 cursor-not-allowed"
+                      )}
+                     >
+                       <ThumbsDown className="h-5 w-5" />
+                     </button>
                   </div>
                </div>
              );
            })}
         </div>
       )}
+
+      {historyAlumnoId && (
+        <StudentHistoryDialog 
+          alumnoId={historyAlumnoId} 
+          onClose={() => setHistoryAlumnoId(null)} 
+          claseId={selectedScheduleId!}
+        />
+      )}
     </div>
+  );
+}
+
+function StudentHistoryDialog({ alumnoId, onClose, claseId }: { alumnoId: string, onClose: () => void, claseId: string }) {
+  const db = useFirestore();
+  const [alumno, setAlumno] = useState<any>(null);
+
+  useEffect(() => {
+    if (db && alumnoId) {
+      getDoc(doc(db, 'usuarios', alumnoId)).then(s => s.exists() && setAlumno(s.data()));
+    }
+  }, [db, alumnoId]);
+
+  const historyQuery = useMemoFirebase(() => {
+    if (!db || !alumnoId || !claseId) return null;
+    return query(
+      collection(db, 'asistenciasInasistencias'),
+      where('alumnoId', '==', alumnoId),
+      where('claseId', '==', claseId)
+    );
+  }, [db, alumnoId, claseId]);
+
+  const { data: rawHistory, isLoading } = useCollection(historyQuery);
+  
+  const history = useMemo(() => {
+    return (rawHistory || []).sort((a, b) => b.fecha.localeCompare(a.fecha));
+  }, [rawHistory]);
+
+  return (
+    <Dialog open={true} onOpenChange={onClose}>
+      <DialogContent className="max-w-xl font-verdana p-0 border-none overflow-hidden">
+        <DialogHeader className="bg-[#89a54e] p-6 text-white shrink-0">
+           <div className="flex items-center gap-4">
+              <Avatar className="h-12 w-12 border-2 border-white shadow-md">
+                 <AvatarImage src={alumno?.imagenPerfil} />
+                 <AvatarFallback>{alumno?.usuario?.substring(0,2).toUpperCase()}</AvatarFallback>
+              </Avatar>
+              <div>
+                 <DialogTitle className="text-sm font-bold uppercase tracking-widest">Historial de Asistencia</DialogTitle>
+                 <DialogDescription className="text-white/80 text-[10px] font-bold uppercase">
+                   {alumno?.nombrePersona || alumno?.usuario} - Materia Actual
+                 </DialogDescription>
+              </div>
+           </div>
+        </DialogHeader>
+
+        <div className="p-0 bg-white">
+           <ScrollArea className="h-[400px]">
+              {isLoading ? (
+                <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-[#89a54e]" /></div>
+              ) : history.length === 0 ? (
+                <div className="py-20 text-center text-gray-400 italic text-sm">No constan faltas previas en esta materia.</div>
+              ) : (
+                <div className="flex flex-col">
+                   {history.map((record) => (
+                     <div key={record.id} className="p-4 border-b flex items-center justify-between hover:bg-gray-50 transition-colors">
+                        <div className="flex flex-col gap-0.5">
+                           <div className="flex items-center gap-2">
+                             <Calendar className="h-3 w-3 text-gray-400" />
+                             <span className="text-xs font-bold text-gray-700">{format(new Date(record.fecha), 'dd/MM/yyyy')}</span>
+                           </div>
+                           <span className="text-[10px] text-gray-400 uppercase font-medium ml-5">{format(new Date(record.fecha), 'EEEE', { locale: es })}</span>
+                        </div>
+                        
+                        <div className="flex items-center gap-6">
+                           {record.motivo && (
+                             <div className="flex items-center gap-1.5 text-blue-600 bg-blue-50 px-2 py-0.5 rounded text-[9px] font-bold uppercase max-w-[150px] truncate">
+                               <AlertCircle className="h-3 w-3" /> {record.motivo}
+                             </div>
+                           )}
+                           <Badge className={cn(
+                             "text-[9px] font-bold border-none px-3 py-1 uppercase",
+                             record.tipo === 'I' ? "bg-orange-100 text-orange-700" :
+                             record.tipo === 'R' ? "bg-yellow-100 text-yellow-700" :
+                             record.tipo === 'J' ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-400"
+                           )}>
+                             {record.tipo === 'I' ? 'Falta' : record.tipo === 'R' ? 'Retraso' : record.tipo === 'J' ? 'Justif.' : 'Aviso'}
+                           </Badge>
+                        </div>
+                     </div>
+                   ))}
+                </div>
+              )}
+           </ScrollArea>
+        </div>
+
+        <DialogFooter className="bg-gray-50 p-4 border-t">
+           <Button onClick={onClose} className="w-full bg-gray-800 hover:bg-black text-white text-[11px] font-bold uppercase h-10 shadow-md">Cerrar Historial</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

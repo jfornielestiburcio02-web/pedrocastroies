@@ -14,7 +14,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, orderBy } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -32,12 +32,12 @@ export function TeacherNotificationsView({ profesorId, mode, grupoTutorizado }: 
   const db = useFirestore();
 
   // 1. Obtener todas las notificaciones (asistencias con tipo vacío y motivo presente)
+  // Simplificamos eliminando orderBy para evitar errores de índices
   const notificationsQuery = useMemoFirebase(() => {
     if (!db) return null;
     return query(
       collection(db, 'asistenciasInasistencias'),
-      where('tipo', '==', ''),
-      orderBy('fecha', 'desc')
+      where('tipo', '==', '')
     );
   }, [db]);
 
@@ -56,22 +56,24 @@ export function TeacherNotificationsView({ profesorId, mode, grupoTutorizado }: 
   }, [db]);
   const { data: allSchedules } = useCollection(schedulesQuery);
 
-  // 3. Filtrar notificaciones según el modo
+  // 3. Filtrar notificaciones según el modo y Ordenar en Memoria
   const filteredNotifications = useMemo(() => {
     if (!allNotifications || !allUsers) return [];
 
+    let results = [];
     if (mode === 'my-students') {
-      // Notificaciones enviadas específicamente a este profesor
-      return allNotifications.filter(n => n.profesorId === profesorId);
+      results = allNotifications.filter(n => n.profesorId === profesorId);
     } else {
-      // Notificaciones de alumnos del grupo de tutoría
       if (!grupoTutorizado) return [];
       const tutoringStudentsIds = allUsers
         .filter(u => u.cursoAlumno === grupoTutorizado && u.rolesUsuario?.includes('EsAlumno'))
         .map(u => u.id);
       
-      return allNotifications.filter(n => tutoringStudentsIds.includes(n.alumnoId));
+      results = allNotifications.filter(n => tutoringStudentsIds.includes(n.alumnoId));
     }
+
+    // Ordenar por fecha descendente en memoria para seguridad total
+    return results.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }, [allNotifications, allUsers, mode, profesorId, grupoTutorizado]);
 
   const getStudentInfo = (id: string) => {
@@ -162,7 +164,9 @@ export function TeacherNotificationsView({ profesorId, mode, grupoTutorizado }: 
                     <div className="md:w-48 flex flex-col justify-center items-end gap-3 shrink-0 pt-4 md:pt-0 md:border-l md:pl-6 border-gray-100">
                        <div className="flex flex-col items-end">
                           <span className="text-[9px] text-gray-400 font-bold uppercase">Enviado el</span>
-                          <span className="text-[10px] text-gray-600 font-bold">{format(new Date(notif.createdAt), 'dd/MM/yyyy HH:mm')}</span>
+                          <span className="text-[10px] text-gray-600 font-bold">
+                            {notif.createdAt ? format(new Date(notif.createdAt), 'dd/MM/yyyy HH:mm') : 'Fecha desconocida'}
+                          </span>
                        </div>
                        <div className="flex items-center gap-1.5 px-3 py-1 bg-orange-50 text-orange-700 rounded-full text-[9px] font-bold uppercase tracking-wider">
                           <AlertCircle className="h-3 w-3" /> Pendiente de validar
@@ -181,7 +185,7 @@ export function TeacherNotificationsView({ profesorId, mode, grupoTutorizado }: 
          <div className="space-y-1">
             <h4 className="text-sm font-bold text-blue-800 uppercase tracking-tight">Información de Seguimiento</h4>
             <p className="text-[11px] text-blue-700 leading-relaxed font-medium">
-              Esta sección centraliza las notificaciones enviadas proactivamente por los alumnos (o familias). Para que la falta sea **Justificada**, el profesor de la materia deberá validar el motivo desde el panel de asistencia por materia del día correspondiente.
+              Esta sección centraliza las notificaciones enviadas proactivamente por los alumnos. Para que la falta sea **Justificada**, el profesor de la materia deberá validar el motivo desde el panel de asistencia por materia del día correspondiente.
             </p>
          </div>
       </div>
