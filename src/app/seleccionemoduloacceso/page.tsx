@@ -183,7 +183,12 @@ export default function SeleccioneModuloAccesoPage() {
         setActiveRole('Profesor Gestión');
       }
     } else if (label === "Secretaría Virtual") {
-      setActiveRole('Secretaría');
+      // Prioridad: Secretaría > Ciudadano
+      if (roles.includes('EsSecretaria')) {
+        setActiveRole('Secretaría');
+      } else if (roles.includes('EsCiudadano')) {
+        setActiveRole('Ciudadano');
+      }
     } else if (label.startsWith("CAU")) {
       setActiveRole('CAU');
     }
@@ -213,13 +218,13 @@ export default function SeleccioneModuloAccesoPage() {
 
   const userRoles = Array.from(new Set(userData?.rolesUsuario || [])) as string[];
   const canSeeSeguimiento = userRoles.includes('EsProfesor') || userRoles.includes('EsAlumno');
-  const canSeeGestion = userRoles.includes('EsDireccion') || userRoles.includes('EsProfesor'); // Compartido
-  const canSeeSecretaria = userRoles.includes('EsSecretaria');
+  const canSeeGestion = userRoles.includes('EsDireccion') || userRoles.includes('EsProfesor');
+  const canSeeSecretaria = userRoles.includes('EsSecretaria') || userRoles.includes('EsCiudadano');
   const canSeeCau = userRoles.includes('EsCau');
 
   const isTeacherTutor = userData?.esTutor && userData?.esTutor !== "";
   
-  // Sincronización de horario de apoyo (DAD/PROA+): Se usa el ID del titular si existe vínculo.
+  // Sincronización de horario de apoyo: Se usa el ID del titular si existe vínculo.
   const effectiveTeacherId = userData?.esDADDe || session.usuario;
 
   // Lógica de visualización del sidebar: No mostrar en perfil "Ciudadano"
