@@ -165,6 +165,8 @@ export function RayuelaContentManager({
                     ? "Seleccione una option del menú lateral para comenzar el seguimiento de sus alumnos." 
                     : activeRole === 'PROA+'
                     ? `Usted está actuando como profesor de refuerzo (PROA+). ${userData?.esDADDe ? 'Visualiza y gestiona el horario de ' + userData.esDADDe + '.' : 'Seleccione una opción para gestionar las medidas de apoyo.'}`
+                    : activeRole === 'Profesor Gestión'
+                    ? "Perfil de profesorado con acceso a herramientas de gestión administrativa y coordinación horaria. Utilice el menú lateral morado."
                     : activeRole === 'Alumno'
                     ? "Entorno de seguimiento académico activo para consulta de notas y asistencia personal."
                     : activeRole === 'Dirección'

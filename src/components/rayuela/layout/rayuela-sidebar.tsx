@@ -17,7 +17,8 @@ import {
   Award, 
   Key, 
   FileSpreadsheet, 
-  Home 
+  Home,
+  Gavel
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SidebarItem, SidebarHeading } from '../shared-components';
@@ -52,7 +53,14 @@ export function RayuelaSidebar({
       <div className="flex-1 flex flex-col">
         <div className="flex h-full">
           <div className="w-[60px] min-w-[60px] flex flex-col items-center py-4 gap-4 bg-[#f4f4f4] border-r border-gray-200/50">
-            {(activeRole === 'Profesor' || activeRole === 'Alumno' || activeRole === 'PROFESORdad+' || activeRole === 'PROA+') ? (
+            {activeRole === 'Profesor Gestión' ? (
+              <>
+                <div className="p-2 bg-[#9c4d96] rounded-sm text-white"><Gavel className="h-5 w-5" /></div>
+                <div className="p-2 bg-[#9c4d96] rounded-sm text-white"><Clock className="h-5 w-5" /></div>
+                <div className="p-2 bg-[#9c4d96] rounded-sm text-white"><Files className="h-5 w-5" /></div>
+                <div className="p-2 bg-gray-400 rounded-sm text-white" onClick={() => router.push('/configuracion')}><UserCog className="h-5 w-5" /></div>
+              </>
+            ) : (activeRole === 'Profesor' || activeRole === 'PROA+') ? (
               <>
                 <div className={cn("p-2 rounded-sm text-white cursor-pointer transition-colors", sidebarMode === 'ACADEMIC' ? "bg-[#89a54e]" : "bg-gray-400")} onClick={() => onSetSidebarMode('ACADEMIC')}><BookOpen className="h-5 w-5" /></div>
                 <div className={cn("p-2 rounded-sm text-white cursor-pointer transition-colors", sidebarMode === 'MESSAGING' ? "bg-[#fb8500]" : "bg-gray-400")} onClick={() => onSetSidebarMode('MESSAGING')}><Megaphone className="h-5 w-5" /></div>
@@ -101,7 +109,28 @@ export function RayuelaSidebar({
           
           <div className="hidden group-hover:flex flex-col py-4 w-full bg-white animate-in fade-in slide-in-from-left-2 duration-300 overflow-y-auto">
             <div className="px-2 space-y-0.5">
-              {(activeRole === 'Profesor' || activeRole === 'PROFESORdad+' || activeRole === 'PROA+') ? (
+              {activeRole === 'Profesor Gestión' ? (
+                <div className="space-y-2">
+                   <div className="flex flex-col">
+                      <SidebarHeading label="Gestión Docente" expanded={expandedItems['horarios']} onClick={() => onToggleExpanded('horarios')} />
+                      {expandedItems['horarios'] && (
+                        <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
+                          <SidebarItem color="#9c4d96" label="Ver Horarios" isSubItem onClick={() => onSetActiveSubContent('Ver Horarios')} active={activeSubContent === 'Ver Horarios'} />
+                          <SidebarItem color="#9c4d96" label="Mi Horario Personal" isSubItem onClick={() => onSetActiveSubContent('Mi Horario Personal')} active={activeSubContent === 'Mi Horario Personal'} />
+                        </div>
+                      )}
+                   </div>
+                   <div className="flex flex-col">
+                      <SidebarHeading label="Alumnado Centro" expanded={expandedItems['miAlumnado']} onClick={() => onToggleExpanded('miAlumnado')} />
+                      {expandedItems['miAlumnado'] && (
+                        <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
+                          <SidebarItem color="#9c4d96" label="Alumnado del centro" isSubItem onClick={() => onSetActiveSubContent('Alumnado del centro')} active={activeSubContent === 'Alumnado del centro'} />
+                          <SidebarItem color="#9c4d96" label="Gestión de Grupos" isSubItem onClick={() => onSetActiveSubContent('Gestión de Grupos')} active={activeSubContent === 'Gestión de Grupos'} />
+                        </div>
+                      )}
+                   </div>
+                </div>
+              ) : (activeRole === 'Profesor' || activeRole === 'PROA+') ? (
                 <div className="flex flex-col space-y-2">
                   {sidebarMode === 'ACADEMIC' ? (
                     <>

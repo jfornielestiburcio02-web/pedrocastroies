@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useMemo } from 'react';
@@ -570,7 +569,8 @@ export function UserProfilesManagementView() {
     "Coordinacion Bilingüismo",
     "Coordinacion Bienestar",
     "Responsable Biblioteca",
-    "Calificador Diagnóstico (coord)"
+    "Calificador Diagnóstico (coord)",
+    "Profesor Gestión"
   ];
 
   const handleToggleSubProfile = (teacherId: string, profile: string, isAssigned: boolean) => {
