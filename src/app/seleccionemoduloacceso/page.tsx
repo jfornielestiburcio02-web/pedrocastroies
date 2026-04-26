@@ -173,7 +173,12 @@ export default function SeleccioneModuloAccesoPage() {
       if (roles.includes('EsProfesor')) setActiveRole('Profesor');
       else if (roles.includes('EsAlumno')) setActiveRole('Alumno');
     } else if (label === "Gestión") {
-      setActiveRole('Dirección');
+      // Prioridad: Dirección > Profesor Gestión
+      if (roles.includes('EsDireccion')) {
+        setActiveRole('Dirección');
+      } else if (roles.includes('EsProfesor')) {
+        setActiveRole('Profesor Gestión');
+      }
     } else if (label === "Secretaría Virtual") {
       setActiveRole('Secretaría');
     } else if (label.startsWith("CAU")) {
@@ -205,7 +210,7 @@ export default function SeleccioneModuloAccesoPage() {
 
   const userRoles = Array.from(new Set(userData?.rolesUsuario || [])) as string[];
   const canSeeSeguimiento = userRoles.includes('EsProfesor') || userRoles.includes('EsAlumno');
-  const canSeeGestion = userRoles.includes('EsDireccion');
+  const canSeeGestion = userRoles.includes('EsDireccion') || userRoles.includes('EsProfesor'); // Compartido
   const canSeeSecretaria = userRoles.includes('EsSecretaria');
   const canSeeCau = userRoles.includes('EsCau');
 
