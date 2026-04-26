@@ -60,7 +60,7 @@ export function RayuelaSidebar({
                 <div className="p-2 bg-[#9c4d96] rounded-sm text-white"><Clock className="h-5 w-5" /></div>
                 <div className="p-2 bg-[#9c4d96] rounded-sm text-white"><ShieldAlert className="h-5 w-5" /></div>
                 <div className="p-2 bg-[#9c4d96] rounded-sm text-white"><Files className="h-5 w-5" /></div>
-                <div className="p-2 bg-gray-400 rounded-sm text-white" onClick={() => router.push('/configuracion')}><UserCog className="h-5 w-5" /></div>
+                <div className="p-2 bg-gray-400 rounded-sm text-white cursor-pointer" onClick={() => router.push('/configuracion')}><UserCog className="h-5 w-5" /></div>
               </>
             ) : (activeRole === 'Profesor' || activeRole === 'PROA+') ? (
               <>
@@ -69,7 +69,7 @@ export function RayuelaSidebar({
                 <div className="p-2 bg-gray-400 rounded-sm text-white"><Video className="h-5 w-5" /></div>
                 <div className="p-2 bg-gray-400 rounded-sm text-white"><Pin className="h-5 w-5" /></div>
                 <div className="p-2 bg-gray-400 rounded-sm text-white"><Files className="h-5 w-5" /></div>
-                <div className="p-2 bg-gray-400 rounded-sm text-white" onClick={() => router.push('/configuracion')}><UserCog className="h-5 w-5" /></div>
+                <div className="p-2 bg-gray-400 rounded-sm text-white cursor-pointer" onClick={() => router.push('/configuracion')}><UserCog className="h-5 w-5" /></div>
               </>
             ) : activeRole === 'Secretaría' ? (
               <>
@@ -78,7 +78,7 @@ export function RayuelaSidebar({
                 <div className="p-2 bg-[#fb8500] rounded-sm text-white"><Award className="h-5 w-5" /></div>
                 <div className="p-2 bg-[#fb8500] rounded-sm text-white"><Files className="h-5 w-5" /></div>
                 <div className="p-2 bg-[#fb8500] rounded-sm text-white"><Key className="h-5 w-5" /></div>
-                <div className="p-2 bg-gray-400 rounded-sm text-white" onClick={() => router.push('/configuracion')}><UserCog className="h-5 w-5" /></div>
+                <div className="p-2 bg-gray-400 rounded-sm text-white cursor-pointer" onClick={() => router.push('/configuracion')}><UserCog className="h-5 w-5" /></div>
               </>
             ) : activeRole === 'Dirección' ? (
               <>
@@ -86,25 +86,25 @@ export function RayuelaSidebar({
                 <div className="p-2 bg-[#9c4d96] rounded-sm text-white"><Clock className="h-5 w-5" /></div>
                 <div className="p-2 bg-[#9c4d96] rounded-sm text-white"><Files className="h-5 w-5" /></div>
                 <div className="p-2 bg-[#9c4d96] rounded-sm text-white"><ShieldCheck className="h-5 w-5" /></div>
-                <div className="p-2 bg-gray-400 rounded-sm text-white" onClick={() => router.push('/configuracion')}><UserCog className="h-5 w-5" /></div>
+                <div className="p-2 bg-gray-400 rounded-sm text-white cursor-pointer" onClick={() => router.push('/configuracion')}><UserCog className="h-5 w-5" /></div>
               </>
             ) : activeRole === 'Calificador Diagnóstico (coord)' ? (
               <>
                 <div className="p-2 bg-[#9c4d96] rounded-sm text-white"><FileSpreadsheet className="h-5 w-5" /></div>
                 <div className="p-2 bg-gray-400 rounded-sm text-white"><Files className="h-5 w-5" /></div>
-                <div className="p-2 bg-gray-400 rounded-sm text-white" onClick={() => router.push('/configuracion')}><UserCog className="h-5 w-5" /></div>
+                <div className="p-2 bg-gray-400 rounded-sm text-white cursor-pointer" onClick={() => router.push('/configuracion')}><UserCog className="h-5 w-5" /></div>
               </>
             ) : activeRole === 'act extraesc.(coord)' ? (
               <>
                 <div className="p-2 bg-[#9c4d96] rounded-sm text-white"><Home className="h-5 w-5" /></div>
                 <div className="p-2 bg-[#9c4d96] rounded-sm text-white"><Files className="h-5 w-5" /></div>
-                <div className="p-2 bg-gray-400 rounded-sm text-white" onClick={() => router.push('/configuracion')}><UserCog className="h-5 w-5" /></div>
+                <div className="p-2 bg-gray-400 rounded-sm text-white cursor-pointer" onClick={() => router.push('/configuracion')}><UserCog className="h-5 w-5" /></div>
               </>
             ) : (
               <>
                 <div className="p-2 bg-[#fb8500] rounded-sm text-white"><UserCog className="h-5 w-5" /></div>
                 <div className="p-2 bg-gray-400 rounded-sm text-white"><Files className="h-5 w-5" /></div>
-                <div className="p-2 bg-gray-400 rounded-sm text-white" onClick={() => router.push('/configuracion')}><UserCog className="h-5 w-5" /></div>
+                <div className="p-2 bg-gray-400 rounded-sm text-white cursor-pointer" onClick={() => router.push('/configuracion')}><UserCog className="h-5 w-5" /></div>
               </>
             )}
           </div>
@@ -162,22 +162,6 @@ export function RayuelaSidebar({
                               <SidebarItem color="#89a54e" label="Funcion tutorial" isSubItem onClick={() => onSetActiveSubContent('Funcion tutorial')} active={activeSubContent === 'Funcion tutorial'} />
                             )}
                             <SidebarItem color="#89a54e" label="Guardias" isSubItem onClick={() => onSetActiveSubContent('Guardias')} active={activeSubContent === 'Guardias'} />
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="flex flex-col">
-                        <SidebarHeading label="Convivencia Escolar" expanded={expandedItems['conductas']} onClick={() => onToggleExpanded('conductas')} />
-                        {expandedItems['conductas'] && (
-                          <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
-                             <div className="flex flex-col">
-                                <SidebarHeading label="Conductas contrarias y graves" expanded={expandedItems['graves']} onClick={() => onToggleExpanded('graves')} />
-                                {expandedItems['graves'] && (
-                                  <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
-                                     <SidebarItem color="#89a54e" label="Alumnado Incidente" isSubItem onClick={() => onSetActiveSubContent('Alumnado Incidente')} active={activeSubContent === 'Alumnado Incidente'} />
-                                  </div>
-                                )}
-                             </div>
                           </div>
                         )}
                       </div>
