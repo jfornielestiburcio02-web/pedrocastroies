@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useState, useMemo } from 'react';
@@ -124,11 +125,21 @@ export default function SeleccioneModuloAccesoPage() {
       'EsSecretaria': 'Secretaría'
     };
 
-    const roles = (userData.rolesUsuario || []).map((r: string) => ({
+    const baseRoles = (userData.rolesUsuario || []);
+    const roles = baseRoles.map((r: string) => ({
       id: r,
       label: roleMap[r] || r,
       type: 'ROLE'
     }));
+
+    // INYECCIÓN AUTOMÁTICA: Si es profesor, tiene perfil de Gestión vinculado
+    if (baseRoles.includes('EsProfesor')) {
+      roles.push({
+        id: 'ProfesorGestionVirtual',
+        label: 'Profesor Gestión',
+        type: 'ROLE'
+      });
+    }
 
     const additional = (userData.perfilesAdicionales || []).map((p: string) => ({
       id: p,
@@ -295,7 +306,7 @@ export default function SeleccioneModuloAccesoPage() {
       )}
 
       <div className="flex-1 flex w-full relative">
-        {selectedModule && (activeRole === 'Profesor' || activeRole === 'Dirección' || activeRole === 'Alumno' || activeRole === 'Secretaría' || activeRole === 'PROA+' || userData?.perfilesAdicionales?.includes(activeRole)) && (
+        {selectedModule && (activeRole === 'Profesor' || activeRole === 'Dirección' || activeRole === 'Alumno' || activeRole === 'Secretaría' || activeRole === 'PROA+' || activeRole === 'Profesor Gestión' || userData?.perfilesAdicionales?.includes(activeRole)) && (
           <RayuelaSidebar 
             activeRole={activeRole}
             sidebarMode={sidebarMode}
