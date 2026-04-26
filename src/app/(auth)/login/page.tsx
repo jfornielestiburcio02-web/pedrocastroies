@@ -21,7 +21,7 @@ export default function Home() {
             key={i}
             className="text-red-600 font-bold text-xs animate-pulse inline-block m-1"
           >
-            HACKEADO JOEL
+            ngix
           </p>
         ))}
       </div>
