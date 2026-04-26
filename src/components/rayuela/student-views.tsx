@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useMemo, useState, useEffect } from 'react';
@@ -96,7 +97,7 @@ export function StudentAttendanceView({ studentId, onlyUnjustified = false }: { 
 
   const attendances = useMemo(() => {
     if (!rawAttendances) return [];
-    if (onlyUnjustified) return []; 
+    if (onlyUnjustified) return rawAttendances.filter(a => !a.motivo || a.motivo === ""); 
     return rawAttendances;
   }, [rawAttendances, onlyUnjustified]);
 
@@ -756,7 +757,7 @@ export function StudentScheduleView({ studentId }: { studentId: string }) {
   if (isLoading) return <div className="flex justify-center p-20"><Loader2 className="h-8 w-8 animate-spin text-[#89a54e]" /></div>;
 
   return (
-    <div className="animate-in fade-in duration-500 max-w-full mx-auto space-y-6 overflow-x-hidden">
+    <div className="animate-in fade-in duration-500 max-full mx-auto space-y-6 overflow-x-hidden">
       <div className="bg-white border rounded-xl shadow-sm overflow-hidden">
         <div className="bg-[#89a54e] p-4 text-white flex items-center gap-2">
           <Calendar className="h-5 w-5" />

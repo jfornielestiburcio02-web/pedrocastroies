@@ -16,7 +16,8 @@ import {
   Layout,
   UserCheck,
   Calendar,
-  Clock
+  Clock,
+  Bell
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -290,12 +291,21 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
              const studentAttendance = attendances?.find(a => a.id === attendanceId);
              const currentStatus = studentAttendance?.tipo || 'A';
              const isAbsent = currentStatus === 'I' || currentStatus === 'J';
+             const hasNotification = studentAttendance?.tipo === '' && studentAttendance?.motivo;
              
              const behaviorId = `${student.id}_${selectedScheduleId}_${selectedDate}_behavior`;
              const studentBehavior = behaviors?.find(b => b.id === behaviorId);
              
              return (
                <div key={student.id} className="itemAlumnoEnClase relative group pt-3">
+                  {hasNotification && (
+                    <div className="absolute -top-1 -right-1 z-20">
+                      <div className="bg-red-600 text-white rounded-full p-1 shadow-lg animate-bounce border-2 border-white">
+                        <Bell className="h-3 w-3" />
+                      </div>
+                    </div>
+                  )}
+
                   <Avatar className="imagenAlumnoEnClase relative" onClick={() => setHistoryAlumnoId(student.id)}>
                     <AvatarImage src={student.imagenPerfil} />
                     <AvatarFallback>{student.usuario?.substring(0, 2).toUpperCase()}</AvatarFallback>
@@ -305,8 +315,15 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
                   </Avatar>
                   <div className="nombreAlumno px-2 mt-2">{student.nombrePersona || student.usuario}</div>
                   <div className="w-full px-2 mt-1">
-                    <button onClick={() => currentStatus !== 'J' && handleCycleAttendance(student.id)} data-state={currentStatus || 'A'} className="botonFalta h-8 font-bold">
-                      {currentStatus === 'I' ? 'Injustif.' : currentStatus === 'R' ? 'Retraso' : currentStatus === 'J' ? 'Justif.' : 'Asiste'}
+                    <button 
+                      onClick={() => currentStatus !== 'J' && handleCycleAttendance(student.id)} 
+                      data-state={currentStatus || 'A'} 
+                      className={cn(
+                        "botonFalta h-8 font-bold relative",
+                        hasNotification && "border-red-500 text-red-700"
+                      )}
+                    >
+                      {currentStatus === 'I' ? 'Injustif.' : currentStatus === 'R' ? 'Retraso' : currentStatus === 'J' ? 'Justif.' : hasNotification ? 'Aviso' : 'Asiste'}
                     </button>
                   </div>
                   <div className="flex items-center justify-center gap-4 mt-2">
@@ -380,7 +397,7 @@ function StudentHistoryDialog({ alumnoId, onClose, claseId }: { alumnoId: string
       <DialogContent className="max-w-xl font-verdana p-0 border-none overflow-hidden">
         <DialogHeader className="bg-[#89a54e] p-6 text-white shrink-0">
            <div className="flex items-center gap-4">
-              <Avatar className="h-12 w-12 border-2 border-white shadow-md">
+              <Avatar className="h-12 w-12 border-2 border-white shadow-sm">
                  <AvatarImage src={alumno?.imagenPerfil} />
                  <AvatarFallback>{alumno?.usuario?.substring(0,2).toUpperCase()}</AvatarFallback>
               </Avatar>
@@ -421,7 +438,8 @@ function StudentHistoryDialog({ alumnoId, onClose, claseId }: { alumnoId: string
                              "text-[9px] font-bold border-none px-3 py-1 uppercase",
                              record.tipo === 'I' ? "bg-orange-100 text-orange-700" :
                              record.tipo === 'R' ? "bg-yellow-100 text-yellow-700" :
-                             record.tipo === 'J' ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-400"
+                             record.tipo === 'J' ? "bg-green-100 text-green-700" :
+                             "bg-blue-50 text-blue-600"
                            )}>
                              {record.tipo === 'I' ? 'Falta' : record.tipo === 'R' ? 'Retraso' : record.tipo === 'J' ? 'Justif.' : 'Aviso'}
                            </Badge>
