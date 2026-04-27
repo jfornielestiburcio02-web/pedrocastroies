@@ -1,248 +1,366 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { initializeApp, getApps } from "firebase/app";
+import { app } from "@/firebase/config";
 import {
   getFirestore,
   collection,
-  getDocs
+  getDocs,
 } from "firebase/firestore";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyCpQ7ra0eLj8kskc_3hxCJSlV_z8N6nPy4",
-  authDomain: "studio-5014911262-ee6e6.firebaseapp.com",
-  projectId: "studio-5014911262-ee6e6",
-  storageBucket: "studio-5014911262-ee6e6.firebasestorage.app",
-  messagingSenderId: "839128312548",
-  appId: "1:839128312548:web:f104ae0c961aaba3d1daf1"
-};
-
-const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 export default function Page() {
   const [tramites, setTramites] = useState([]);
   const [seleccionado, setSeleccionado] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     cargarTramites();
   }, []);
 
   async function cargarTramites() {
-    const snap = await getDocs(collection(db, "tramites"));
-    const datos = snap.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data()
-    }));
-    setTramites(datos);
+    try {
+      const snap = await getDocs(collection(db, "tramites"));
+
+      const lista = snap.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
+      setTramites(lista);
+
+      if (lista.length > 0) {
+        setSeleccionado(lista[0]);
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
   }
 
-  function abrirTramite(url) {
+  function abrir(url) {
     window.location.href = url;
   }
 
   return (
     <>
       <style jsx global>{`
+        * {
+          box-sizing: border-box;
+        }
+
         html,
         body {
           margin: 0;
           padding: 0;
-          font-family: Arial, Helvetica, sans-serif;
+          font-family: Inter, Arial, Helvetica, sans-serif;
+          background: linear-gradient(135deg, #f7f7ff, #eef2ff);
+          color: #1e1e1e;
+        }
+
+        body {
+          min-height: 100vh;
+        }
+
+        .wrapper {
+          max-width: 1450px;
+          margin: auto;
+          padding: 30px;
+        }
+
+        .header {
           background: white;
+          border-radius: 22px;
+          padding: 22px 30px;
+          box-shadow: 0 10px 35px rgba(0, 0, 0, 0.07);
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 25px;
         }
 
-        .tabla {
-          width: 100%;
-          border-collapse: collapse;
+        .brand {
+          display: flex;
+          flex-direction: column;
         }
 
-        .cabecera {
-          height: 85px;
+        .brand small {
+          color: #7c7c7c;
+          font-size: 13px;
         }
 
-        .izquierda {
-          width: 25%;
-          vertical-align: top;
-          border-right: 1px solid #ddd;
-          padding: 15px;
+        .brand h1 {
+          margin: 0;
+          font-size: 30px;
+          color: #6f2dbd;
         }
 
-        .centro {
-          width: 50%;
-          vertical-align: top;
-          padding: 20px;
+        .badge {
+          background: #f2e9ff;
+          color: #6f2dbd;
+          padding: 10px 16px;
+          border-radius: 999px;
+          font-weight: 700;
+          font-size: 14px;
         }
 
-        .derecha {
-          width: 25%;
-          vertical-align: top;
-          padding: 20px;
+        .layout {
+          display: grid;
+          grid-template-columns: 370px 1fr 320px;
+          gap: 22px;
         }
 
-        .tramite {
-          padding: 12px;
-          margin-bottom: 8px;
-          border: 1px solid #ddd;
+        .card {
+          background: white;
+          border-radius: 22px;
+          box-shadow: 0 10px 35px rgba(0, 0, 0, 0.06);
+          padding: 24px;
+        }
+
+        .title {
+          font-size: 21px;
+          font-weight: 800;
+          margin-bottom: 18px;
+          color: #6f2dbd;
+        }
+
+        .list {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          max-height: 72vh;
+          overflow-y: auto;
+          padding-right: 5px;
+        }
+
+        .item {
+          border: 1px solid #ececec;
+          border-radius: 16px;
+          padding: 16px;
           cursor: pointer;
-          transition: 0.2s;
+          transition: 0.2s ease;
           background: #fafafa;
         }
 
-        .tramite:hover {
-          background: #f1f1f1;
+        .item:hover {
+          transform: translateY(-2px);
+          border-color: #d4b8ff;
+          background: #ffffff;
         }
 
-        .activo {
-          border-color: #803182;
-          background: #f6edfa;
+        .item.active {
+          border-color: #6f2dbd;
+          background: linear-gradient(
+            135deg,
+            #f6efff,
+            #ffffff
+          );
         }
 
-        .titulo {
-          font-size: 24px;
-          color: #803182;
-          font-weight: bold;
-          margin-bottom: 15px;
+        .item span {
+          display: block;
+          color: #999;
+          font-size: 13px;
+          margin-bottom: 5px;
         }
 
-        .descripcion {
-          font-size: 16px;
-          line-height: 1.5;
+        .item strong {
+          font-size: 15px;
+          line-height: 1.4;
         }
 
-        .boton {
-          margin-top: 20px;
-          background: #803182;
-          color: white;
-          border: none;
-          padding: 12px 18px;
-          cursor: pointer;
-          font-weight: bold;
-          border-radius: 4px;
+        .empty {
+          color: #888;
+          line-height: 1.6;
         }
 
-        .boton:hover {
-          background: #69256d;
-        }
-
-        .logo {
-          width: 220px;
-        }
-
-        .rayuela {
-          width: 120px;
-        }
-
-        .telefono {
-          color: red;
+        .detailTitle {
           font-size: 28px;
-          margin-top: 20px;
+          font-weight: 900;
+          color: #202020;
+          margin-bottom: 14px;
         }
 
-        a {
-          color: red;
+        .detailDesc {
+          color: #555;
+          font-size: 16px;
+          line-height: 1.7;
+          white-space: pre-wrap;
+        }
+
+        .cta {
+          width: 100%;
+          border: none;
+          background: linear-gradient(
+            135deg,
+            #6f2dbd,
+            #9d4edd
+          );
+          color: white;
+          font-weight: 800;
+          padding: 15px;
+          border-radius: 16px;
+          cursor: pointer;
+          font-size: 16px;
+          transition: 0.2s;
+        }
+
+        .cta:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 10px 20px rgba(111, 45, 189, 0.25);
+        }
+
+        .help {
+          margin-top: 18px;
+          padding: 18px;
+          border-radius: 18px;
+          background: #faf7ff;
+        }
+
+        .help h3 {
+          margin: 0 0 8px;
+          color: #6f2dbd;
+        }
+
+        .phone {
+          font-size: 28px;
+          font-weight: 900;
+          color: #ff3b30;
+          margin-top: 10px;
+        }
+
+        .phone a {
+          color: inherit;
           text-decoration: none;
+        }
+
+        .loading {
+          color: #666;
+          font-size: 15px;
+        }
+
+        @media (max-width: 1200px) {
+          .layout {
+            grid-template-columns: 1fr;
+          }
         }
       `}</style>
 
-      <table className="tabla">
-        <tbody>
-          <tr className="cabecera">
-            <td width="2%"></td>
+      <div className="wrapper">
+        <div className="header">
+          <div className="brand">
+            <small>Secretaría Virtual</small>
+            <h1>RAYUELA · Trámites</h1>
+          </div>
 
-            <td width="24%">
-              <img
-                src="/images/log_extremadura.png"
-                className="logo"
-                alt=""
-              />
-            </td>
+          <div className="badge">
+            Junta de Extremadura
+          </div>
+        </div>
 
-            <td width="40%"></td>
+        <div className="layout">
+          <div className="card">
+            <div className="title">
+              Trámites disponibles
+            </div>
 
-            <td align="right">
-              <img
-                src="/images/rayuela.png"
-                className="rayuela"
-                alt=""
-              />
-            </td>
+            {loading ? (
+              <div className="loading">
+                Cargando trámites...
+              </div>
+            ) : (
+              <div className="list">
+                {tramites.map((item, i) => (
+                  <div
+                    key={item.id}
+                    onClick={() =>
+                      setSeleccionado(item)
+                    }
+                    className={
+                      "item " +
+                      (seleccionado?.id === item.id
+                        ? "active"
+                        : "")
+                    }
+                  >
+                    <span>
+                      Trámite {i + 1}
+                    </span>
 
-            <td width="10"></td>
-          </tr>
-        </tbody>
-      </table>
+                    <strong>
+                      {item.nombreTramite}
+                    </strong>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
-      <table className="tabla">
-        <tbody>
-          <tr>
-            <td className="izquierda">
-              <div className="titulo">Trámites</div>
-
-              {tramites.map((item, index) => (
-                <div
-                  key={item.id}
-                  className={
-                    "tramite " +
-                    (seleccionado?.id === item.id ? "activo" : "")
-                  }
-                  onClick={() => setSeleccionado(item)}
-                >
-                  <strong>{index + 1}. {item.nombreTramite}</strong>
+          <div className="card">
+            {!seleccionado ? (
+              <>
+                <div className="title">
+                  Información
                 </div>
-              ))}
-            </td>
 
-            <td className="centro">
-              {!seleccionado && (
-                <>
-                  <div className="titulo">
-                    Selecciona un trámite
-                  </div>
+                <div className="empty">
+                  Selecciona un trámite de la
+                  columna izquierda para ver
+                  su descripción.
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="detailTitle">
+                  {seleccionado.nombreTramite}
+                </div>
 
-                  <div className="descripcion">
-                    Elige un trámite del menú izquierdo para ver su
-                    información y acceder.
-                  </div>
-                </>
-              )}
+                <div className="detailDesc">
+                  {seleccionado.descripcionTramite}
+                </div>
+              </>
+            )}
+          </div>
 
-              {seleccionado && (
-                <>
-                  <div className="titulo">
-                    {seleccionado.nombreTramite}
-                  </div>
+          <div className="card">
+            <div className="title">
+              Acciones
+            </div>
 
-                  <div className="descripcion">
-                    {seleccionado.descripcionTramite}
-                  </div>
-                </>
-              )}
-            </td>
+            {seleccionado ? (
+              <button
+                className="cta"
+                onClick={() =>
+                  abrir(
+                    seleccionado.urlTramite
+                  )
+                }
+              >
+                Presentar solicitud
+              </button>
+            ) : (
+              <div className="empty">
+                Selecciona un trámite.
+              </div>
+            )}
 
-            <td className="derecha">
-              {seleccionado && (
-                <button
-                  className="boton"
-                  onClick={() =>
-                    abrirTramite(
-                      seleccionado.urlTramite
-                    )
-                  }
-                >
-                  Presentar solicitud
-                </button>
-              )}
+            <div className="help">
+              <h3>Centro de ayuda</h3>
+              <div>
+                Soporte técnico oficial
+              </div>
 
-              <div className="telefono">
+              <div className="phone">
                 <a href="tel:924004050">
                   924 00 40 50
                 </a>
               </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+            </div>
+          </div>
+        </div>
+      </div>
     </>
   );
 }
