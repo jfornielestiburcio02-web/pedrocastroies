@@ -9,12 +9,12 @@ import {
 } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "TU_API_KEY",
-  authDomain: "TU_AUTH_DOMAIN",
-  projectId: "TU_PROJECT_ID",
-  storageBucket: "TU_STORAGE_BUCKET",
-  messagingSenderId: "TU_SENDER_ID",
-  appId: "TU_APP_ID"
+  apiKey: "AIzaSyCpQ7ra0eLj8kskc_3hxCJSlV_z8N6nPy4",
+  authDomain: "studio-5014911262-ee6e6.firebaseapp.com",
+  projectId: "studio-5014911262-ee6e6",
+  storageBucket: "studio-5014911262-ee6e6.firebasestorage.app",
+  messagingSenderId: "839128312548",
+  appId: "1:839128312548:web:f104ae0c961aaba3d1daf1"
 };
 
 const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
