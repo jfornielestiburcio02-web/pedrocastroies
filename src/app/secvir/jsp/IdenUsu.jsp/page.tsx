@@ -1,15 +1,15 @@
-
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 
 export default function Page() {
   const [usuario, setUsuario] = useState("");
   const [clave, setClave] = useState("16829");
   const [claveCifrada, setClaveCifrada] = useState("16829");
+  const [error, setError] = useState(false);
 
   useEffect(() => {
-    window.name = "NV_1777295280677";
+    window.name = "NV_1777295521425";
   }, []);
 
   function cifrar(texto) {
@@ -21,20 +21,27 @@ export default function Page() {
 
     if (usuario === "") {
       alert("El campo 'Usuario' es obligatorio");
-    } else if (clave === "") {
-      alert("El campo 'Clave' es obligatorio");
-    } else {
-      const cifrada = cifrar(clave);
-      setClaveCifrada(cifrada);
-      setClave("");
-      alert("Formulario enviado");
+      return;
     }
+
+    if (clave === "") {
+      alert("El campo 'Clave' es obligatorio");
+      return;
+    }
+
+    const cifrada = cifrar(clave);
+    setClaveCifrada(cifrada);
+    setClave("");
+
+    // SIMULACIÓN LOGIN INCORRECTO
+    setError(true);
   }
 
   return (
     <>
       <style jsx global>{`
-        html, body {
+        html,
+        body {
           margin: 0;
           padding: 0;
           width: 100%;
@@ -42,28 +49,32 @@ export default function Page() {
           background: #ffffff;
         }
 
-        .morado { background-color: #9A6289; }
-        .blanco { background-color: #FFFFFF; }
-        .lila { background-color: #BE9BB4; }
-        .moradoclaro { background-color: #DBC6D4; }
-        .verdeagua { background-color: #B7DDC8; }
-        .verde { background-color: #B3D76B; }
-        .naranja { background-color: #EAB863; }
-
-        .botones {
-          background-color: #FFFFFF;
-          padding: 2px;
-          border: 1px #6B4560 solid;
-          font-family: Arial, Helvetica, sans-serif;
-          font-size: 8pt;
-          color: #000000;
-          width: 100px;
-          text-decoration: none;
+        table {
+          border-collapse: collapse;
         }
 
-        .botones:hover {
-          background-color: #DDCAD8;
-          color: #5A3A51;
+        .morado {
+          background: #9a6289;
+        }
+
+        .lila {
+          background: #be9bb4;
+        }
+
+        .moradoclaro {
+          background: #dbc6d4;
+        }
+
+        .verdeagua {
+          background: #b7ddc8;
+        }
+
+        .verde {
+          background: #b3d76b;
+        }
+
+        .naranja {
+          background: #eab863;
         }
 
         input {
@@ -71,39 +82,40 @@ export default function Page() {
           font-size: 8pt;
           font-weight: bold;
           color: #573957;
-          background-color: #DBC6D4;
-          border: 1px solid #FFFFFF;
+          background: #dbc6d4;
+          border: 1px solid #fff;
         }
 
         .usuario {
           font-family: Arial, Helvetica, sans-serif;
           font-size: 9pt;
           font-weight: bold;
-          color: #FFFFFF;
+          color: white;
+        }
+
+        .txtmensajeerror {
+          color: #ff9900;
+          font-family: Arial, Helvetica, sans-serif;
+          font-size: 10pt;
+          padding: 4px 4px 4px 10px;
+          text-align: justify;
+          margin-bottom: 10px;
         }
 
         .botones2 {
-          background-color: #F0AA94;
-          padding: 2px;
-          text-align: center;
-          border: 1px #E77551 solid;
+          background: #f0aa94;
+          border: 1px solid #e77551;
           font-family: Arial, Helvetica, sans-serif;
           font-size: 8pt;
           font-weight: bold;
           color: #903214;
-          width: 100px;
-          text-decoration: none;
+          padding: 4px 20px;
           cursor: pointer;
-          display: inline-block;
         }
 
         .botones2:hover {
-          background-color: #B3D76B;
-          color: #000000;
-        }
-
-        table {
-          border-collapse: collapse;
+          background: #b3d76b;
+          color: #000;
         }
       `}</style>
 
@@ -122,7 +134,9 @@ export default function Page() {
                         alt=""
                       />
                     </td>
-                    <td align="right" valign="bottom">&nbsp;</td>
+                    <td align="right" valign="bottom">
+                      &nbsp;
+                    </td>
                   </tr>
                 </tbody>
               </table>
@@ -133,12 +147,22 @@ export default function Page() {
                 <tbody>
                   <tr>
                     <td>
+                      {error && (
+                        <div className="txtmensajeerror">
+                          El usuario, la contraseña o ambos son incorrectos,
+                          puede pedir nuevas contraseñas pulsando en la opción
+                          'Solicitar nuevas contraseñas' o poniéndose en contacto
+                          con el C.A.U.
+                        </div>
+                      )}
+
                       <form onSubmit={comprobarclave}>
                         <table align="center">
                           <tbody>
                             <tr align="center">
                               <td className="usuario">
-                                Usuario <br />
+                                Usuario
+                                <br />
                                 <input
                                   value={usuario}
                                   onChange={(e) =>
@@ -164,8 +188,8 @@ export default function Page() {
                                   type="password"
                                 />
                                 <input
-                                  value={claveCifrada}
                                   type="hidden"
+                                  value={claveCifrada}
                                   readOnly
                                 />
                               </td>
@@ -194,103 +218,25 @@ export default function Page() {
               </table>
             </td>
 
-            <td width="35%">
-              <table width="100%" height="151">
-                <tbody>
-                  <tr align="center">
-                    <td>&nbsp;</td>
-                  </tr>
-                </tbody>
-              </table>
-            </td>
+            <td width="35%">&nbsp;</td>
           </tr>
 
           <tr>
-            <td colSpan="2" className="lila" height="100" width="60%">
-              <table width="100%">
-                <tbody>
-                  <tr align="center">
-                    <td width="20%">&nbsp;</td>
-                    <td width="20%">&nbsp;</td>
-                    <td width="20%">
-                      <img
-                        src="/images/menu_GESTION_CENTROS.gif"
-                        width="103"
-                        height="69"
-                        alt=""
-                      />
-                    </td>
-                    <td width="20%">&nbsp;</td>
-                    <td width="20%">&nbsp;</td>
-                  </tr>
-                </tbody>
-              </table>
-            </td>
-
-            <td className="moradoclaro" align="right">
-              <img src="/images/txt_ray.gif" width="167" height="36" alt="" />
-            </td>
-
-            <td className="lila" align="left">
-              <img src="/images/txt_uela.gif" width="166" height="36" alt="" />
-            </td>
+            <td colSpan="2" className="lila" height="100"></td>
+            <td className="moradoclaro"></td>
+            <td className="lila"></td>
           </tr>
 
           <tr>
-            <td colSpan="2">&nbsp;</td>
-
-            <td className="verdeagua" align="right">
-              <img
-                src="/images/tit_plataforma.gif"
-                width="167"
-                height="32"
-                alt=""
-              />
-            </td>
-
-            <td className="verde" align="right">
-              <img
-                src="/images/tit_educativa.gif"
-                width="166"
-                height="32"
-                alt=""
-              />
-            </td>
+            <td colSpan="2"></td>
+            <td className="verdeagua"></td>
+            <td className="verde"></td>
           </tr>
 
           <tr>
-            <td colSpan="2" rowSpan="2">&nbsp;</td>
-
-            <td className="naranja">&nbsp;</td>
-
-            <td align="right">
-              <img
-                src="/images/tit_extrem.gif"
-                width="166"
-                height="17"
-                alt=""
-              />
-            </td>
-          </tr>
-
-          <tr>
-            <td className="naranja">&nbsp;</td>
-
-            <td align="center">
-              <img
-                src="/images/logo_junta.gif"
-                width="166"
-                height="59"
-                alt=""
-              />
-              <br />
-              <img
-                src="/images/FEDER-UE.jpg"
-                width="165"
-                height="44"
-                alt=""
-              />
-            </td>
+            <td colSpan="2"></td>
+            <td className="naranja"></td>
+            <td></td>
           </tr>
         </tbody>
       </table>
