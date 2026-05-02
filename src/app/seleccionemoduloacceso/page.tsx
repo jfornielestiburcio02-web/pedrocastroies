@@ -70,7 +70,8 @@ export default function SeleccioneModuloAccesoPage() {
     'extraesc_root': false,
     'proa_root': false,
     'pt_root': false,
-    'sincro_root': false
+    'sincro_root': false,
+    'bienestar_ayuda': false
   });
   
   const router = useRouter();

@@ -83,6 +83,19 @@
         "createdAt": { "type": "string", "format": "date-time" }
       }
     },
+    "SolicitudBienestar": {
+      "title": "SolicitudBienestar",
+      "type": "object",
+      "description": "Petición de recursos o mobiliario especializado realizada por la coordinación de bienestar.",
+      "properties": {
+        "solicitanteId": { "type": "string" },
+        "item": { "type": "string" },
+        "descripcion": { "type": "string" },
+        "prioridad": { "type": "string", "enum": ["Baja", "Media", "Alta", "Urgente"] },
+        "estado": { "type": "string", "enum": ["Pendiente", "En trámite", "Entregado"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
     "Designacion": {
       "title": "Designacion",
       "type": "object",
@@ -307,6 +320,12 @@
         "$ref": "#/backend/entities/SecodexSolicitud"
       },
       "description": "Solicitudes ciudadanas para el sello SECODEX."
+    },
+    "/solicitudesBienestar/{solicitudId}": {
+      "schema": {
+        "$ref": "#/backend/entities/SolicitudBienestar"
+      },
+      "description": "Solicitudes de mobiliario y recursos de bienestar."
     },
     "/designaciones/{designacionId}": {
       "schema": {

@@ -22,7 +22,8 @@ import {
   Gavel,
   ShieldAlert,
   RefreshCw,
-  Inbox
+  Inbox,
+  HeartHandshake
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SidebarItem, SidebarHeading } from '../shared-components';
@@ -57,7 +58,7 @@ export function RayuelaSidebar({
       <div className="flex-1 flex flex-col">
         <div className="flex h-full">
           <div className="w-[60px] min-w-[60px] flex flex-col items-center py-4 gap-4 bg-[#f4f4f4] border-r border-gray-200/50">
-            {activeRole === 'Profesor Gestión' ? (
+            {activeRole === 'Profesor Gestión' || activeRole === 'Coordinacion Bienestar' ? (
               <>
                 <div className="p-2 bg-[#9c4d96] rounded-sm text-white"><Gavel className="h-5 w-5" /></div>
                 <div className="p-2 bg-[#9c4d96] rounded-sm text-white"><Clock className="h-5 w-5" /></div>
@@ -115,7 +116,19 @@ export function RayuelaSidebar({
           
           <div className="hidden group-hover:flex flex-col py-4 w-full bg-white animate-in fade-in slide-in-from-left-2 duration-300 overflow-y-auto">
             <div className="px-2 space-y-0.5">
-              {activeRole === 'Profesor Gestión' ? (
+              {activeRole === 'Coordinacion Bienestar' ? (
+                <div className="space-y-2">
+                  <div className="flex flex-col">
+                    <SidebarHeading label="Ayuda a alumnos" expanded={expandedItems['bienestar_ayuda']} onClick={() => onToggleExpanded('bienestar_ayuda')} />
+                    {expandedItems['bienestar_ayuda'] && (
+                      <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
+                        <SidebarItem color="#9c4d96" label="Recursos" isSubItem onClick={() => onSetActiveSubContent('Recursos')} active={activeSubContent === 'Recursos'} />
+                        <SidebarItem color="#9c4d96" label="Guías" isSubItem onClick={() => onSetActiveSubContent('Guías')} active={activeSubContent === 'Guías'} />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : activeRole === 'Profesor Gestión' ? (
                 <div className="space-y-2">
                    <div className="flex flex-col">
                       <SidebarHeading label="Gestión Docente" expanded={expandedItems['horarios']} onClick={() => onToggleExpanded('horarios')} />

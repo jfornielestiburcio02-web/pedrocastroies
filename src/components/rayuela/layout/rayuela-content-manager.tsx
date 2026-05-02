@@ -28,6 +28,7 @@ import { DiagnosticOpeningView, DiagnosticGradingView, DiagnosticResultsView } f
 import { ProfileSyncView } from '@/components/rayuela/profile-sync-view';
 import { SecodexCitizenView } from '@/components/rayuela/secodex-citizen-view';
 import { SecodexAdminView } from '@/components/rayuela/secodex-admin-view';
+import { WellbeingResourcesView, WellbeingGuidesView } from '@/components/rayuela/wellbeing-coordination-views';
 import { 
   CredentialDeliveryView, 
   SecretaryPlaceholderView, 
@@ -128,6 +129,8 @@ export function RayuelaContentManager({
       case 'seCODEX': return <SecodexView />;
       case 'secodex_admin': return <SecodexAdminView />;
       case 'Sello de buena práctica SECODEX': return <SecodexCitizenView usuarioId={usuarioId} />;
+      case 'Recursos': return <WellbeingResourcesView usuarioId={usuarioId} />;
+      case 'Guías': return <WellbeingGuidesView />;
       case 'Título de bachillerato': return <SecretaryErrorView code="19832" title={activeSubContent} />;
       case 'Formación Profesional': return <SecretaryPlaceholderView title={activeSubContent} />;
       case 'Por Alumno':
@@ -228,6 +231,8 @@ export function RayuelaContentManager({
                     ? "Entorno de coordinación para las pruebas de diagnóstico. Utilice el menú lateral morado para gestionar la apertura y resultados."
                     : activeRole === 'act extraesc.(coord)'
                     ? "Entorno de gestión de actividades complementarias y extraescolares. Utilice el menú lateral morado para planificar las salidas del centro."
+                    : activeRole === 'Coordinacion Bienestar'
+                    ? "Perfil de coordinación de bienestar. Utilice el menú lateral morado para gestionar recursos y guías de ayuda al alumnado."
                     : `Usted está operando con el perfil especial de ${activeRole}. Seleccione una opción del menú para gestionar sus responsabilidades.`}
                 </div>
                 <div className="flex justify-center pt-2">
