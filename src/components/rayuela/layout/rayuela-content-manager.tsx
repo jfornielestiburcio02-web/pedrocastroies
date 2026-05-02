@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from 'react';
@@ -44,6 +43,7 @@ import {
   StudentEvaluationsListView, 
   StudentScheduleView 
 } from '@/components/rayuela/student-views';
+import { DualCompaniesView, DualStudentsView, DualDocumentsView } from '@/components/rayuela/fp-dual-views';
 
 interface RayuelaContentManagerProps {
   activeSubContent: string | null;
@@ -146,6 +146,9 @@ export function RayuelaContentManager({
       case 'Designar PROA+': return <ProaDesignationView mode="proa" />;
       case 'Designar Profesor DAD': return <ProaDesignationView mode="dad" />;
       case 'Sincronizacion Perfiles': return <ProfileSyncView />;
+      case 'Gestión de Empresas': return <DualCompaniesView />;
+      case 'Alumnado Dual': return <DualStudentsView />;
+      case 'Convenios y Anexos': return <DualDocumentsView />;
       default:
         if (activeSubContent) {
           return (
@@ -233,6 +236,8 @@ export function RayuelaContentManager({
                     ? "Entorno de gestión de actividades complementarias y extraescolares. Utilice el menú lateral morado para planificar las salidas del centro."
                     : activeRole === 'Coordinacion Bienestar'
                     ? "Perfil de coordinación de bienestar. Utilice el menú lateral morado para gestionar recursos y guías de ayuda al alumnado."
+                    : activeRole === 'Coordinacion FP Dual'
+                    ? "Entorno de gestión para la Formación Profesional Dual. Gestione empresas, alumnos y convenios desde el menú lateral morado."
                     : `Usted está operando con el perfil especial de ${activeRole}. Seleccione una opción del menú para gestionar sus responsabilidades.`}
                 </div>
                 <div className="flex justify-center pt-2">

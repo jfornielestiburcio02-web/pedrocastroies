@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from 'react';
@@ -23,7 +22,10 @@ import {
   ShieldAlert,
   RefreshCw,
   Inbox,
-  HeartHandshake
+  HeartHandshake,
+  Building2,
+  Users2,
+  FileText
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SidebarItem, SidebarHeading } from '../shared-components';
@@ -58,7 +60,7 @@ export function RayuelaSidebar({
       <div className="flex-1 flex flex-col">
         <div className="flex h-full">
           <div className="w-[60px] min-w-[60px] flex flex-col items-center py-4 gap-4 bg-[#f4f4f4] border-r border-gray-200/50">
-            {activeRole === 'Profesor Gestión' || activeRole === 'Coordinacion Bienestar' ? (
+            {activeRole === 'Profesor Gestión' || activeRole === 'Coordinacion Bienestar' || activeRole === 'Coordinacion FP Dual' ? (
               <>
                 <div className="p-2 bg-[#9c4d96] rounded-sm text-white"><Gavel className="h-5 w-5" /></div>
                 <div className="p-2 bg-[#9c4d96] rounded-sm text-white"><Clock className="h-5 w-5" /></div>
@@ -127,6 +129,19 @@ export function RayuelaSidebar({
                       </div>
                     )}
                   </div>
+                </div>
+              ) : activeRole === 'Coordinacion FP Dual' ? (
+                <div className="space-y-2">
+                   <div className="flex flex-col">
+                      <SidebarHeading label="Gestión Dual" expanded={expandedItems['dual_root']} onClick={() => onToggleExpanded('dual_root')} />
+                      {expandedItems['dual_root'] && (
+                        <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
+                           <SidebarItem color="#9c4d96" label="Gestión de Empresas" isSubItem onClick={() => onSetActiveSubContent('Gestión de Empresas')} active={activeSubContent === 'Gestión de Empresas'} />
+                           <SidebarItem color="#9c4d96" label="Alumnado Dual" isSubItem onClick={() => onSetActiveSubContent('Alumnado Dual')} active={activeSubContent === 'Alumnado Dual'} />
+                           <SidebarItem color="#9c4d96" label="Convenios y Anexos" isSubItem onClick={() => onSetActiveSubContent('Convenios y Anexos')} active={activeSubContent === 'Convenios y Anexos'} />
+                        </div>
+                      )}
+                   </div>
                 </div>
               ) : activeRole === 'Profesor Gestión' ? (
                 <div className="space-y-2">

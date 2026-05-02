@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from 'react';
@@ -12,7 +11,8 @@ import {
   HeartHandshake, 
   UserCog,
   Gavel,
-  Globe
+  Globe,
+  Building2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -49,7 +49,8 @@ export function ProfileButton({ profile, activeRole, onSetActiveRole, onSetActiv
         {profile.id === 'EsCiudadano' && <Globe className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
         {profile.label === 'PROA+' && <ShieldPlus className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
         {profile.label === 'Profesor Gestión' && <Gavel className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
-        {profile.type === 'SUBPROFILE' && profile.label !== 'PROA+' && profile.label !== 'Profesor Gestión' && <UserCog className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
+        {profile.label === 'Coordinacion FP Dual' && <Building2 className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
+        {profile.type === 'SUBPROFILE' && profile.label !== 'PROA+' && profile.label !== 'Profesor Gestión' && profile.label !== 'Coordinacion FP Dual' && <UserCog className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />}
       </div>
       <div className={cn(
         "text-[8px] font-bold uppercase tracking-tighter w-full text-center leading-[1.1]",

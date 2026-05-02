@@ -568,6 +568,7 @@ export function UserProfilesManagementView() {
     "Coordinacion IT",
     "Coordinacion Bilingüismo",
     "Coordinacion Bienestar",
+    "Coordinacion FP Dual",
     "Responsable Biblioteca",
     "Calificador Diagnóstico (coord)",
     "Profesor Gestión"
