@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useMemo } from 'react';
@@ -24,7 +23,7 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
 import { collection, query, where, doc } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -43,7 +42,7 @@ export function TeacherGradingView({ profesorId }: { profesorId: string }) {
   const { data: periodos, isLoading: loadingPeriodos } = useCollection(periodosQuery);
   const activePeriodo = periodos?.[0];
 
-  // Grupos del profesor (Titular o DAD)
+  // Grupos del profesor
   const groupsQuery = useMemoFirebase(() => {
     if (!db || !profesorId) return null;
     return query(collection(db, 'gruposAlumnos'), where('profesorId', '==', profesorId));
@@ -52,7 +51,7 @@ export function TeacherGradingView({ profesorId }: { profesorId: string }) {
   const { data: myGroups, isLoading: loadingGroups } = useCollection(groupsQuery);
   const currentGroup = useMemo(() => myGroups?.find(g => g.id === selectedGroupId), [myGroups, selectedGroupId]);
 
-  // Alumnos y Notas
+  // Resolución dinámica de alumnos si el grupo está vinculado a un curso
   const usersQuery = useMemoFirebase(() => {
     if (!db) return null;
     return collection(db, 'usuarios');
@@ -61,6 +60,13 @@ export function TeacherGradingView({ profesorId }: { profesorId: string }) {
 
   const students = useMemo(() => {
     if (!currentGroup || !allUsers) return [];
+    
+    // Si el grupo es dinámico por curso
+    if (currentGroup.cursoVinculado) {
+       return allUsers.filter(u => u.cursoAlumno === currentGroup.cursoVinculado && u.rolesUsuario?.includes('EsAlumno'));
+    }
+    
+    // Fallback estático
     return allUsers.filter(u => currentGroup.alumnosIds?.includes(u.id));
   }, [currentGroup, allUsers]);
 
@@ -86,10 +92,10 @@ export function TeacherGradingView({ profesorId }: { profesorId: string }) {
       profesorId,
       claseId: selectedGroupId,
       periodoId: activePeriodo.id,
-      nota: current?.nota || "",
-      observaciones: current?.observaciones || "",
+      nota: field === 'nota' ? value : (current?.nota || ""),
+      observaciones: field === 'observaciones' ? value : (current?.observaciones || ""),
       createdAt: current?.createdAt || new Date().toISOString(),
-      [field]: value
+      updatedAt: new Date().toISOString()
     }, { merge: true });
   };
 
@@ -111,7 +117,7 @@ export function TeacherGradingView({ profesorId }: { profesorId: string }) {
            <Unlock className="h-6 w-6" />
            <div>
               <h2 className="text-lg font-bold uppercase">Notas Finales: {activePeriodo.periodo}ª EVAL</h2>
-              <p className="text-white/80 text-[10px] font-bold uppercase">{activePeriodo.tipoCalificacion}</p>
+              <p className="text-white/80 text-[10px] font-bold uppercase">{currentGroup?.cursoVinculado ? `Sincronización Censo: ${currentGroup.cursoVinculado}` : 'Carga Manual'}</p>
            </div>
         </div>
         <Select onValueChange={setSelectedGroupId} value={selectedGroupId || ""}>
@@ -169,7 +175,7 @@ export function TeacherGradingView({ profesorId }: { profesorId: string }) {
            </table>
            <div className="p-4 bg-gray-50 border-t flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 text-green-500" />
-              <span className="text-[10px] font-bold text-gray-400 uppercase">Sincronización en tiempo real Rayuela</span>
+              <span className="text-[10px] font-bold text-gray-400 uppercase">Sincronización automática de censo activa</span>
            </div>
         </div>
       )}

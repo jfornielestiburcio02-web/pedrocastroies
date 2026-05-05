@@ -88,6 +88,14 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
   const schedules = manualScheduleId && manualScheduleData ? [manualScheduleData] : fetchedSchedules;
   const currentSchedule = useMemo(() => schedules?.find(s => s.id === selectedScheduleId), [schedules, selectedScheduleId]);
 
+  // Fetch the linked group to see if it's course-based
+  const groupDocRef = useMemoFirebase(() => {
+    if (!db || !currentSchedule?.grupoId) return null;
+    return doc(db, 'gruposAlumnos', currentSchedule.grupoId);
+  }, [db, currentSchedule?.grupoId]);
+
+  const { data: groupData } = useDoc(groupDocRef);
+
   const attendanceQuery = useMemoFirebase(() => {
     if (!db || !selectedScheduleId) return null;
     return query(
@@ -119,8 +127,15 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
 
   const students = useMemo(() => {
     if (!currentSchedule || !allUsers) return [];
+    
+    // RESOLUCIÓN DINÁMICA: Si el grupo está vinculado a un curso, usamos el curso.
+    if (groupData?.cursoVinculado) {
+       return allUsers.filter(u => u.cursoAlumno === groupData.cursoVinculado && u.rolesUsuario?.includes('EsAlumno'));
+    }
+    
+    // Fallback: Lista estática de IDs si no hay curso vinculado
     return allUsers.filter(u => currentSchedule.alumnosIds?.includes(u.id));
-  }, [currentSchedule, allUsers]);
+  }, [currentSchedule, allUsers, groupData]);
 
   // Lógica de envío de mensaje diferido (15 segundos) con ID determinista
   const scheduleDeferredMessage = (alumnoId: string, attendanceId: string) => {
@@ -277,10 +292,10 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
           </div>
         </div>
 
-        {currentSchedule?.grupoId && (
+        {groupData?.cursoVinculado && (
           <div className="bg-white px-3 py-1 border rounded flex items-center gap-2">
-             <Layout className="h-3 w-3 text-[#89a54e]" />
-             <span className="text-[10px] font-bold text-[#89a54e] uppercase tracking-tight">Grupo Vinculado: {currentSchedule.asignatura}</span>
+             <CheckCircle2 className="h-3 w-3 text-green-600" />
+             <span className="text-[10px] font-bold text-green-600 uppercase tracking-tight">Censo del curso: {groupData.cursoVinculado}</span>
           </div>
         )}
 

@@ -16,7 +16,8 @@ import {
   Save,
   Trash2,
   Layout,
-  Pencil
+  Pencil,
+  GraduationCap
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,24 +38,37 @@ import {
   DialogTitle,
   DialogFooter
 } from "@/components/ui/dialog";
-import { Checkbox } from '@/components/ui/checkbox';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
 
 /**
  * Vista de gestión de grupos personalizados para el profesor.
+ * AHORA VINCULADOS POR CURSO PARA AUTOMATIZACIÓN.
  */
 export function TeacherGroupsView({ profesorId }: { profesorId: string }) {
   const db = useFirestore();
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
-  const [formData, setFormData] = useState({ titulo: '', alumnosIds: [] as string[] });
+  const [formData, setFormData] = useState({ titulo: '', cursoVinculado: '' });
 
-  // 1. Obtener todos los alumnos del centro para seleccionar
+  // 1. Obtener todos los alumnos del centro para extraer los cursos disponibles
   const allStudentsQuery = useMemoFirebase(() => {
     if (!db) return null;
     return query(collection(db, 'usuarios'), where('rolesUsuario', 'array-contains', 'EsAlumno'));
   }, [db]);
   const { data: allStudents, isLoading: loadingStudents } = useCollection(allStudentsQuery);
+
+  const availableCourses = useMemo(() => {
+    if (!allStudents) return [];
+    const courses = allStudents.map(s => s.cursoAlumno).filter(Boolean);
+    return Array.from(new Set(courses)).sort();
+  }, [allStudents]);
 
   // 2. Obtener los grupos propios de este profesor
   const myGroupsQuery = useMemoFirebase(() => {
@@ -65,49 +79,37 @@ export function TeacherGroupsView({ profesorId }: { profesorId: string }) {
 
   const openCreate = () => {
     setEditingGroupId(null);
-    setFormData({ titulo: '', alumnosIds: [] });
+    setFormData({ titulo: '', cursoVinculado: '' });
     setIsDialogOpen(true);
   };
 
   const openEdit = (group: any) => {
     setEditingGroupId(group.id);
-    setFormData({ titulo: group.titulo, alumnosIds: group.alumnosIds || [] });
+    setFormData({ titulo: group.titulo, cursoVinculado: group.cursoVinculado || '' });
     setIsDialogOpen(true);
   };
 
   const handleSaveGroup = async () => {
-    if (!db || !formData.titulo || formData.alumnosIds.length === 0) {
-      toast({ variant: "destructive", title: "Incompleto", description: "Asigne un título y seleccione alumnos." });
+    if (!db || !formData.titulo || !formData.cursoVinculado) {
+      toast({ variant: "destructive", title: "Incompleto", description: "Asigne un título y seleccione un curso." });
       return;
     }
 
+    const dataToSave = {
+      ...formData,
+      profesorId,
+      updatedAt: new Date().toISOString()
+    };
+
     if (editingGroupId) {
-      // ACTUALIZAR GRUPO
-      const groupRef = doc(db, 'gruposAlumnos', editingGroupId);
-      updateDocumentNonBlocking(groupRef, {
-        ...formData,
-        updatedAt: new Date().toISOString()
-      });
-
-      // SINCRONIZAR HORARIOS: Buscar horarios que usen este grupo y actualizar sus alumnos
-      const horariosQuery = query(collection(db, 'horarios'), where('grupoId', '==', editingGroupId));
-      const schedulesSnap = await getDocs(horariosQuery);
-      schedulesSnap.forEach(scheduleDoc => {
-        updateDocumentNonBlocking(doc(db, 'horarios', scheduleDoc.id), {
-          alumnosIds: formData.alumnosIds,
-          asignatura: formData.titulo // Sincronizamos también el nombre si cambió
-        });
-      });
-
-      toast({ title: "Grupo Actualizado", description: "Se han sincronizado los cambios con sus horarios lectivos." });
+      updateDocumentNonBlocking(doc(db, 'gruposAlumnos', editingGroupId), dataToSave);
+      toast({ title: "Grupo Actualizado", description: "Los cambios se aplicarán dinámicamente al horario." });
     } else {
-      // CREAR GRUPO
       addDocumentNonBlocking(collection(db, 'gruposAlumnos'), {
-        ...formData,
-        profesorId,
+        ...dataToSave,
         createdAt: new Date().toISOString()
       });
-      toast({ title: "Grupo Creado", description: `El grupo "${formData.titulo}" ya está disponible.` });
+      toast({ title: "Grupo Creado", description: `El grupo "${formData.titulo}" está vinculado a ${formData.cursoVinculado}.` });
     }
 
     setIsDialogOpen(false);
@@ -115,19 +117,10 @@ export function TeacherGroupsView({ profesorId }: { profesorId: string }) {
 
   const handleDeleteGroup = (id: string) => {
     if (!db) return;
-    if (confirm("¿Está seguro de eliminar este grupo? Se desvinculará de los horarios pero los registros de asistencia permanecerán.")) {
+    if (confirm("¿Está seguro de eliminar este grupo?")) {
       deleteDocumentNonBlocking(doc(db, 'gruposAlumnos', id));
       toast({ title: "Grupo eliminado" });
     }
-  };
-
-  const toggleStudent = (id: string) => {
-    setFormData(prev => ({
-      ...prev,
-      alumnosIds: prev.alumnosIds.includes(id) 
-        ? prev.alumnosIds.filter(sid => sid !== id)
-        : [...prev.alumnosIds, id]
-    }));
   };
 
   if (loadingStudents || loadingGroups) return <div className="flex justify-center p-20"><Loader2 className="h-8 w-8 animate-spin text-[#89a54e]" /></div>;
@@ -137,16 +130,16 @@ export function TeacherGroupsView({ profesorId }: { profesorId: string }) {
       <div className="flex items-center justify-between bg-white border p-4 rounded-xl shadow-sm">
          <div className="flex items-center gap-3">
             <Layout className="h-5 w-5 text-[#89a54e]" />
-            <h2 className="text-sm font-bold text-gray-700 uppercase">Mis Grupos de Alumnado</h2>
+            <h2 className="text-sm font-bold text-gray-700 uppercase">Mis Grupos de Alumnado (Por Curso)</h2>
          </div>
          <Button onClick={openCreate} className="bg-[#89a54e] hover:bg-[#728a41] text-white text-[10px] font-bold uppercase h-8 px-4 gap-2">
-           <Plus className="h-3 w-3" /> Crear nuevo grupo
+           <Plus className="h-3 w-3" /> Configurar Grupo
          </Button>
       </div>
 
       {myGroups?.length === 0 ? (
         <div className="py-20 text-center bg-gray-50 border-2 border-dashed rounded-2xl opacity-40">
-           <p className="text-sm italic">Aún no ha creado grupos personalizados para sus materias.</p>
+           <p className="text-sm italic">Cree su primer grupo vinculándolo a un curso oficial del centro.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -163,23 +156,15 @@ export function TeacherGroupsView({ profesorId }: { profesorId: string }) {
                       </Button>
                    </div>
                 </div>
-                <div className="p-4 flex-1">
-                   <div className="flex flex-wrap gap-1.5">
-                      {group.alumnosIds.slice(0, 6).map((sid: string) => {
-                        const student = allStudents?.find(s => s.id === sid);
-                        return student ? (
-                          <Badge key={sid} variant="outline" className="text-[8px] font-bold py-0 h-5 border-gray-200 text-gray-500 bg-gray-50 uppercase">
-                            {student.nombrePersona || student.usuario}
-                          </Badge>
-                        ) : null;
-                      })}
-                      {group.alumnosIds.length > 6 && (
-                        <Badge variant="outline" className="text-[8px] font-bold py-0 h-5 bg-blue-50 text-blue-600">+{group.alumnosIds.length - 6} MÁS</Badge>
-                      )}
+                <div className="p-8 text-center space-y-3">
+                   <div className="bg-blue-50 text-blue-700 p-4 rounded-xl border border-blue-100 inline-block">
+                      <GraduationCap className="h-8 w-8 mx-auto mb-1" />
+                      <span className="text-lg font-black tracking-tight">{group.cursoVinculado}</span>
                    </div>
+                   <p className="text-[10px] text-gray-400 font-bold uppercase">Vinculación Automática Activa</p>
                 </div>
-                <div className="bg-gray-50 p-3 text-[9px] font-bold text-gray-400 uppercase text-center border-t">
-                   {group.alumnosIds.length} ALUMNOS VINCULADOS
+                <div className="bg-gray-50 p-3 text-[9px] font-bold text-gray-400 uppercase text-center border-t flex items-center justify-center gap-2">
+                   <CheckCircle2 className="h-3 w-3 text-green-500" /> Sincronizado con Censo
                 </div>
              </div>
            ))}
@@ -187,22 +172,21 @@ export function TeacherGroupsView({ profesorId }: { profesorId: string }) {
       )}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl font-verdana p-0 border-none overflow-hidden shadow-2xl">
+        <DialogContent className="max-w-md font-verdana p-0 border-none overflow-hidden shadow-2xl">
           <DialogHeader className="bg-[#89a54e] p-6 text-white shrink-0">
              <DialogTitle className="text-sm font-bold uppercase tracking-widest flex items-center gap-2">
-               {editingGroupId ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-               {editingGroupId ? 'Editar Grupo de Alumnos' : 'Configurar Nuevo Grupo'}
+               <Layout className="h-4 w-4" /> Vinculación de Grupo a Curso
              </DialogTitle>
              <DialogDescription className="text-white/80 text-[10px] font-bold uppercase">
-               {editingGroupId ? 'Los cambios se aplicarán a todos sus horarios vigentes' : 'Gestión de agrupaciones por materia'}
+               El alumnado se actualizará automáticamente con el censo
              </DialogDescription>
           </DialogHeader>
 
           <div className="p-8 bg-white space-y-6">
              <div className="space-y-2">
-                <Label className="text-[10px] font-bold text-gray-400 uppercase">Título del Grupo</Label>
+                <Label className="text-[10px] font-bold text-gray-400 uppercase">Nombre de la Asignatura / Grupo</Label>
                 <Input 
-                  placeholder="Ej: Matemáticas 2º ESO A..." 
+                  placeholder="Ej: Matemáticas..." 
                   value={formData.titulo}
                   onChange={(e) => setFormData({...formData, titulo: e.target.value})}
                   className="h-10 border-gray-300 font-bold text-sm uppercase"
@@ -210,45 +194,30 @@ export function TeacherGroupsView({ profesorId }: { profesorId: string }) {
              </div>
 
              <div className="space-y-2">
-                <Label className="text-[10px] font-bold text-gray-400 uppercase flex justify-between">
-                  <span>Seleccione integrantes</span>
-                  <span className="text-[#89a54e]">{formData.alumnosIds.length} seleccionados</span>
-                </Label>
-                <div className="border rounded-lg h-[250px] bg-gray-50/50 overflow-hidden flex flex-col">
-                   <ScrollArea className="flex-1 p-2">
-                      <div className="grid grid-cols-1 gap-1">
-                         {allStudents?.map(s => (
-                           <div 
-                            key={s.id} 
-                            onClick={() => toggleStudent(s.id)}
-                            className={cn(
-                              "flex items-center gap-3 p-2 rounded-md cursor-pointer transition-all border",
-                              formData.alumnosIds.includes(s.id) 
-                                ? "bg-white border-[#89a54e] shadow-sm" 
-                                : "bg-transparent border-transparent hover:bg-white hover:border-gray-200"
-                            )}
-                           >
-                              <Checkbox checked={formData.alumnosIds.includes(s.id)} onCheckedChange={() => {}} />
-                              <div className="flex items-center gap-2">
-                                <Avatar className="h-6 w-6">
-                                  <AvatarImage src={s.imagenPerfil} />
-                                  <AvatarFallback className="text-[8px]">{s.usuario?.substring(0,2).toUpperCase()}</AvatarFallback>
-                                </Avatar>
-                                <span className="text-[11px] font-bold text-gray-700 uppercase">{s.nombrePersona || s.usuario}</span>
-                                <Badge variant="outline" className="text-[8px] h-4 py-0 border-gray-200">{s.cursoAlumno || 'S/C'}</Badge>
-                              </div>
-                           </div>
-                         ))}
-                      </div>
-                   </ScrollArea>
-                </div>
+                <Label className="text-[10px] font-bold text-gray-400 uppercase">Seleccione Curso Oficial</Label>
+                <Select value={formData.cursoVinculado} onValueChange={(val) => setFormData({...formData, cursoVinculado: val})}>
+                   <SelectTrigger className="h-12 border-gray-300 font-bold text-sm">
+                      <SelectValue placeholder="Elija curso..." />
+                   </SelectTrigger>
+                   <SelectContent>
+                      {availableCourses.map(c => (
+                        <SelectItem key={c} value={c} className="font-bold">{c}</SelectItem>
+                      ))}
+                   </SelectContent>
+                </Select>
+             </div>
+
+             <div className="p-4 bg-blue-50 border border-blue-100 rounded-lg">
+                <p className="text-[10px] text-blue-800 font-bold leading-relaxed uppercase">
+                  Al vincular por curso, no necesita seleccionar alumnos. El sistema incluirá automáticamente a cualquier nuevo alumno matriculado en este curso.
+                </p>
              </div>
           </div>
 
           <DialogFooter className="bg-gray-50 p-6 border-t gap-4 shrink-0">
              <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="text-[11px] font-bold uppercase h-10 px-8">Cancelar</Button>
              <Button onClick={handleSaveGroup} className="bg-[#89a54e] hover:bg-[#728a41] text-white text-[11px] font-bold uppercase h-10 px-8 gap-2 shadow-md">
-               <Save className="h-4 w-4" /> {editingGroupId ? 'Guardar y Sincronizar' : 'Crear Grupo'}
+               <Save className="h-4 w-4" /> Guardar Vinculación
              </Button>
           </DialogFooter>
         </DialogContent>
@@ -279,25 +248,16 @@ export function MyTutoringStudentsView({ grupoTutorizado }: { grupoTutorizado: s
 
   const handleGeneratePassword = (studentId: string, studentName: string) => {
     if (!db) return;
-    
-    // Generar contraseña aleatoria de 8 caracteres (mayúsculas y números)
     const newPassword = Math.random().toString(36).substring(2, 10).toUpperCase();
     const docRef = doc(db, 'usuarios', studentId);
-    
-    // Actualización no bloqueante en Firestore
     updateDocumentNonBlocking(docRef, { contrasena: newPassword });
-    
-    // Guardar para mostrar en el modal
     setGeneratedPassData({ name: studentName, pass: newPassword });
   };
 
   const copyToClipboard = () => {
     if (generatedPassData) {
       navigator.clipboard.writeText(generatedPassData.pass);
-      toast({
-        title: "Copiado",
-        description: "Contraseña copiada al portapapeles.",
-      });
+      toast({ title: "Copiado", description: "Contraseña copiada al portapapeles." });
     }
   };
 
@@ -305,13 +265,7 @@ export function MyTutoringStudentsView({ grupoTutorizado }: { grupoTutorizado: s
     (s.nombrePersona || s.usuario).toLowerCase().includes(searchTerm.toLowerCase())
   ) || [];
 
-  if (isLoading) {
-    return (
-      <div className="flex justify-center p-20">
-        <Loader2 className="h-8 w-8 animate-spin text-[#89a54e]" />
-      </div>
-    );
-  }
+  if (isLoading) return <div className="flex justify-center p-20"><Loader2 className="h-8 w-8 animate-spin text-[#89a54e]" /></div>;
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 space-y-6 max-w-5xl mx-auto w-full font-verdana">
@@ -370,7 +324,6 @@ export function MyTutoringStudentsView({ grupoTutorizado }: { grupoTutorizado: s
         </ScrollArea>
       </div>
 
-      {/* Modal de Contraseña Generada */}
       <Dialog open={!!generatedPassData} onOpenChange={() => setGeneratedPassData(null)}>
         <DialogContent className="max-w-md font-verdana p-0 border-none overflow-hidden shadow-2xl">
           <DialogHeader className="bg-[#89a54e] p-6 text-white shrink-0">
@@ -378,43 +331,21 @@ export function MyTutoringStudentsView({ grupoTutorizado }: { grupoTutorizado: s
                 <ShieldCheck className="h-6 w-6" />
                 <DialogTitle className="text-lg font-bold uppercase tracking-tight">Nueva Clave Generada</DialogTitle>
              </div>
-             <DialogDescription className="text-white/90 text-center text-xs font-medium">
-               Entregue esta información personalmente al alumno.
-             </DialogDescription>
+             <DialogDescription className="text-white/90 text-center text-xs font-medium">Entregue esta información personalmente al alumno.</DialogDescription>
           </DialogHeader>
-
           <div className="p-8 bg-white space-y-6 text-center">
             <div className="space-y-1">
                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Alumno</span>
                <p className="text-lg font-bold text-gray-800 uppercase">{generatedPassData?.name}</p>
             </div>
-
             <div className="bg-gray-50 border-2 border-dashed border-gray-200 p-6 rounded-xl relative group">
                <span className="text-[10px] font-bold text-gray-400 uppercase absolute top-2 left-1/2 -translate-x-1/2">Nueva Contraseña</span>
-               <p className="text-3xl font-mono font-bold tracking-[0.2em] text-[#89a54e] mt-2">
-                 {generatedPassData?.pass}
-               </p>
-               <Button 
-                variant="ghost" 
-                size="icon" 
-                className="absolute top-2 right-2 h-8 w-8 text-gray-300 hover:text-[#89a54e]"
-                onClick={copyToClipboard}
-               >
-                 <Copy className="h-4 w-4" />
-               </Button>
-            </div>
-
-            <div className="p-4 bg-yellow-50 border border-yellow-100 rounded-lg">
-               <p className="text-[10px] text-yellow-800 font-bold leading-relaxed uppercase">
-                 AVISO: Esta clave solo se mostrará una vez. <br /> Asegúrese de anotarla correctamente.
-               </p>
+               <p className="text-3xl font-mono font-bold tracking-[0.2em] text-[#89a54e] mt-2">{generatedPassData?.pass}</p>
+               <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-8 w-8 text-gray-300 hover:text-[#89a54e]" onClick={copyToClipboard}><Copy className="h-4 w-4" /></Button>
             </div>
           </div>
-
           <DialogFooter className="bg-gray-50 p-6 border-t shrink-0">
-             <Button onClick={() => setGeneratedPassData(null)} className="w-full bg-gray-800 hover:bg-black text-white text-[11px] font-bold uppercase h-12 shadow-md">
-               He anotado la clave / Cerrar
-             </Button>
+             <Button onClick={() => setGeneratedPassData(null)} className="w-full bg-gray-800 hover:bg-black text-white text-[11px] font-bold uppercase h-12 shadow-md">Cerrar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -431,10 +362,7 @@ export function CenterStudentsView() {
 
   const centerQuery = useMemoFirebase(() => {
     if (!db) return null;
-    return query(
-      collection(db, 'usuarios'),
-      where('rolesUsuario', 'array-contains', 'EsAlumno')
-    );
+    return query(collection(db, 'usuarios'), where('rolesUsuario', 'array-contains', 'EsAlumno'));
   }, [db]);
 
   const { data: students, isLoading } = useCollection(centerQuery);
@@ -444,13 +372,7 @@ export function CenterStudentsView() {
     (s.cursoAlumno || "").toLowerCase().includes(searchTerm.toLowerCase())
   ) || [];
 
-  if (isLoading) {
-    return (
-      <div className="flex justify-center p-20">
-        <Loader2 className="h-8 w-8 animate-spin text-[#89a54e]" />
-      </div>
-    );
-  }
+  if (isLoading) return <div className="flex justify-center p-20"><Loader2 className="h-8 w-8 animate-spin text-[#89a54e]" /></div>;
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 space-y-6 max-w-5xl mx-auto w-full font-verdana">
@@ -463,15 +385,9 @@ export function CenterStudentsView() {
           </div>
           <div className="relative w-full md:w-64">
             <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-gray-400" />
-            <Input 
-              placeholder="Buscar por nombre o curso..." 
-              className="pl-8 h-8 text-[11px] border-gray-300" 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+            <Input placeholder="Buscar por nombre o curso..." className="pl-8 h-8 text-[11px] border-gray-300" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
           </div>
         </div>
-
         <ScrollArea className="flex-1">
           <div className="p-0">
             <table className="w-full text-left border-collapse">
@@ -479,39 +395,22 @@ export function CenterStudentsView() {
                 <tr>
                   <th className="p-4 text-[10px] font-bold text-gray-400 uppercase">Alumno</th>
                   <th className="p-4 text-[10px] font-bold text-gray-400 uppercase">Curso</th>
-                  <th className="p-4 text-[10px] font-bold text-gray-400 uppercase">Usuario</th>
                   <th className="p-4 text-[10px] font-bold text-gray-400 uppercase text-right">Estado</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredStudents.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="p-8 text-center text-gray-400 italic text-sm">No se han encontrado registros en el centro.</td>
+                {filteredStudents.map((student) => (
+                  <tr key={student.id} className="border-b hover:bg-gray-50 transition-colors">
+                    <td className="p-4">
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-8 w-8"><AvatarImage src={student.imagenPerfil} /><AvatarFallback>{student.usuario?.substring(0, 2).toUpperCase()}</AvatarFallback></Avatar>
+                        <span className="text-xs font-bold text-gray-700">{student.nombrePersona || student.usuario}</span>
+                      </div>
+                    </td>
+                    <td className="p-4"><Badge variant="outline" className="text-[10px] font-bold border-gray-300 text-gray-500">{student.cursoAlumno || 'S/C'}</Badge></td>
+                    <td className="p-4 text-right"><div className="inline-flex items-center gap-1 text-[10px] font-bold text-green-600 uppercase"><CheckCircle2 className="h-3 w-3" /> Activo</div></td>
                   </tr>
-                ) : (
-                  filteredStudents.map((student) => (
-                    <tr key={student.id} className="border-b hover:bg-gray-50 transition-colors">
-                      <td className="p-4">
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-8 w-8">
-                            <AvatarImage src={student.imagenPerfil} />
-                            <AvatarFallback>{student.usuario?.substring(0, 2).toUpperCase()}</AvatarFallback>
-                          </Avatar>
-                          <span className="text-xs font-bold text-gray-700">{student.nombrePersona || student.usuario}</span>
-                        </div>
-                      </td>
-                      <td className="p-4">
-                        <Badge variant="outline" className="text-[10px] font-bold border-gray-300 text-gray-500">{student.cursoAlumno || 'S/C'}</Badge>
-                      </td>
-                      <td className="p-4 text-xs font-medium text-gray-500">{student.usuario}</td>
-                      <td className="p-4 text-right">
-                        <div className="inline-flex items-center gap-1 text-[10px] font-bold text-green-600 uppercase">
-                          <CheckCircle2 className="h-3 w-3" /> Activo
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
+                ))}
               </tbody>
             </table>
           </div>
