@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -16,7 +17,9 @@ import {
   User,
   MapPin,
   Trash2,
-  Pencil
+  Pencil,
+  ChevronDown,
+  Calendar
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -64,6 +67,12 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const CONDUCTAS_CONTRARIAS = [
   "Actuaciones incorrectas hacia algún miembro de la comunidad educativa (Contraria)",
@@ -117,7 +126,15 @@ interface AlumnadoIncidenteViewProps {
 export function AlumnadoIncidenteView({ profesorId, userData, targetStudentId, onActionComplete }: AlumnadoIncidenteViewProps) {
   const db = useFirestore();
   const { toast } = useToast();
-  const [selectedCourse, setSelectedCourse] = useState<string>("TODOS");
+  
+  // FILTROS SUPERIORES
+  const [academicYear, setAcademicYear] = useState("2023-2024");
+  const [selectedCourse, setSelectedCourse] = useState<string>("1º E.S.O.");
+  const [selectedGroup, setSelectedGroup] = useState("Cualquiera");
+  const [visibilityFilter, setVisibilityFilter] = useState<'all' | 'with' | 'without'>('all');
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [viewExpedienteId, setViewExpedienteId] = useState<string | null>(null);
   
@@ -148,7 +165,8 @@ export function AlumnadoIncidenteView({ profesorId, userData, targetStudentId, o
 
   useEffect(() => {
     if (targetStudentId) {
-      setViewExpedienteId(targetStudentId);
+      setFormData(prev => ({ ...prev, alumnoId: targetStudentId }));
+      setIsDialogOpen(true);
       if (onActionComplete) onActionComplete();
     }
   }, [targetStudentId, onActionComplete]);
@@ -173,14 +191,26 @@ export function AlumnadoIncidenteView({ profesorId, userData, targetStudentId, o
   const courses = useMemo(() => {
     if (!students) return [];
     const unique = Array.from(new Set(students.map(s => s.cursoAlumno || "SIN CURSO")));
-    return ["TODOS", ...unique];
+    return unique.sort();
   }, [students]);
 
   const filteredStudents = useMemo(() => {
-    if (!students) return [];
-    if (selectedCourse === "TODOS") return students;
-    return students.filter(s => (s.cursoAlumno || "SIN CURSO") === selectedCourse);
-  }, [students, selectedCourse]);
+    if (!students || !allIncidents) return [];
+    
+    let base = students;
+    
+    if (selectedCourse !== "Cualquiera") {
+      base = base.filter(s => s.cursoAlumno === selectedCourse);
+    }
+
+    if (visibilityFilter === 'with') {
+      base = base.filter(s => allIncidents.some(i => i.alumnoId === s.id));
+    } else if (visibilityFilter === 'without') {
+      base = base.filter(s => !allIncidents.some(i => i.alumnoId === s.id));
+    }
+
+    return base;
+  }, [students, selectedCourse, visibilityFilter, allIncidents]);
 
   // Lógica de correcciones permitidas por rol
   const isDirectivo = userData?.rolesUsuario?.includes('EsDireccion');
@@ -288,120 +318,178 @@ export function AlumnadoIncidenteView({ profesorId, userData, targetStudentId, o
     setCurrentSelectedCorrection("");
   };
 
-  const getIncidentCount = (studentId: string) => {
-    return allIncidents?.filter(i => i.alumnoId === studentId).length || 0;
+  const getStudentStats = (studentId: string) => {
+    const studentIncidents = allIncidents?.filter(i => i.alumnoId === studentId) || [];
+    return {
+      total: studentIncidents.length,
+      pendingEffectivity: studentIncidents.some(i => i.efectividadCorreccion === 'Indiferente') ? 'Sí' : 'No',
+      graves: studentIncidents.filter(i => i.tipoIncidencia === 'Grave').length,
+      contrarias: studentIncidents.filter(i => i.tipoIncidencia === 'Contraria').length,
+      correcciones: studentIncidents.reduce((acc, i) => acc + (i.medidasCorrectoras?.length || 0), 0),
+      noCorreccion: studentIncidents.filter(i => i.estadoCorreccion === 'No se aplica corrección').length
+    };
   };
 
   if (loadingUsers) {
     return (
       <div className="flex justify-center p-20">
-        <Loader2 className="h-8 w-8 animate-spin text-[#89a54e]" />
+        <Loader2 className="h-8 w-8 animate-spin text-[#9c4d96]" />
       </div>
     );
   }
 
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 space-y-6 max-w-6xl mx-auto w-full font-verdana">
-      <div className="bg-white border rounded-lg shadow-sm overflow-hidden">
-        <div className="bg-[#f8f9fa] border-b p-4 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <ShieldAlert className="h-5 w-5 text-red-600" />
-            <span className="text-sm font-bold text-gray-700 uppercase">Gestión de Alumnado Incidente</span>
-          </div>
-          
-          <div className="flex items-center gap-4 w-full md:w-auto">
-             <div className="flex items-center gap-2">
-               <Label className="text-[10px] font-bold text-gray-400 uppercase">Filtrar Curso:</Label>
-               <Select value={selectedCourse} onValueChange={setSelectedCourse}>
-                 <SelectTrigger className="h-8 w-[160px] text-[10px] font-bold border-gray-300">
-                   <SelectValue />
-                 </SelectTrigger>
-                 <SelectContent>
-                   {courses.map(c => (
-                     <SelectItem key={c} value={c} className="text-[10px] font-bold">{c}</SelectItem>
-                   ))}
-                 </SelectContent>
-               </Select>
-             </div>
-             <Button onClick={() => { resetForm(); setIsDialogOpen(true); }} size="sm" className="bg-[#89a54e] hover:bg-[#728a41] text-white text-[10px] font-bold uppercase h-8 px-4 gap-2 shadow-sm">
-               <Plus className="h-3 w-3" /> Nueva Incidencia
-             </Button>
-          </div>
-        </div>
+    <div className="animate-in fade-in duration-500 space-y-10 max-w-7xl mx-auto w-full font-verdana text-gray-800">
+      
+      {/* PANEL DE FILTROS SUPERIOR (REPLICANDO IMAGEN) */}
+      <div className="bg-white border border-gray-200 rounded-lg shadow-md p-6 max-w-2xl mx-auto space-y-4">
+         <div className="flex items-center gap-4">
+            <Label className="text-[13px] font-medium min-w-[120px]">Año académico:</Label>
+            <div className="flex items-center gap-1">
+               <select 
+                className="bg-white border border-gray-300 rounded px-2 h-7 text-[13px] font-medium focus:outline-none"
+                value={academicYear}
+                onChange={e => setAcademicYear(e.target.value)}
+               >
+                  <option>2023-2024</option>
+                  <option>2024-2025</option>
+                  <option>2025-2026</option>
+               </select>
+               <span className="text-purple-600 font-bold">*</span>
+            </div>
+         </div>
 
-        <div className="p-0">
-          <Table>
-            <TableHeader className="bg-gray-50">
-              <TableRow>
-                <TableHead className="text-[10px] font-bold uppercase text-gray-500">Alumno</TableHead>
-                <TableHead className="text-[10px] font-bold uppercase text-gray-500">Curso</TableHead>
-                <TableHead className="text-[10px] font-bold uppercase text-gray-500">Nº Incidencias</TableHead>
-                <TableHead className="text-[10px] font-bold uppercase text-gray-500 text-center">Estado</TableHead>
-                <TableHead className="text-right text-[10px] font-bold uppercase text-gray-500">Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredStudents.length > 0 ? (
-                filteredStudents.map((student) => {
-                  const count = getIncidentCount(student.id);
-                  const isTutor = userData?.esTutor && student.cursoAlumno === userData.esTutor;
-                  return (
-                    <TableRow key={student.id} className="hover:bg-gray-50/50 transition-colors">
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-8 w-8">
-                            <AvatarImage src={student.imagenPerfil} />
-                            <AvatarFallback>{student.usuario?.substring(0, 2).toUpperCase()}</AvatarFallback>
-                          </Avatar>
-                          <span className="text-xs font-bold text-gray-700">{student.nombrePersona || student.usuario}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-xs text-gray-600 font-bold">{student.cursoAlumno || "SIN CURSO"}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={cn(
-                          "text-[10px] font-bold border-none",
-                          count > 0 ? "bg-red-50 text-red-700" : "bg-gray-50 text-gray-500"
-                        )}>
-                          {count} {count === 1 ? 'INCIDENCIA' : 'INCIDENCIAS'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <div className="flex justify-center">
-                          <CheckCircle2 className={cn("h-4 w-4", count > 0 ? "text-yellow-500" : "text-green-500")} />
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="sm" onClick={() => setViewExpedienteId(student.id)} className="h-8 px-2 text-[9px] font-bold text-[#89a54e] uppercase gap-1 hover:bg-[#89a54e]/10">
-                            <FileText className="h-3 w-3" /> Ver Expediente
-                          </Button>
-                          {isTutor && (
-                            <>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-500 hover:bg-blue-50">
-                                <Pencil className="h-3 w-3" />
-                              </Button>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-red-600 hover:bg-red-50">
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={5} className="h-40 text-center text-muted-foreground italic text-sm">
-                    No se han encontrado alumnos.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
+         <div className="flex items-center gap-4">
+            <Label className="text-[13px] font-medium min-w-[120px]">Curso:</Label>
+            <div className="flex-1 flex items-center gap-1">
+               <select 
+                className="w-full bg-white border border-gray-300 rounded px-2 h-7 text-[13px] font-medium focus:outline-none"
+                value={selectedCourse}
+                onChange={e => setSelectedCourse(e.target.value)}
+               >
+                  <option value="Cualquiera">Cualquiera</option>
+                  {courses.map(c => <option key={c} value={c}>{c}</option>)}
+               </select>
+               <span className="text-purple-600 font-bold">*</span>
+            </div>
+         </div>
+
+         <div className="flex items-center gap-4">
+            <Label className="text-[13px] font-medium min-w-[120px]">Grupo:</Label>
+            <div className="flex items-center gap-1">
+               <select 
+                className="bg-white border border-gray-300 rounded px-2 h-7 text-[13px] font-medium focus:outline-none min-w-[150px]"
+                value={selectedGroup}
+                onChange={e => setSelectedGroup(e.target.value)}
+               >
+                  <option>Cualquiera</option>
+               </select>
+               <span className="text-purple-600 font-bold">*</span>
+            </div>
+         </div>
+
+         <div className="flex items-center gap-4 pt-1">
+            <Label className="text-[13px] font-medium min-w-[120px]">Mostrar:</Label>
+            <div className="flex gap-4 text-[13px]">
+               <button onClick={() => setVisibilityFilter('all')} className={cn("hover:underline", visibilityFilter === 'all' ? "font-bold text-gray-800" : "text-purple-700")}>todo el alumnado</button>
+               <span className="text-gray-300">|</span>
+               <button onClick={() => setVisibilityFilter('with')} className={cn("hover:underline", visibilityFilter === 'with' ? "font-bold text-gray-800" : "text-purple-700")}>sólo alumnado con incidente</button>
+               <span className="text-gray-300">|</span>
+               <button onClick={() => setVisibilityFilter('without')} className={cn("hover:underline", visibilityFilter === 'without' ? "font-bold text-gray-800" : "text-purple-700")}>sólo alumnado sin incidente</button>
+            </div>
+         </div>
+
+         <div className="flex flex-wrap items-center gap-x-12 gap-y-4 pt-2">
+            <div className="flex items-center gap-3">
+               <Label className="text-[13px] font-medium">Fecha desde:</Label>
+               <div className="flex items-center gap-1">
+                  <Input type="text" className="h-7 w-28 border-gray-300 bg-white" placeholder="" />
+                  <div className="bg-gray-100 p-1 border border-gray-300 rounded cursor-pointer"><Calendar className="h-3.5 w-3.5 text-green-700" /></div>
+               </div>
+            </div>
+            <div className="flex items-center gap-3">
+               <Label className="text-[13px] font-medium">Fecha hasta:</Label>
+               <div className="flex items-center gap-1">
+                  <Input type="text" className="h-7 w-28 border-gray-300 bg-white" placeholder="" />
+                  <div className="bg-gray-100 p-1 border border-gray-300 rounded cursor-pointer"><Calendar className="h-3.5 w-3.5 text-green-700" /></div>
+               </div>
+            </div>
+         </div>
       </div>
 
+      {/* TABLA ESTADÍSTICA (REPLICANDO IMAGEN) */}
+      <div className="space-y-2">
+         <p className="text-[13px] font-medium">Número total de registros: {filteredStudents.length}</p>
+         
+         <div className="bg-white border border-gray-300 shadow-sm overflow-hidden">
+            <table className="w-full text-left border-collapse text-[13px]">
+               <thead>
+                  <tr className="bg-[#9c84a5] text-white font-bold">
+                     <th className="p-2 border-r border-white/20 w-[25%]">Alumnado</th>
+                     <th className="p-2 border-r border-white/20 text-center leading-tight">Número de<br/>incidentes</th>
+                     <th className="p-2 border-r border-white/20 text-center leading-tight">Pendiente de<br/>registro de<br/>efectividad</th>
+                     <th className="p-0 border-r border-white/20">
+                        <div className="text-center p-2 border-b border-white/20">Conductas</div>
+                        <div className="flex">
+                           <div className="flex-1 text-center p-1 border-r border-white/20">Graves</div>
+                           <div className="flex-1 text-center p-1">Contrarias</div>
+                        </div>
+                     </th>
+                     <th className="p-2 border-r border-white/20 text-center leading-tight">Correcciones/<br/>medidas<br/>disciplinarias</th>
+                     <th className="p-2 text-center leading-tight">Decisión de<br/>no corrección</th>
+                  </tr>
+               </thead>
+               <tbody>
+                  {filteredStudents.length === 0 ? (
+                    <tr><td colSpan={6} className="p-20 text-center italic text-gray-400">No se han encontrado registros para los filtros seleccionados.</td></tr>
+                  ) : (
+                    filteredStudents.map(student => {
+                      const stats = getStudentStats(student.id);
+                      return (
+                        <tr key={student.id} className="border-b border-gray-200 hover:bg-gray-50/80 transition-colors odd:bg-white even:bg-gray-50/30">
+                           <td className="p-2 font-bold">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <button className="text-[#9c4d96] hover:underline text-left outline-none uppercase tracking-tight">
+                                    {student.nombrePersona || student.usuario}
+                                  </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="start" className="w-80 p-0 border-[#9c4d96] shadow-xl font-verdana">
+                                   <DropdownMenuItem 
+                                    onClick={() => { resetForm(); setFormData({...formData, alumnoId: student.id}); setIsDialogOpen(true); }}
+                                    className="p-3 text-[12px] font-bold text-gray-800 hover:bg-gray-100 cursor-pointer border-b"
+                                   >
+                                     Nueva conducta contraria/grave del alumnado
+                                   </DropdownMenuItem>
+                                   <DropdownMenuItem 
+                                    onClick={() => setViewExpedienteId(student.id)}
+                                    className="p-3 text-[12px] font-bold text-gray-800 hover:bg-gray-100 cursor-pointer border-b"
+                                   >
+                                     Conductas contrarias/graves del alumnado
+                                   </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                           </td>
+                           <td className="p-2 text-center font-medium">{stats.total}</td>
+                           <td className="p-2 text-center font-medium">{stats.total > 0 ? stats.pendingEffectivity : ""}</td>
+                           <td className="p-0 border-l border-gray-100">
+                              <div className="flex">
+                                 <div className="flex-1 text-center p-2 border-r border-gray-100">{stats.total > 0 ? stats.graves : 0}</div>
+                                 <div className="flex-1 text-center p-2">{stats.total > 0 ? stats.contrarias : 0}</div>
+                              </div>
+                           </td>
+                           <td className="p-2 text-center font-medium">{stats.total > 0 ? stats.correcciones : 0}</td>
+                           <td className="p-2 text-center font-medium">{stats.total > 0 ? stats.noCorreccion : 0}</td>
+                        </tr>
+                      );
+                    })
+                  )}
+               </tbody>
+            </table>
+         </div>
+      </div>
+
+      {/* DIALOGO DE EXPEDIENTE (EXISTENTE) */}
       {viewExpedienteId && (
         <ExpedienteDisciplinarioDialog 
           alumnoId={viewExpedienteId} 
@@ -410,6 +498,7 @@ export function AlumnadoIncidenteView({ profesorId, userData, targetStudentId, o
         />
       )}
 
+      {/* DIALOGO DE NUEVA AMONESTACIÓN (EL FORMULARIO DETALLADO) */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-5xl font-verdana p-0 border-none overflow-hidden h-[95vh] flex flex-col shadow-2xl rounded-xl">
           <DialogHeader className="bg-[#f2f2f2] p-4 text-center shrink-0 border-b flex flex-row items-center justify-between">
@@ -944,3 +1033,4 @@ function ExpedienteDisciplinarioDialog({ alumnoId, onClose, incidencias }: { alu
     </Dialog>
   );
 }
+
