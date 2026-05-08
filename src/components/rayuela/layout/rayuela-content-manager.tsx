@@ -85,6 +85,7 @@ export function RayuelaContentManager({
         return (
           <AlumnadoIncidenteView 
             profesorId={effectiveTeacherId} 
+            userData={userData}
             targetStudentId={targetIncidentStudentId} 
             onActionComplete={onActionComplete}
           />

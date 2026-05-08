@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -16,7 +15,8 @@ import {
   Eraser,
   User,
   MapPin,
-  Trash2
+  Trash2,
+  Pencil
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -50,7 +50,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
@@ -90,13 +90,31 @@ const CONDUCTAS_GRAVES = [
   "Vejaciones o humillaciones contra un miembro de la comunidad educativa (Gravemente perjudicial)"
 ];
 
+const CORRECCIONES_TUTOR = [
+  "Amonestación Oral (Contraria)",
+  "Apercibimiento por escrito (Contraria)",
+  "Suprimir el derecho de asistir a las actividades extraescolares y complementarias (Contraria)",
+  "Suspender el derecho de asistencia entre 1 y 3 días (Contraria)"
+];
+
+const CORRECCIONES_PROFESOR = [
+  "Amonestación Oral (Contraria)",
+  "Apercibimiento por escrito (Contraria)"
+];
+
+const CORRECCIONES_DIRECCION_ADICIONAL = [
+  "Suspender el derecho de asistencia entre 4 y 30 días (Gravemente Perjudicial)",
+  "Expulsión Permanente (Gravemente Perjudicial)"
+];
+
 interface AlumnadoIncidenteViewProps {
   profesorId: string;
+  userData: any;
   targetStudentId?: string;
   onActionComplete?: () => void;
 }
 
-export function AlumnadoIncidenteView({ profesorId, targetStudentId, onActionComplete }: AlumnadoIncidenteViewProps) {
+export function AlumnadoIncidenteView({ profesorId, userData, targetStudentId, onActionComplete }: AlumnadoIncidenteViewProps) {
   const db = useFirestore();
   const { toast } = useToast();
   const [selectedCourse, setSelectedCourse] = useState<string>("TODOS");
@@ -113,17 +131,21 @@ export function AlumnadoIncidenteView({ profesorId, targetStudentId, onActionCom
     tipoIncidencia: 'Contraria',
     gravedad: 1,
     conductas: [] as string[],
-    medidasCorrectoras: '',
+    medidasCorrectoras: [] as string[],
     observaciones: '',
     comunicadoFamilia: false,
     otrasConductasChecked: false,
-    otrasConductasDesc: ''
+    otrasConductasDesc: '',
+    estadoCorreccion: 'Se aplica corrección',
+    motivosNoCorreccion: '',
+    efectividadCorreccion: 'Indiferente'
   });
 
   const [selectedConductType, setSelectedConductType] = useState<string>("Contraria");
   const [currentSelectedConduct, setCurrentSelectedConduct] = useState<string>("");
+  const [selectedCorrectionType, setSelectedCorrectionType] = useState<string>("");
+  const [currentSelectedCorrection, setCurrentSelectedCorrection] = useState<string>("");
 
-  // Efecto para abrir automáticamente el expediente si viene de una redirección
   useEffect(() => {
     if (targetStudentId) {
       setViewExpedienteId(targetStudentId);
@@ -160,6 +182,34 @@ export function AlumnadoIncidenteView({ profesorId, targetStudentId, onActionCom
     return students.filter(s => (s.cursoAlumno || "SIN CURSO") === selectedCourse);
   }, [students, selectedCourse]);
 
+  // Lógica de correcciones permitidas por rol
+  const isDirectivo = userData?.rolesUsuario?.includes('EsDireccion');
+  const isTutorOfStudent = useMemo(() => {
+    const student = students.find(s => s.id === formData.alumnoId);
+    return userData?.esTutor && student?.cursoAlumno === userData.esTutor;
+  }, [userData, students, formData.alumnoId]);
+
+  const tipoCorreccionOpciones = useMemo(() => {
+    if (isDirectivo) return ["Contraria", "Gravemente Perjudiciales"];
+    if (isTutorOfStudent) return ["Contrarias"];
+    return ["Contraria"];
+  }, [isDirectivo, isTutorOfStudent]);
+
+  useEffect(() => {
+    if (!selectedCorrectionType && tipoCorreccionOpciones.length > 0) {
+      setSelectedCorrectionType(tipoCorreccionOpciones[0]);
+    }
+  }, [tipoCorreccionOpciones, selectedCorrectionType]);
+
+  const availableCorrections = useMemo(() => {
+    if (selectedCorrectionType === "Gravemente Perjudiciales" && isDirectivo) {
+       return CORRECCIONES_DIRECCION_ADICIONAL;
+    }
+    
+    if (isDirectivo || isTutorOfStudent) return CORRECCIONES_TUTOR;
+    return CORRECCIONES_PROFESOR;
+  }, [selectedCorrectionType, isDirectivo, isTutorOfStudent]);
+
   const handleAddConduct = () => {
     if (!currentSelectedConduct) return;
     if (formData.conductas.includes(currentSelectedConduct)) return;
@@ -169,10 +219,12 @@ export function AlumnadoIncidenteView({ profesorId, targetStudentId, onActionCom
     });
   };
 
-  const handleRemoveConduct = (conduct: string) => {
+  const handleAddCorrection = () => {
+    if (!currentSelectedCorrection) return;
+    if (formData.medidasCorrectoras.includes(currentSelectedCorrection)) return;
     setFormData({
       ...formData,
-      conductas: formData.conductas.filter(c => c !== conduct)
+      medidasCorrectoras: [...formData.medidasCorrectoras, currentSelectedCorrection]
     });
   };
 
@@ -185,21 +237,17 @@ export function AlumnadoIncidenteView({ profesorId, targetStudentId, onActionCom
     const student = students?.find(s => s.id === formData.alumnoId);
     const studentCourse = student?.cursoAlumno;
     
-    // Obtener nombre del profesor comunicador
     const profSnap = await getDoc(doc(db, 'usuarios', formData.profesorComunicadorId));
     const profName = profSnap.exists() ? (profSnap.data().nombrePersona || profSnap.data().usuario) : formData.profesorComunicadorId;
 
-    // Guardar incidencia
-    const incidentRef = await addDocumentNonBlocking(collection(db, 'incidencias'), {
+    await addDocumentNonBlocking(collection(db, 'incidencias'), {
       ...formData,
-      profesorId: profesorId, // El que lo registra
+      profesorId: profesorId,
       curso: studentCourse || "SIN CURSO",
       createdAt: new Date().toISOString()
     });
 
-    if (!incidentRef) return;
-
-    // 1. Enviar mensaje al ALUMNO
+    // Notificaciones
     addDocumentNonBlocking(collection(db, 'mensajes'), {
       remitenteId: 'SISTEMA',
       destinatarioId: formData.alumnoId,
@@ -209,23 +257,6 @@ export function AlumnadoIncidenteView({ profesorId, targetStudentId, onActionCom
       eliminado: false,
       createdAt: new Date().toISOString()
     });
-
-    // 2. Enviar notificación al tutor
-    if (studentCourse) {
-      const tutorsQuery = query(collection(db, 'usuarios'), where('esTutor', '==', studentCourse));
-      const tutorsSnap = await getDocs(tutorsQuery);
-      tutorsSnap.forEach(tutorDoc => {
-        addDocumentNonBlocking(collection(db, 'mensajes'), {
-          remitenteId: 'SISTEMA',
-          destinatarioId: tutorDoc.id,
-          asunto: 'Plataforma Rayuela: Nueva Incidencia de Alumno',
-          cuerpo: `${profName} ha registrado una nueva incidencia [${formData.tituloIncidente}] para el alumno ${student?.nombrePersona || student?.usuario}, ocurrida en ${formData.lugar}. Para verla -pulse aqui- [REF:${student?.id}]`,
-          leido: false,
-          eliminado: false,
-          createdAt: new Date().toISOString()
-        });
-      });
-    }
 
     toast({ title: "Incidencia Registrada", description: "El expediente disciplinario ha sido actualizado." });
     setIsDialogOpen(false);
@@ -243,14 +274,18 @@ export function AlumnadoIncidenteView({ profesorId, targetStudentId, onActionCom
       tipoIncidencia: 'Contraria',
       gravedad: 1,
       conductas: [] as string[],
-      medidasCorrectoras: '',
+      medidasCorrectoras: [] as string[],
       observaciones: '',
       comunicadoFamilia: false,
       otrasConductasChecked: false,
-      otrasConductasDesc: ''
+      otrasConductasDesc: '',
+      estadoCorreccion: 'Se aplica corrección',
+      motivosNoCorreccion: '',
+      efectividadCorreccion: 'Indiferente'
     });
     setSelectedConductType("Contraria");
     setCurrentSelectedConduct("");
+    setCurrentSelectedCorrection("");
   };
 
   const getIncidentCount = (studentId: string) => {
@@ -309,6 +344,7 @@ export function AlumnadoIncidenteView({ profesorId, targetStudentId, onActionCom
               {filteredStudents.length > 0 ? (
                 filteredStudents.map((student) => {
                   const count = getIncidentCount(student.id);
+                  const isTutor = userData?.esTutor && student.cursoAlumno === userData.esTutor;
                   return (
                     <TableRow key={student.id} className="hover:bg-gray-50/50 transition-colors">
                       <TableCell>
@@ -335,9 +371,21 @@ export function AlumnadoIncidenteView({ profesorId, targetStudentId, onActionCom
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" onClick={() => setViewExpedienteId(student.id)} className="h-8 px-2 text-[9px] font-bold text-[#89a54e] uppercase gap-1 hover:bg-[#89a54e]/10">
-                          <FileText className="h-3 w-3" /> Ver Expediente
-                        </Button>
+                        <div className="flex justify-end gap-2">
+                          <Button variant="ghost" size="sm" onClick={() => setViewExpedienteId(student.id)} className="h-8 px-2 text-[9px] font-bold text-[#89a54e] uppercase gap-1 hover:bg-[#89a54e]/10">
+                            <FileText className="h-3 w-3" /> Ver Expediente
+                          </Button>
+                          {isTutor && (
+                            <>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-500 hover:bg-blue-50">
+                                <Pencil className="h-3 w-3" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-red-600 hover:bg-red-50">
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
@@ -379,11 +427,12 @@ export function AlumnadoIncidenteView({ profesorId, targetStudentId, onActionCom
                 <TabsList className="bg-transparent h-auto p-0 gap-1">
                    <TabsTrigger value="incidente" className="rounded-t-lg rounded-b-none border-x border-t border-gray-300 data-[state=active]:bg-white data-[state=active]:text-lila font-bold text-[11px] px-6 py-2 uppercase">Incidente</TabsTrigger>
                    <TabsTrigger value="conductas" className="rounded-t-lg rounded-b-none border-x border-t border-gray-300 data-[state=active]:bg-white data-[state=active]:text-lila font-bold text-[11px] px-6 py-2 uppercase">Conductas desarrolladas en este incidente</TabsTrigger>
-                   <TabsTrigger value="correcciones" className="rounded-t-lg rounded-b-none border-x border-t border-gray-300 data-[state=active]:bg-white font-bold text-[11px] px-6 py-2 uppercase opacity-60">Correcciones aplicadas en este incidente</TabsTrigger>
+                   <TabsTrigger value="correcciones" className="rounded-t-lg rounded-b-none border-x border-t border-gray-300 data-[state=active]:bg-white data-[state=active]:text-lila font-bold text-[11px] px-6 py-2 uppercase">Correcciones aplicadas en este incidente</TabsTrigger>
                 </TabsList>
              </div>
 
              <ScrollArea className="flex-1 bg-white">
+                {/* PESTAÑA 1: INCIDENTE */}
                 <TabsContent value="incidente" className="p-8 m-0 space-y-8">
                    <div className="border border-purple-200 rounded-lg p-8 space-y-6 relative bg-white">
                       <div className="flex items-center gap-4">
@@ -497,9 +546,9 @@ export function AlumnadoIncidenteView({ profesorId, targetStudentId, onActionCom
                    </div>
                 </TabsContent>
 
+                {/* PESTAÑA 2: CONDUCTAS */}
                 <TabsContent value="conductas" className="p-8 m-0 space-y-8 animate-in fade-in duration-300">
                    <div className="border border-purple-200 rounded-lg p-8 space-y-8 bg-white relative">
-                      {/* FILA 1: TIPO DE CONDUCTA */}
                       <div className="flex items-center gap-4">
                          <Label className="w-64 text-[13px] font-medium text-gray-700">Tipo de conducta:</Label>
                          <div className="flex-1 max-w-xl">
@@ -521,7 +570,6 @@ export function AlumnadoIncidenteView({ profesorId, targetStudentId, onActionCom
                          </div>
                       </div>
 
-                      {/* FILA 2: LISTADO CONDUCTAS */}
                       <div className="flex items-start gap-4">
                          <Label className="w-64 text-[13px] font-medium text-gray-700 pt-2">Conductas contrarias/gravemente perjudiciales:</Label>
                          <div className="flex-1 flex items-center gap-4">
@@ -544,7 +592,6 @@ export function AlumnadoIncidenteView({ profesorId, targetStudentId, onActionCom
                          </div>
                       </div>
 
-                      {/* FILA 3: CONDUCTAS DESARROLLADAS */}
                       <div className="flex items-start gap-4">
                          <Label className="w-64 text-[13px] font-medium text-gray-700 pt-2">Conductas desarrolladas:</Label>
                          <div className="flex-1 flex items-start gap-4">
@@ -568,7 +615,7 @@ export function AlumnadoIncidenteView({ profesorId, targetStudentId, onActionCom
                             </div>
                             <Button 
                               variant="outline"
-                              onClick={() => handleRemoveConduct(currentSelectedConduct)}
+                              onClick={() => setFormData({...formData, conductas: formData.conductas.filter(c => c !== currentSelectedConduct)})}
                               disabled={!currentSelectedConduct || !formData.conductas.includes(currentSelectedConduct)}
                               className="border-[#9c4d96] text-[#9c4d96] hover:bg-purple-50 text-[11px] font-bold uppercase h-8 px-6 rounded-md shadow-sm"
                             >
@@ -577,7 +624,6 @@ export function AlumnadoIncidenteView({ profesorId, targetStudentId, onActionCom
                          </div>
                       </div>
 
-                      {/* FILA 4: OTRAS CONDUCTAS */}
                       <div className="space-y-4 pt-4">
                          <div className="flex items-center gap-3">
                             <Checkbox 
@@ -600,9 +646,143 @@ export function AlumnadoIncidenteView({ profesorId, targetStudentId, onActionCom
                    </div>
                 </TabsContent>
 
-                <TabsContent value="correcciones" className="p-20 text-center space-y-4 opacity-40">
-                   <AlertTriangle className="h-16 w-16 mx-auto text-gray-300" />
-                   <p className="italic">Esperando definición de medidas correctoras...</p>
+                {/* PESTAÑA 3: CORRECCIONES */}
+                <TabsContent value="correcciones" className="p-8 m-0 space-y-8 animate-in fade-in duration-300">
+                   <div className="border border-purple-200 rounded-lg p-8 space-y-8 bg-white relative">
+                      <div className="flex items-center gap-4">
+                         <Label className="w-64 text-[13px] font-medium text-gray-700">Estado de la corrección:</Label>
+                         <div className="flex-1 max-w-xl">
+                            <Select 
+                              value={formData.estadoCorreccion} 
+                              onValueChange={(val) => setFormData({...formData, estadoCorreccion: val})}
+                            >
+                               <SelectTrigger className="h-8 border-gray-300 shadow-sm text-[13px]">
+                                  <SelectValue />
+                               </SelectTrigger>
+                               <SelectContent>
+                                  <SelectItem value="Se aplica corrección" className="text-[13px]">Se aplica corrección</SelectItem>
+                                  <SelectItem value="No se aplica corrección" className="text-[13px]">No se aplica corrección</SelectItem>
+                               </SelectContent>
+                            </Select>
+                         </div>
+                      </div>
+
+                      <div className="space-y-2">
+                         <div className="flex items-center gap-2">
+                            <Label className="text-[13px] font-medium text-gray-700">Motivos por los que excepcionalmente, no se aplican correcciones:</Label>
+                            <Eraser className="h-5 w-5 text-gray-300 cursor-pointer hover:text-red-500" onClick={() => setFormData({...formData, motivosNoCorreccion: ''})} />
+                         </div>
+                         <Textarea 
+                            disabled={formData.estadoCorreccion === 'Se aplica corrección'}
+                            value={formData.motivosNoCorreccion}
+                            onChange={(e) => setFormData({...formData, motivosNoCorreccion: e.target.value})}
+                            className="min-h-[80px] border-gray-400 shadow-inner text-[13px] resize-none leading-relaxed"
+                         />
+                         {formData.estadoCorreccion === 'No se aplica corrección' && <span className="text-red-500 font-bold text-[10px]">* Campo obligatorio</span>}
+                      </div>
+
+                      <div className="flex items-center gap-4">
+                         <Label className="w-64 text-[13px] font-medium text-gray-700">Tipo de correcciones:</Label>
+                         <div className="flex-1 max-w-xl">
+                            <Select 
+                              disabled={formData.estadoCorreccion === 'No se aplica corrección'}
+                              value={selectedCorrectionType} 
+                              onValueChange={(val) => {
+                                setSelectedCorrectionType(val);
+                                setCurrentSelectedCorrection("");
+                              }}
+                            >
+                               <SelectTrigger className="h-8 border-gray-300 shadow-sm text-[13px]">
+                                  <SelectValue />
+                               </SelectTrigger>
+                               <SelectContent>
+                                  {tipoCorreccionOpciones.map(t => (
+                                    <SelectItem key={t} value={t} className="text-[13px]">{t}</SelectItem>
+                                  ))}
+                               </SelectContent>
+                            </Select>
+                         </div>
+                      </div>
+
+                      <div className="flex items-start gap-4">
+                         <Label className="w-64 text-[13px] font-medium text-gray-700 pt-2">Correcciones:</Label>
+                         <div className="flex-1 flex items-center gap-4">
+                            <Select 
+                              disabled={formData.estadoCorreccion === 'No se aplica corrección'}
+                              value={currentSelectedCorrection} 
+                              onValueChange={setCurrentSelectedCorrection}
+                            >
+                               <SelectTrigger className="h-8 border-gray-300 shadow-sm text-[13px] flex-1">
+                                  <SelectValue placeholder="Seleccione una corrección..." />
+                               </SelectTrigger>
+                               <SelectContent>
+                                  {availableCorrections.map(c => (
+                                    <SelectItem key={c} value={c} className="text-[11px]">{c}</SelectItem>
+                                  ))}
+                               </SelectContent>
+                            </Select>
+                            <Button 
+                              disabled={formData.estadoCorreccion === 'No se aplica corrección'}
+                              onClick={handleAddCorrection}
+                              className="bg-[#9c4d96] hover:bg-[#833d7d] text-white text-[11px] font-bold uppercase h-8 px-6 rounded-md shadow-sm"
+                            >
+                              Añadir
+                            </Button>
+                         </div>
+                      </div>
+
+                      <div className="flex items-start gap-4">
+                         <Label className="w-64 text-[13px] font-medium text-gray-700 pt-2">Correcciones aplicadas:</Label>
+                         <div className="flex-1 flex items-start gap-4">
+                            <div className="flex-1 min-h-[100px] border border-gray-400 bg-white rounded shadow-inner p-2 space-y-1">
+                               {formData.medidasCorrectoras.length === 0 ? (
+                                 <p className="text-[11px] text-gray-300 italic p-2">No se han añadido medidas todavía.</p>
+                               ) : (
+                                 formData.medidasCorrectoras.map(m => (
+                                   <div 
+                                    key={m} 
+                                    onClick={() => setCurrentSelectedCorrection(m)}
+                                    className={cn(
+                                      "text-[11px] p-1.5 rounded cursor-pointer transition-colors leading-tight",
+                                      currentSelectedCorrection === m ? "bg-blue-100 text-blue-900 font-bold" : "hover:bg-gray-50"
+                                    )}
+                                   >
+                                      {m}
+                                   </div>
+                                 ))
+                               )}
+                            </div>
+                            <Button 
+                              disabled={formData.estadoCorreccion === 'No se aplica corrección' || !currentSelectedCorrection || !formData.medidasCorrectoras.includes(currentSelectedCorrection)}
+                              variant="outline"
+                              onClick={() => setFormData({...formData, medidasCorrectoras: formData.medidasCorrectoras.filter(m => m !== currentSelectedCorrection)})}
+                              className="border-[#9c4d96] text-[#9c4d96] hover:bg-purple-50 text-[11px] font-bold uppercase h-8 px-6 rounded-md shadow-sm"
+                            >
+                              Quitar
+                            </Button>
+                         </div>
+                      </div>
+
+                      <div className="flex items-center gap-4">
+                         <Label className="w-64 text-[13px] font-medium text-gray-700">¿Han sido efectivas las correcciones?:</Label>
+                         <div className="flex-1 max-w-xl">
+                            <Select 
+                              value={formData.efectividadCorreccion} 
+                              onValueChange={(val) => setFormData({...formData, efectividadCorreccion: val})}
+                            >
+                               <SelectTrigger className="h-8 border-gray-300 shadow-sm text-[13px]">
+                                  <SelectValue />
+                               </SelectTrigger>
+                               <SelectContent>
+                                  <SelectItem value="Indiferente" className="text-[13px]">Indiferente</SelectItem>
+                                  <SelectItem value="Si" className="text-[13px]">Si</SelectItem>
+                                  <SelectItem value="No" className="text-[13px]">No</SelectItem>
+                                  <SelectItem value="Parcialmente" className="text-[13px]">Parcialmente</SelectItem>
+                               </SelectContent>
+                            </Select>
+                         </div>
+                      </div>
+                   </div>
                 </TabsContent>
              </ScrollArea>
           </Tabs>
@@ -728,6 +908,17 @@ function ExpedienteDisciplinarioDialog({ alumnoId, onClose, incidencias }: { alu
                         ))}
                       </div>
                    </div>
+
+                   {selectedIncident.medidasCorrectoras?.length > 0 && (
+                     <div className="space-y-2">
+                        <Label className="text-[10px] font-bold uppercase text-gray-400">Medidas Correctoras Aplicadas</Label>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedIncident.medidasCorrectoras.map((m: string) => (
+                            <Badge key={m} className="bg-lila text-white text-[9px] font-bold uppercase border-none">{m}</Badge>
+                          ))}
+                        </div>
+                     </div>
+                   )}
 
                    <div className="pt-4 border-t flex items-center justify-between">
                       <div className="flex items-center gap-2 text-[10px] font-bold text-blue-800 uppercase bg-blue-50 px-3 py-1 rounded">
