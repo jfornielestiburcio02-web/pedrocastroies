@@ -349,7 +349,7 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
                   <div className="w-full flex flex-col items-center gap-2">
                     {isFullDay ? (
                       <div className="flex items-center gap-1.5 py-1.5 h-[32px]">
-                         <span className="boton_rectangulo" data-type={currentStatus}>
+                         <span className="boton_rectangulo" data-type={currentStatus === 'J' ? 'J' : 'I'}>
                            {currentStatus === 'J' ? 'Just' : 'Inj'}
                          </span>
                          <span className="text-[11px] font-bold text-[#595959] uppercase tracking-tighter">Día completo</span>
@@ -554,21 +554,21 @@ function AttendanceHistoryDialog({ alumnoId, claseId, grupoId, onClose }: { alum
                     {!item.isFullDay && item.tipo !== 'J' && justifyingId !== item.id && (
                       <Button 
                         variant="ghost" 
-                        size="icon" 
+                        size="sm" 
                         onClick={() => setJustifyingId(item.id)}
-                        className="h-7 w-7 text-[#008D88] hover:bg-[#008D88]/10"
+                        className="h-7 text-[#008D88] hover:bg-[#008D88]/10 text-[9px] font-bold uppercase px-2"
                       >
-                        <Check className="h-4 w-4" />
+                        <Check className="h-3 w-3 mr-1" /> JUSTIFICAR
                       </Button>
                     )}
                     {!item.isFullDay && (
                       <Button 
                         variant="ghost" 
-                        size="icon" 
+                        size="sm" 
                         onClick={() => handleDelete(item.id)}
-                        className="h-7 w-7 text-destructive hover:bg-destructive/10"
+                        className="h-7 text-destructive hover:bg-destructive/10 text-[9px] font-bold uppercase px-2"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-3 w-3 mr-1" /> ELIMINAR
                       </Button>
                     )}
                     {item.isFullDay && (
