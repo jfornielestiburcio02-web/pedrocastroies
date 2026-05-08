@@ -1,57 +1,58 @@
-
 'use client';
 
 import { firebaseConfig } from '@/firebase/config';
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
+import { getAuth, Auth } from 'firebase/auth';
 import { 
   initializeFirestore, 
   persistentLocalCache, 
-  persistentMultipleTabManager 
+  persistentMultipleTabManager,
+  Firestore,
+  getFirestore
 } from 'firebase/firestore';
 
-// Instancia única de los SDKs para evitar errores de re-inicialización (Singleton ca9)
-let sdks: any = null;
+// Singleton instances
+let firebaseApp: FirebaseApp;
+let firestore: Firestore;
+let auth: Auth;
 
 /**
  * Inicializa Firebase con una configuración optimizada para entornos de proxy.
  * Utiliza experimentalForceLongPolling para eliminar errores de aserción interna (ID: ca9).
  */
 export function initializeFirebase() {
-  if (sdks) return sdks;
-
-  const firebaseApp = !getApps().length 
-    ? initializeApp(firebaseConfig) 
-    : getApp();
-
-  // Configuración de Firestore con Long Polling forzado para eliminar errores ca9
-  // Es crítico que initializeFirestore solo se llame una vez.
-  let firestore;
-  try {
-    firestore = initializeFirestore(firebaseApp, {
-      experimentalForceLongPolling: true,
-      localCache: persistentLocalCache({
-        tabManager: persistentMultipleTabManager()
-      })
-    });
-  } catch (e) {
-    // Si ya estaba inicializado, obtenemos la instancia existente
-    const { getFirestore } = require('firebase/firestore');
-    firestore = getFirestore(firebaseApp);
+  if (!getApps().length) {
+    firebaseApp = initializeApp(firebaseConfig);
+  } else {
+    firebaseApp = getApp();
   }
 
-  const auth = getAuth(firebaseApp);
+  // Aseguramos que Firestore se inicialice solo una vez con Long Polling
+  if (!firestore) {
+    try {
+      firestore = initializeFirestore(firebaseApp, {
+        experimentalForceLongPolling: true,
+        localCache: persistentLocalCache({
+          tabManager: persistentMultipleTabManager()
+        })
+      });
+    } catch (e) {
+      firestore = getFirestore(firebaseApp);
+    }
+  }
 
-  sdks = {
+  if (!auth) {
+    auth = getAuth(firebaseApp);
+  }
+
+  return {
     firebaseApp,
     auth,
     firestore,
   };
-
-  return sdks;
 }
 
-// Re-exportar todos los hooks y el provider desde sus respectivos archivos
+// Re-exportar hooks y provider
 export * from './provider';
 export * from './firestore/use-collection';
 export * from './firestore/use-doc';

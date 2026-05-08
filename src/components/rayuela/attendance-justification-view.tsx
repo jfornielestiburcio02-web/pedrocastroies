@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useMemo } from 'react';
@@ -16,7 +15,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, doc, writeBatch } from 'firebase/firestore';
+import { collection, query, where, doc, writeBatch, getDocs } from 'firebase/firestore';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { format, addDays, startOfWeek, endOfWeek } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -82,8 +81,8 @@ export function AttendanceJustificationView({ alumno, onClose, profesorId }: Att
     
     if (dayAtts.length === 0) return null;
 
-    const allInj = dayAtts.every(a => a.tipo === 'I');
-    const allJust = dayAtts.every(a => a.tipo === 'J');
+    const allInj = dayAtts.every(a => a.tipo === 'I' && a.isFullDay);
+    const allJust = dayAtts.every(a => a.tipo === 'J' && a.isFullDay);
 
     if (allInj) return 'I';
     if (allJust) return 'J';
@@ -99,13 +98,21 @@ export function AttendanceJustificationView({ alumno, onClose, profesorId }: Att
     
     const batch = writeBatch(db);
     
-    daySessions.forEach(session => {
-      const attendanceId = `${alumno.id}_${session.id}_${targetDate}`;
-      const docRef = doc(db, 'asistenciasInasistencias', attendanceId);
-      
-      if (action === 'Delete') {
-        batch.delete(docRef);
-      } else {
+    // 1. ELIMINACIÓN PREVIA: Limpiar cualquier registro existente este día para solapar totalmente
+    const existingDayQuery = query(
+      collection(db, 'asistenciasInasistencias'),
+      where('alumnoId', '==', alumno.id),
+      where('fecha', '==', targetDate)
+    );
+    const snap = await getDocs(existingDayQuery);
+    snap.forEach(d => batch.delete(d.ref));
+
+    // 2. APLICAR NUEVA ACCIÓN
+    if (action !== 'Delete') {
+      daySessions.forEach(session => {
+        const attendanceId = `${alumno.id}_${session.id}_${targetDate}`;
+        const docRef = doc(db, 'asistenciasInasistencias', attendanceId);
+        
         batch.set(docRef, {
           alumnoId: alumno.id,
           claseId: session.id,
@@ -116,23 +123,23 @@ export function AttendanceJustificationView({ alumno, onClose, profesorId }: Att
           isFullDay: true,
           updatedAt: new Date().toISOString(),
           createdAt: new Date().toISOString()
-        }, { merge: true });
+        });
+      });
+
+      if (action === 'Inj') {
+        addDocumentNonBlocking(collection(db, 'mensajes'), {
+          remitenteId: 'SISTEMA',
+          destinatarioId: alumno.id,
+          asunto: 'Aviso de Asistencia: Día Completo',
+          cuerpo: 'Se ha registrado una falta de dia completo para tu persona',
+          leido: false,
+          eliminado: false,
+          createdAt: new Date().toISOString()
+        });
       }
-    });
+    }
 
     await batch.commit();
-
-    if (action === 'Inj') {
-      addDocumentNonBlocking(collection(db, 'mensajes'), {
-        remitenteId: 'SISTEMA',
-        destinatarioId: alumno.id,
-        asunto: 'Aviso de Asistencia: Día Completo',
-        cuerpo: 'Se ha registrado una falta de dia completo para tu persona',
-        leido: false,
-        eliminado: false,
-        createdAt: new Date().toISOString()
-      });
-    }
   };
 
   const handleJustifyHour = (claseId: string, fecha: string) => {
@@ -161,7 +168,7 @@ export function AttendanceJustificationView({ alumno, onClose, profesorId }: Att
   if (loadingSchedule) return <div className="flex justify-center p-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 
   return (
-    <div className="animate-in fade-in duration-300 space-y-4 max-w-7xl mx-auto w-full font-verdana pb-10">
+    <div className="animate-in fade-in duration-300 space-y-4 w-full font-verdana pb-10">
       {/* HEADER CARD ALUMNO COMPACTO */}
       <div className="bg-white p-4 rounded-xl border shadow-sm flex flex-col md:flex-row items-center gap-4 relative">
          <button onClick={onClose} className="absolute top-2 right-2 text-gray-300 hover:text-red-600 transition-colors">
