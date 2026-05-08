@@ -411,7 +411,7 @@ export function AlumnadoIncidenteView({ profesorId, userData, targetStudentId, o
       )}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-5xl font-verdana p-0 border-none overflow-hidden max-h-[95vh] flex flex-col shadow-2xl rounded-xl">
+        <DialogContent className="max-w-5xl font-verdana p-0 border-none overflow-hidden h-[95vh] flex flex-col shadow-2xl rounded-xl">
           <DialogHeader className="bg-[#f2f2f2] p-4 text-center shrink-0 border-b flex flex-row items-center justify-between">
              <div className="flex items-center gap-2 text-gray-800">
                 <AlertTriangle className="h-5 w-5 text-red-700" />
@@ -423,7 +423,7 @@ export function AlumnadoIncidenteView({ profesorId, userData, targetStudentId, o
           </DialogHeader>
 
           <Tabs defaultValue="incidente" className="flex-1 flex flex-col overflow-hidden">
-             <div className="px-6 bg-[#f2f2f2] border-b">
+             <div className="px-6 bg-[#f2f2f2] border-b shrink-0">
                 <TabsList className="bg-transparent h-auto p-0 gap-1">
                    <TabsTrigger value="incidente" className="rounded-t-lg rounded-b-none border-x border-t border-gray-300 data-[state=active]:bg-white data-[state=active]:text-lila font-bold text-[11px] px-6 py-2 uppercase">Incidente</TabsTrigger>
                    <TabsTrigger value="conductas" className="rounded-t-lg rounded-b-none border-x border-t border-gray-300 data-[state=active]:bg-white data-[state=active]:text-lila font-bold text-[11px] px-6 py-2 uppercase">Conductas desarrolladas en este incidente</TabsTrigger>
@@ -433,7 +433,7 @@ export function AlumnadoIncidenteView({ profesorId, userData, targetStudentId, o
 
              <ScrollArea className="flex-1 bg-white">
                 {/* PESTAÑA 1: INCIDENTE */}
-                <TabsContent value="incidente" className="p-8 m-0 space-y-8">
+                <TabsContent value="incidente" className="p-8 m-0 space-y-8 pb-10">
                    <div className="border border-purple-200 rounded-lg p-8 space-y-6 relative bg-white">
                       <div className="flex items-center gap-4">
                          <Label className="w-48 text-[13px] font-medium text-gray-700">Fecha:</Label>
@@ -547,7 +547,7 @@ export function AlumnadoIncidenteView({ profesorId, userData, targetStudentId, o
                 </TabsContent>
 
                 {/* PESTAÑA 2: CONDUCTAS */}
-                <TabsContent value="conductas" className="p-8 m-0 space-y-8 animate-in fade-in duration-300">
+                <TabsContent value="conductas" className="p-8 m-0 space-y-8 animate-in fade-in duration-300 pb-10">
                    <div className="border border-purple-200 rounded-lg p-8 space-y-8 bg-white relative">
                       <div className="flex items-center gap-4">
                          <Label className="w-64 text-[13px] font-medium text-gray-700">Tipo de conducta:</Label>
@@ -647,7 +647,7 @@ export function AlumnadoIncidenteView({ profesorId, userData, targetStudentId, o
                 </TabsContent>
 
                 {/* PESTAÑA 3: CORRECCIONES */}
-                <TabsContent value="correcciones" className="p-8 m-0 space-y-8 animate-in fade-in duration-300">
+                <TabsContent value="correcciones" className="p-8 m-0 space-y-8 animate-in fade-in duration-300 pb-10">
                    <div className="border border-purple-200 rounded-lg p-8 space-y-8 bg-white relative">
                       <div className="flex items-center gap-4">
                          <Label className="w-64 text-[13px] font-medium text-gray-700">Estado de la corrección:</Label>
