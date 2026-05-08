@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -103,6 +102,7 @@ export function AttendanceJustificationView({ alumno, onClose, profesorId }: Att
       const attendanceId = `${alumno.id}_${session.id}_${targetDate}`;
       const docRef = doc(db, 'asistenciasInasistencias', attendanceId);
       
+      // SOLAPAMIENTO TOTAL: Seteamos con merge: true pero forzamos el nuevo estado del tutor
       batch.set(docRef, {
         alumnoId: alumno.id,
         claseId: session.id,
