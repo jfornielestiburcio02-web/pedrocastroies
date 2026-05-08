@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useEffect, useState, useMemo } from 'react';
@@ -71,7 +70,8 @@ export default function SeleccioneModuloAccesoPage() {
     'proa_root': false,
     'pt_root': false,
     'sincro_root': false,
-    'bienestar_ayuda': false
+    'bienestar_ayuda': false,
+    'dual_root': false
   });
   
   const router = useRouter();
@@ -136,7 +136,6 @@ export default function SeleccioneModuloAccesoPage() {
       type: 'ROLE'
     }));
 
-    // INYECCIÓN AUTOMÁTICA: Si es profesor, tiene perfil de Gestión vinculado
     if (baseRoles.includes('EsProfesor')) {
       roles.push({
         id: 'ProfesorGestionVirtual',
@@ -177,14 +176,12 @@ export default function SeleccioneModuloAccesoPage() {
       if (roles.includes('EsProfesor')) setActiveRole('Profesor');
       else if (roles.includes('EsAlumno')) setActiveRole('Alumno');
     } else if (label === "Gestión") {
-      // Prioridad: Dirección > Profesor Gestión
       if (roles.includes('EsDireccion')) {
         setActiveRole('Dirección');
       } else if (roles.includes('EsProfesor')) {
         setActiveRole('Profesor Gestión');
       }
     } else if (label === "Secretaría Virtual") {
-      // Prioridad: Secretaría > Ciudadano
       if (roles.includes('EsSecretaria')) {
         setActiveRole('Secretaría');
       } else if (roles.includes('EsCiudadano')) {
@@ -225,10 +222,8 @@ export default function SeleccioneModuloAccesoPage() {
 
   const isTeacherTutor = userData?.esTutor && userData?.esTutor !== "";
   
-  // Sincronización de horario de apoyo: Se usa el ID del titular si existe vínculo.
   const effectiveTeacherId = userData?.esDADDe || session.usuario;
 
-  // Lógica de visualización del sidebar: No mostrar en perfil "Ciudadano"
   const showSidebar = selectedModule && 
     activeRole !== 'Ciudadano' &&
     (activeRole === 'Profesor' || 
@@ -256,7 +251,6 @@ export default function SeleccioneModuloAccesoPage() {
         />
       )}
 
-      {/* DIALOGO DE CAMBIO DE PERFIL */}
       <Dialog open={isChangeProfileOpen} onOpenChange={setIsChangeProfileOpen}>
         <DialogContent className="max-w-4xl p-0 border-none overflow-hidden font-verdana bg-white/95 backdrop-blur-md">
           <DialogHeader className="bg-[#fb8500] p-10 text-white text-center">
@@ -339,6 +333,7 @@ export default function SeleccioneModuloAccesoPage() {
             expandedItems={expandedItems}
             isTeacherTutor={isTeacherTutor}
             userRoles={userRoles}
+            alwaysOpen={userData?.mantenerSidebarAbierta !== false}
             onSetSidebarMode={setSidebarMode}
             onSetActiveSubContent={setActiveSubContent}
             onToggleExpanded={toggleExpanded}

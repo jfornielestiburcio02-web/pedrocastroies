@@ -12,11 +12,13 @@ import {
   Upload, 
   CheckCircle2,
   X,
-  Github
+  Github,
+  Layout
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
@@ -45,7 +47,6 @@ export default function ConfiguracionPage() {
   });
 
   useEffect(() => {
-    // Usamos sessionStorage para garantizar que la configuración solo es accesible en la sesión actual
     const savedSession = sessionStorage.getItem('user_session');
     if (!savedSession) {
       router.push('/error-configuracion-acceso');
@@ -87,6 +88,15 @@ export default function ConfiguracionPage() {
     toast({ title: "Contraseña actualizada", description: "Se ha cambiado su clave de acceso correctamente." });
     setPasswordForm({ actual: '', nueva: '', confirmar: '' });
     setIsSaving(false);
+  };
+
+  const handleToggleSidebar = (val: boolean) => {
+    if (!userDocRef) return;
+    updateDocumentNonBlocking(userDocRef, { mantenerSidebarAbierta: val });
+    toast({ 
+      title: val ? "Barra fija activada" : "Barra fija desactivada", 
+      description: val ? "La barra lateral se mantendrá abierta siempre." : "La barra se ocultará automáticamente." 
+    });
   };
 
   const handleImageUpdate = async (type: 'url' | 'file') => {
@@ -177,7 +187,7 @@ export default function ConfiguracionPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
-          <div className="md:col-span-4">
+          <div className="md:col-span-4 space-y-6">
             <Card className="shadow-sm border-gray-200">
               <CardHeader className="text-center pb-2">
                 <div className="flex justify-center mb-4">
@@ -202,6 +212,27 @@ export default function ConfiguracionPage() {
                   <span className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Email</span>
                   <span className="text-sm font-medium text-gray-700">{userData.email}</span>
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-sm border-gray-200">
+              <CardHeader className="bg-gray-50 border-b p-4">
+                <div className="flex items-center gap-2">
+                   <Layout className="h-4 w-4 text-[#fb8500]" />
+                   <CardTitle className="text-xs font-bold uppercase tracking-tight">Preferencias de Interfaz</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="p-4">
+                 <div className="flex items-center justify-between p-2">
+                    <div className="space-y-0.5">
+                       <Label className="text-[11px] font-bold text-gray-700 uppercase">Barra lateral fija</Label>
+                       <p className="text-[9px] text-gray-400 uppercase font-medium">Mantener siempre abierta</p>
+                    </div>
+                    <Switch 
+                      checked={userData.mantenerSidebarAbierta !== false} 
+                      onCheckedChange={handleToggleSidebar} 
+                    />
+                 </div>
               </CardContent>
             </Card>
           </div>

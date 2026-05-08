@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   BookOpen, 
@@ -25,7 +25,9 @@ import {
   HeartHandshake,
   Building2,
   Users2,
-  FileText
+  FileText,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SidebarItem, SidebarHeading } from '../shared-components';
@@ -37,6 +39,7 @@ interface RayuelaSidebarProps {
   expandedItems: Record<string, boolean>;
   isTeacherTutor: boolean;
   userRoles: string[];
+  alwaysOpen?: boolean;
   onSetSidebarMode: (mode: 'ACADEMIC' | 'MESSAGING') => void;
   onSetActiveSubContent: (content: string) => void;
   onToggleExpanded: (id: string) => void;
@@ -49,14 +52,22 @@ export function RayuelaSidebar({
   expandedItems,
   isTeacherTutor,
   userRoles,
+  alwaysOpen = true,
   onSetSidebarMode,
   onSetActiveSubContent,
   onToggleExpanded
 }: RayuelaSidebarProps) {
   const router = useRouter();
+  const [isManualCollapsed, setIsManualCollapsed] = useState(false);
+
+  // La barra está abierta si (AlwaysOpen es true Y no está colapsada manualmente) O si el ratón está encima (vía CSS group-hover)
+  const isCurrentlyExpanded = alwaysOpen ? !isManualCollapsed : false;
 
   return (
-    <div className="group relative z-40 bg-[#f4f4f4] border-r border-gray-300 w-[60px] hover:w-[250px] transition-all duration-300 ease-in-out flex flex-col min-h-full overflow-hidden">
+    <div className={cn(
+      "group relative z-40 bg-[#f4f4f4] border-r border-gray-300 transition-all duration-300 ease-in-out flex flex-col min-h-full overflow-hidden",
+      isCurrentlyExpanded ? "w-[250px]" : "w-[60px] hover:w-[250px]"
+    )}>
       <div className="flex-1 flex flex-col">
         <div className="flex h-full">
           <div className="w-[60px] min-w-[60px] flex flex-col items-center py-4 gap-4 bg-[#f4f4f4] border-r border-gray-200/50">
@@ -114,9 +125,24 @@ export function RayuelaSidebar({
                 <div className="p-2 bg-gray-400 rounded-sm text-white cursor-pointer" onClick={() => router.push('/configuracion')}><UserCog className="h-5 w-5" /></div>
               </>
             )}
+
+            {/* BOTÓN DE TOGGLE MANUAL (Solo si AlwaysOpen está activo) */}
+            {alwaysOpen && (
+              <div className="mt-auto pb-4">
+                 <button 
+                  onClick={() => setIsManualCollapsed(!isManualCollapsed)}
+                  className="p-2 bg-white border border-gray-300 rounded-sm text-gray-500 hover:text-black transition-colors shadow-sm"
+                 >
+                    {isManualCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+                 </button>
+              </div>
+            )}
           </div>
           
-          <div className="hidden group-hover:flex flex-col py-4 w-full bg-white animate-in fade-in slide-in-from-left-2 duration-300 overflow-y-auto">
+          <div className={cn(
+            "flex flex-col py-4 w-full bg-white transition-all duration-300 overflow-y-auto",
+            isCurrentlyExpanded ? "flex" : "hidden group-hover:flex animate-in fade-in slide-in-from-left-2 duration-300"
+          )}>
             <div className="px-2 space-y-0.5">
               {activeRole === 'Coordinacion Bienestar' ? (
                 <div className="space-y-2">
