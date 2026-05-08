@@ -44,7 +44,7 @@ export function AttendanceJustificationView({ alumno, onClose, profesorId }: Att
     if (!db || !alumno?.id) return null;
     return query(collection(db, 'horarios'), where('alumnosIds', 'array-contains', alumno.id));
   }, [db, alumno?.id]);
-  const { data: studentSchedules, isLoading: loadingSchedule } = useCollection(schedulesQuery);
+  const { data: studentSchedules, isLoading: loadingSchedule } = useCollection(studentSchedules);
 
   // 2. Obtener asistencias de la semana
   const attendanceQuery = useMemoFirebase(() => {
@@ -91,11 +91,8 @@ export function AttendanceJustificationView({ alumno, onClose, profesorId }: Att
   const handleDayAction = async (diaNombre: string, action: 'Inj' | 'Just') => {
     if (!db || !studentSchedules) return;
     
-    // Encontrar la fecha real para ese día de la semana
     const diaIndex = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"].indexOf(diaNombre);
     const targetDate = format(addDays(weekStart, diaIndex), 'yyyy-MM-dd');
-    
-    // Sesiones del alumno para ese día
     const daySessions = studentSchedules.filter(s => s.dia === diaNombre);
     
     const batch = writeBatch(db);
@@ -103,14 +100,13 @@ export function AttendanceJustificationView({ alumno, onClose, profesorId }: Att
       const attendanceId = `${alumno.id}_${session.id}_${targetDate}`;
       const docRef = doc(db, 'asistenciasInasistencias', attendanceId);
       
-      // SOLAPAMIENTO TOTAL: Seteamos con merge: true pero forzamos el nuevo estado del tutor
-      // Esto sobreescribe cualquier registro de profesor previo para ese día.
+      // SOLAPAMIENTO TOTAL: Seteamos forzando el nuevo estado del tutor
       batch.set(docRef, {
         alumnoId: alumno.id,
         claseId: session.id,
         fecha: targetDate,
         tipo: action === 'Just' ? 'J' : 'I',
-        motivo: action === 'Just' ? 'Día Completo' : '',
+        motivo: action === 'Just' ? 'Día Completo' : 'Día Completo (Inj)',
         profesorId,
         isFullDay: true,
         updatedAt: new Date().toISOString(),
@@ -120,7 +116,6 @@ export function AttendanceJustificationView({ alumno, onClose, profesorId }: Att
 
     await batch.commit();
 
-    // NOTIFICACIÓN AUTOMÁTICA AL ALUMNO SI ES INJUSTIFICADA
     if (action === 'Inj') {
       addDocumentNonBlocking(collection(db, 'mensajes'), {
         remitenteId: 'SISTEMA',
@@ -134,11 +129,31 @@ export function AttendanceJustificationView({ alumno, onClose, profesorId }: Att
     }
   };
 
+  // Función para determinar si el día completo está activo en INJ o JUST
+  const getDayFullStatus = (diaNombre: string) => {
+    if (!studentSchedules || !attendances) return null;
+    const diaIndex = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"].indexOf(diaNombre);
+    const targetDate = format(addDays(weekStart, diaIndex), 'yyyy-MM-dd');
+    const daySessions = studentSchedules.filter(s => s.dia === diaNombre);
+    
+    if (daySessions.length === 0) return null;
+
+    const dayAtts = attendances.filter(a => a.fecha === targetDate && daySessions.some(s => s.id === a.claseId));
+    
+    if (dayAtts.length < daySessions.length) return null;
+
+    const allInj = dayAtts.every(a => a.tipo === 'I' && a.isFullDay);
+    const allJust = dayAtts.every(a => a.tipo === 'J' && a.isFullDay);
+
+    if (allInj) return 'I';
+    if (allJust) return 'J';
+    return null;
+  };
+
   if (loadingSchedule) return <div className="flex justify-center p-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 
   return (
     <div className="fixed inset-0 z-[100] bg-white flex flex-col font-verdana animate-in fade-in duration-300">
-      {/* Cabecera Estilo Card Rayuela - MODO COMPACTO */}
       <div className="bg-[#f0f0f0] p-4 flex flex-col items-center border-b shadow-sm shrink-0">
         <div className="bg-white p-3 rounded-xl border shadow-sm max-w-xl w-full flex flex-col items-center gap-3 relative">
            <button onClick={onClose} className="absolute top-2 right-2 text-gray-400 hover:text-black transition-colors"><XCircle className="h-4 w-4" /></button>
@@ -176,7 +191,6 @@ export function AttendanceJustificationView({ alumno, onClose, profesorId }: Att
         </div>
       </div>
 
-      {/* Grid de Asistencia - COMPACTO */}
       <div className="flex-1 overflow-hidden flex flex-col">
         <div className="flex items-center justify-between p-1.5 bg-white border-b px-4">
            <div className="flex gap-1">
@@ -195,22 +209,33 @@ export function AttendanceJustificationView({ alumno, onClose, profesorId }: Att
                        {activeDays.map((dayNombre) => {
                           const diaIndex = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"].indexOf(dayNombre);
                           const date = addDays(weekStart, diaIndex);
+                          const dayStatus = getDayFullStatus(dayNombre);
+
                           return (
                             <th key={dayNombre} className="border border-gray-200 min-w-[120px] bg-white">
                                <div className="flex flex-col items-center py-2 bg-blue-50/10">
                                   <span className="text-blue-500 font-bold text-[10px]">{format(date, 'd MMM')}</span>
                                   <span className="text-blue-900 font-black text-[9px] uppercase mb-2">{dayNombre}</span>
                                   <div className="flex gap-2">
-                                     {/* BOTONES DE DIA COMPLETO SEGUN IMAGEN */}
                                      <button 
                                       onClick={() => handleDayAction(dayNombre, 'Inj')} 
-                                      className="bg-white border border-gray-300 px-3 py-1 text-[9px] font-black rounded-md hover:bg-gray-50 shadow-sm transition-all active:scale-95 uppercase text-black"
+                                      className={cn(
+                                        "border px-3 py-1 text-[9px] font-black rounded-md transition-all active:scale-95 uppercase",
+                                        dayStatus === 'I' 
+                                          ? "bg-red-600 text-white border-red-700 shadow-inner" 
+                                          : "bg-white border-gray-300 text-black hover:bg-gray-50 shadow-sm"
+                                      )}
                                      >
                                        INJ
                                      </button>
                                      <button 
                                       onClick={() => handleDayAction(dayNombre, 'Just')} 
-                                      className="bg-white border border-gray-300 px-3 py-1 text-[9px] font-black rounded-md hover:bg-gray-50 shadow-sm transition-all active:scale-95 uppercase text-black"
+                                      className={cn(
+                                        "border px-3 py-1 text-[9px] font-black rounded-md transition-all active:scale-95 uppercase",
+                                        dayStatus === 'J' 
+                                          ? "bg-green-600 text-white border-green-700 shadow-inner" 
+                                          : "bg-white border-gray-300 text-black hover:bg-gray-50 shadow-sm"
+                                      )}
                                      >
                                        JUST
                                      </button>
@@ -230,7 +255,6 @@ export function AttendanceJustificationView({ alumno, onClose, profesorId }: Att
                          {activeDays.map((dayNombre) => {
                             const diaIndex = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"].indexOf(dayNombre);
                             const targetDate = format(addDays(weekStart, diaIndex), 'yyyy-MM-dd');
-                            
                             const session = studentSchedules?.find(s => s.dia === dayNombre && s.asignatura === subject);
                             
                             if (!session) return <td key={dayNombre} className="border border-gray-200 bg-gray-100/5"></td>;
@@ -238,7 +262,6 @@ export function AttendanceJustificationView({ alumno, onClose, profesorId }: Att
                             const attendance = attendances?.find(a => a.claseId === session.id && a.fecha === targetDate);
                             const isInj = attendance?.tipo === 'I';
                             const isJust = attendance?.tipo === 'J';
-                            const isFullDay = attendance?.isFullDay;
 
                             return (
                               <td key={dayNombre} className="border border-gray-200 p-1.5 align-middle h-14">
@@ -257,12 +280,10 @@ export function AttendanceJustificationView({ alumno, onClose, profesorId }: Att
                                  {isJust && (
                                    <div className={cn(
                                      "p-1 rounded border flex items-center justify-between gap-1 animate-in fade-in duration-300",
-                                     isFullDay ? "bg-gray-100 border-gray-300" : "bg-green-50 border-green-200"
+                                     "bg-green-50 border-green-200"
                                    )}>
-                                      <span className={cn("text-[8px] font-bold uppercase", isFullDay ? "text-gray-600" : "text-green-700")}>
-                                        {isFullDay ? 'Just Día' : 'Justificada'}
-                                      </span>
-                                      <CheckCircle2 className={cn("h-2.5 w-2.5", isFullDay ? "text-gray-400" : "text-green-600")} />
+                                      <span className="text-[8px] font-bold uppercase text-green-700">Justificada</span>
+                                      <CheckCircle2 className="h-2.5 w-2.5 text-green-600" />
                                    </div>
                                  )}
                               </td>
