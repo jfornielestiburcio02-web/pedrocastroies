@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -88,14 +89,6 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
   const schedules = manualScheduleId && manualScheduleData ? [manualScheduleData] : fetchedSchedules;
   const currentSchedule = useMemo(() => schedules?.find(s => s.id === selectedScheduleId), [schedules, selectedScheduleId]);
 
-  // Fetch the linked group to see if it's course-based
-  const groupDocRef = useMemoFirebase(() => {
-    if (!db || !currentSchedule?.grupoId) return null;
-    return doc(db, 'gruposAlumnos', currentSchedule.grupoId);
-  }, [db, currentSchedule?.grupoId]);
-
-  const { data: groupData } = useDoc(groupDocRef);
-
   const attendanceQuery = useMemoFirebase(() => {
     if (!db || !selectedScheduleId) return null;
     return query(
@@ -127,15 +120,8 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
 
   const students = useMemo(() => {
     if (!currentSchedule || !allUsers) return [];
-    
-    // RESOLUCIÓN DINÁMICA: Si el grupo está vinculado a un curso, usamos el curso.
-    if (groupData?.cursoVinculado) {
-       return allUsers.filter(u => u.cursoAlumno === groupData.cursoVinculado && u.rolesUsuario?.includes('EsAlumno'));
-    }
-    
-    // Fallback: Lista estática de IDs si no hay curso vinculado
     return allUsers.filter(u => currentSchedule.alumnosIds?.includes(u.id));
-  }, [currentSchedule, allUsers, groupData]);
+  }, [currentSchedule, allUsers]);
 
   // Lógica de envío de mensaje diferido (15 segundos) con ID determinista
   const scheduleDeferredMessage = (alumnoId: string, attendanceId: string) => {
@@ -292,10 +278,10 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
           </div>
         </div>
 
-        {groupData?.cursoVinculado && (
+        {currentSchedule?.grupoId && (
           <div className="bg-white px-3 py-1 border rounded flex items-center gap-2">
-             <CheckCircle2 className="h-3 w-3 text-green-600" />
-             <span className="text-[10px] font-bold text-green-600 uppercase tracking-tight">Censo del curso: {groupData.cursoVinculado}</span>
+             <Layout className="h-3 w-3 text-[#89a54e]" />
+             <span className="text-[10px] font-bold text-[#89a54e] uppercase tracking-tight">Grupo Vinculado: {currentSchedule.asignatura}</span>
           </div>
         )}
 
@@ -332,12 +318,13 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
              const attendanceId = `${student.id}_${selectedScheduleId}_${selectedDate}`;
              const studentAttendance = attendances?.find(a => a.id === attendanceId);
              const currentStatus = studentAttendance?.tipo || 'A';
+             const isFullDayJustified = studentAttendance?.motivo === 'Día Completo' && currentStatus === 'J';
              
              const behaviorId = `${student.id}_${selectedScheduleId}_${selectedDate}_behavior`;
              const studentBehavior = behaviors?.find(b => b.id === behaviorId);
              
              const behaviorDisabled = currentStatus === 'I' || currentStatus === 'J';
-             const hasJustification = !!studentAttendance?.motivo;
+             const hasJustification = !!studentAttendance?.motivo && !isFullDayJustified;
 
              return (
                <div key={student.id} className="itemAlumnoEnClase relative group flex flex-col items-center pt-3 h-[210px]">
@@ -362,21 +349,28 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
                   </div>
 
                   <div className="w-full px-2 mt-1">
-                    <button 
-                      onClick={() => currentStatus !== 'J' && handleCycleAttendance(student.id)}
-                      data-state={currentStatus || 'A'}
-                      className={cn(
-                        "botonFalta w-full h-8 transition-colors flex items-center justify-center font-bold text-black",
-                        currentStatus === 'J' ? "bg-[#78B64E] border-[#78B64E] cursor-default" : "active:scale-95"
-                      )}
-                    >
-                      {getStatusText(currentStatus)}
-                    </button>
+                    {isFullDayJustified ? (
+                      <div className="bg-gray-100 border border-gray-300 rounded h-8 flex items-center justify-center gap-1 px-1 shadow-inner animate-in fade-in duration-500">
+                         <span className="text-[10px] font-bold text-gray-500 uppercase tracking-tighter">Just | Día Completo</span>
+                         <CheckCircle2 className="h-2.5 w-2.5 text-gray-400" />
+                      </div>
+                    ) : (
+                      <button 
+                        onClick={() => currentStatus !== 'J' && handleCycleAttendance(student.id)}
+                        data-state={currentStatus || 'A'}
+                        className={cn(
+                          "botonFalta w-full h-8 transition-colors flex items-center justify-center font-bold text-black",
+                          currentStatus === 'J' ? "bg-[#78B64E] border-[#78B64E] cursor-default" : "active:scale-95"
+                        )}
+                      >
+                        {getStatusText(currentStatus)}
+                      </button>
+                    )}
                   </div>
 
                   <div className="flex items-center justify-center gap-4 mt-2 w-full px-4">
                      <button 
-                       disabled={behaviorDisabled}
+                       disabled={behaviorDisabled || isFullDayJustified}
                        onClick={() => handleToggleBehavior(student.id, 'Positivo')}
                        className={cn(
                          "iconoComPos transition-transform hover:scale-110 disabled:opacity-30 disabled:grayscale",
@@ -386,7 +380,7 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
                        <ThumbsUp className={cn("h-5 w-5", studentBehavior?.tipo === 'Positivo' ? "fill-current" : "")} />
                      </button>
                      <button 
-                       disabled={behaviorDisabled}
+                       disabled={behaviorDisabled || isFullDayJustified}
                        onClick={() => handleToggleBehavior(student.id, 'Negativo')}
                        className={cn(
                          "iconoComNeg transition-transform hover:scale-110 disabled:opacity-30 disabled:grayscale",
