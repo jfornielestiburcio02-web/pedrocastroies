@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -123,7 +122,6 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
     return allUsers.filter(u => currentSchedule.alumnosIds?.includes(u.id));
   }, [currentSchedule, allUsers]);
 
-  // Lógica de envío de mensaje diferido (15 segundos) con ID determinista
   const scheduleDeferredMessage = (alumnoId: string, attendanceId: string) => {
     if (!db || !currentSchedule) return;
 
@@ -135,7 +133,6 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
       const freshSnap = await getDoc(docRef);
       
       if (freshSnap.exists() && freshSnap.data().tipo === 'I') {
-        // La falta sigue siendo Injustificada tras 15s, enviamos mensaje
         setDocumentNonBlocking(doc(collection(db, 'mensajes')), {
           remitenteId: 'SISTEMA',
           destinatarioId: alumnoId,
@@ -152,11 +149,12 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
   const handleCycleAttendance = (alumnoId: string) => {
     if (!db || !selectedScheduleId) return;
 
-    // ID DETERMINISTA: alumno_clase_fecha (Evita duplicados)
     const attendanceId = `${alumnoId}_${selectedScheduleId}_${selectedDate}`;
     const docRef = doc(db, 'asistenciasInasistencias', attendanceId);
     
     const existing = attendances?.find(a => a.id === attendanceId);
+    if (existing?.isFullDay) return; // Bloqueo si es día completo
+
     const currentStatus = existing?.tipo || 'A';
     
     let nextStatus = 'A';
@@ -318,23 +316,22 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
              const attendanceId = `${student.id}_${selectedScheduleId}_${selectedDate}`;
              const studentAttendance = attendances?.find(a => a.id === attendanceId);
              const currentStatus = studentAttendance?.tipo || 'A';
-             const isFullDayJustified = studentAttendance?.motivo === 'Día Completo' && currentStatus === 'J';
              
              const behaviorId = `${student.id}_${selectedScheduleId}_${selectedDate}_behavior`;
              const studentBehavior = behaviors?.find(b => b.id === behaviorId);
              
-             const behaviorDisabled = currentStatus === 'I' || currentStatus === 'J';
-             const hasJustification = !!studentAttendance?.motivo && !isFullDayJustified;
+             const isFullDay = studentAttendance?.isFullDay;
+             const hasJustification = !!studentAttendance?.motivo;
 
              return (
-               <div key={student.id} className="itemAlumnoEnClase relative group flex flex-col items-center pt-3 h-[210px]">
-                  <div className="relative">
+               <div key={student.id} className="itemAlumnoEnClase relative group">
+                  <div className="relative pt-2">
                     <Avatar className="imagenAlumnoEnClase" onClick={() => setHistoryAlumnoId(student.id)}>
                       <AvatarImage src={student.imagenPerfil} />
                       <AvatarFallback>{student.usuario?.substring(0, 2).toUpperCase()}</AvatarFallback>
                     </Avatar>
                     
-                    {hasJustification && (
+                    {hasJustification && !isFullDay && (
                       <button 
                         onClick={() => setViewingReason({ name: student.nombrePersona || student.usuario, reason: studentAttendance.motivo, alumnoId: student.id })}
                         className="absolute -top-1 -right-1 bg-red-600 text-white rounded-full h-6 w-6 border-2 border-white flex items-center justify-center shadow-lg hover:scale-110 transition-transform animate-pulse"
@@ -344,23 +341,25 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
                     )}
                   </div>
                   
-                  <div className="nombreAlumno px-2 mt-2" onClick={() => setHistoryAlumnoId(student.id)}>
+                  <div className="nombreAlumno" onClick={() => setHistoryAlumnoId(student.id)}>
                     {student.nombrePersona || student.usuario}
                   </div>
 
-                  <div className="w-full px-2 mt-1">
-                    {isFullDayJustified ? (
-                      <div className="bg-gray-100 border border-gray-300 rounded h-8 flex items-center justify-center gap-1 px-1 shadow-inner animate-in fade-in duration-500">
-                         <span className="text-[10px] font-bold text-gray-500 uppercase tracking-tighter">Just | Día Completo</span>
-                         <CheckCircle2 className="h-2.5 w-2.5 text-gray-400" />
+                  <div className="w-full flex justify-center">
+                    {isFullDay ? (
+                      <div className="flex items-center gap-1.5 py-1.5">
+                         <span className="boton_rectangulo" data-type={currentStatus}>
+                           {currentStatus === 'J' ? 'Just' : 'Inj'}
+                         </span>
+                         <span className="text-[11px] font-bold text-[#595959] uppercase tracking-tighter">Día completo</span>
                       </div>
                     ) : (
                       <button 
                         onClick={() => currentStatus !== 'J' && handleCycleAttendance(student.id)}
                         data-state={currentStatus || 'A'}
                         className={cn(
-                          "botonFalta w-full h-8 transition-colors flex items-center justify-center font-bold text-black",
-                          currentStatus === 'J' ? "bg-[#78B64E] border-[#78B64E] cursor-default" : "active:scale-95"
+                          "botonFalta",
+                          currentStatus === 'J' ? "cursor-default" : "active:scale-95"
                         )}
                       >
                         {getStatusText(currentStatus)}
@@ -368,28 +367,31 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
                     )}
                   </div>
 
-                  <div className="flex items-center justify-center gap-4 mt-2 w-full px-4">
-                     <button 
-                       disabled={behaviorDisabled || isFullDayJustified}
-                       onClick={() => handleToggleBehavior(student.id, 'Positivo')}
-                       className={cn(
-                         "iconoComPos transition-transform hover:scale-110 disabled:opacity-30 disabled:grayscale",
-                         studentBehavior?.tipo === 'Positivo' ? "text-green-600 scale-125" : "text-gray-300"
-                       )}
-                     >
-                       <ThumbsUp className={cn("h-5 w-5", studentBehavior?.tipo === 'Positivo' ? "fill-current" : "")} />
-                     </button>
-                     <button 
-                       disabled={behaviorDisabled || isFullDayJustified}
-                       onClick={() => handleToggleBehavior(student.id, 'Negativo')}
-                       className={cn(
-                         "iconoComNeg transition-transform hover:scale-110 disabled:opacity-30 disabled:grayscale",
-                         studentBehavior?.tipo === 'Negativo' ? "text-red-600 scale-125" : "text-gray-300"
-                       )}
-                     >
-                       <ThumbsDown className={cn("h-5 w-5", studentBehavior?.tipo === 'Negativo' ? "fill-current" : "")} />
-                     </button>
-                  </div>
+                  {/* Iconos de comportamiento: solo se muestran si no es Día Completo */}
+                  {!isFullDay ? (
+                    <div className="flex items-center justify-center gap-2 mt-auto pb-1">
+                       <button 
+                         onClick={() => handleToggleBehavior(student.id, 'Negativo')}
+                         className={cn(
+                           "iconoComNeg transition-transform hover:scale-110",
+                           studentBehavior?.tipo === 'Negativo' ? "text-red-600 scale-110" : "text-gray-300"
+                         )}
+                       >
+                         <ThumbsDown className={cn("h-5 w-5", studentBehavior?.tipo === 'Negativo' ? "fill-current" : "")} />
+                       </button>
+                       <button 
+                         onClick={() => handleToggleBehavior(student.id, 'Positivo')}
+                         className={cn(
+                           "iconoComPos transition-transform hover:scale-110",
+                           studentBehavior?.tipo === 'Positivo' ? "text-green-600 scale-110" : "text-gray-300"
+                         )}
+                       >
+                         <ThumbsUp className={cn("h-5 w-5", studentBehavior?.tipo === 'Positivo' ? "fill-current" : "")} />
+                       </button>
+                    </div>
+                  ) : (
+                    <div className="h-6" /> // Espaciador si no hay pulgares
+                  )}
 
                   <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Button 
