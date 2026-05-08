@@ -27,7 +27,7 @@ export function initializeFirebase() {
     firebaseApp = getApp();
   }
 
-  // Aseguramos que Firestore se inicialice solo una vez con Long Polling
+  // Aseguramos que Firestore se inicialice solo una vez con Long Polling para evitar errores ca9
   if (!firestore) {
     try {
       firestore = initializeFirestore(firebaseApp, {

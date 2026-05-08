@@ -81,6 +81,7 @@ export function AttendanceJustificationView({ alumno, onClose, profesorId }: Att
     
     if (dayAtts.length === 0) return null;
 
+    // Se considera estado de día completo si todas las sesiones son de tipo I o J y marcadas como FullDay
     const allInj = dayAtts.every(a => a.tipo === 'I' && a.isFullDay);
     const allJust = dayAtts.every(a => a.tipo === 'J' && a.isFullDay);
 
@@ -96,6 +97,7 @@ export function AttendanceJustificationView({ alumno, onClose, profesorId }: Att
     const targetDate = format(addDays(weekStart, diaIndex), 'yyyy-MM-dd');
     const daySessions = studentSchedules.filter(s => s.dia === diaNombre);
     
+    // El batch asegura que la operación sea atómica y solape todo
     const batch = writeBatch(db);
     
     // 1. ELIMINACIÓN PREVIA: Limpiar cualquier registro existente este día para solapar totalmente
@@ -107,7 +109,7 @@ export function AttendanceJustificationView({ alumno, onClose, profesorId }: Att
     const snap = await getDocs(existingDayQuery);
     snap.forEach(d => batch.delete(d.ref));
 
-    // 2. APLICAR NUEVA ACCIÓN
+    // 2. APLICAR NUEVA ACCIÓN (Si no es borrar)
     if (action !== 'Delete') {
       daySessions.forEach(session => {
         const attendanceId = `${alumno.id}_${session.id}_${targetDate}`;
@@ -126,6 +128,7 @@ export function AttendanceJustificationView({ alumno, onClose, profesorId }: Att
         });
       });
 
+      // Notificación automática si es INJ día completo
       if (action === 'Inj') {
         addDocumentNonBlocking(collection(db, 'mensajes'), {
           remitenteId: 'SISTEMA',
