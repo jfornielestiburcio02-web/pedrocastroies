@@ -153,7 +153,7 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
     const docRef = doc(db, 'asistenciasInasistencias', attendanceId);
     
     const existing = attendances?.find(a => a.id === attendanceId);
-    if (existing?.isFullDay) return; // Bloqueo si es día completo
+    if (existing?.isFullDay) return;
 
     const currentStatus = existing?.tipo || 'A';
     
@@ -325,7 +325,7 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
 
              return (
                <div key={student.id} className="itemAlumnoEnClase relative group">
-                  <div className="relative pt-2">
+                  <div className="relative">
                     <Avatar className="imagenAlumnoEnClase" onClick={() => setHistoryAlumnoId(student.id)}>
                       <AvatarImage src={student.imagenPerfil} />
                       <AvatarFallback>{student.usuario?.substring(0, 2).toUpperCase()}</AvatarFallback>
@@ -345,9 +345,9 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
                     {student.nombrePersona || student.usuario}
                   </div>
 
-                  <div className="w-full flex justify-center">
+                  <div className="w-full flex flex-col items-center gap-2">
                     {isFullDay ? (
-                      <div className="flex items-center gap-1.5 py-1.5">
+                      <div className="flex items-center gap-1.5 py-1.5 h-[32px]">
                          <span className="boton_rectangulo" data-type={currentStatus}>
                            {currentStatus === 'J' ? 'Just' : 'Inj'}
                          </span>
@@ -365,33 +365,32 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
                         {getStatusText(currentStatus)}
                       </button>
                     )}
-                  </div>
 
-                  {/* Iconos de comportamiento: solo se muestran si no es Día Completo */}
-                  {!isFullDay ? (
-                    <div className="flex items-center justify-center gap-2 mt-auto pb-1">
-                       <button 
-                         onClick={() => handleToggleBehavior(student.id, 'Negativo')}
-                         className={cn(
-                           "iconoComNeg transition-transform hover:scale-110",
-                           studentBehavior?.tipo === 'Negativo' ? "text-red-600 scale-110" : "text-gray-300"
-                         )}
-                       >
-                         <ThumbsDown className={cn("h-5 w-5", studentBehavior?.tipo === 'Negativo' ? "fill-current" : "")} />
-                       </button>
-                       <button 
-                         onClick={() => handleToggleBehavior(student.id, 'Positivo')}
-                         className={cn(
-                           "iconoComPos transition-transform hover:scale-110",
-                           studentBehavior?.tipo === 'Positivo' ? "text-green-600 scale-110" : "text-gray-300"
-                         )}
-                       >
-                         <ThumbsUp className={cn("h-5 w-5", studentBehavior?.tipo === 'Positivo' ? "fill-current" : "")} />
-                       </button>
-                    </div>
-                  ) : (
-                    <div className="h-6" /> // Espaciador si no hay pulgares
-                  )}
+                    {!isFullDay ? (
+                      <div className="flex items-center justify-center gap-1">
+                        <button 
+                          onClick={() => handleToggleBehavior(student.id, 'Negativo')}
+                          className={cn(
+                            "iconoComNeg transition-transform hover:scale-110",
+                            studentBehavior?.tipo === 'Negativo' ? "text-red-600 scale-110" : "text-gray-300"
+                          )}
+                        >
+                          <ThumbsDown className={cn("h-5 w-5", studentBehavior?.tipo === 'Negativo' ? "fill-current" : "")} />
+                        </button>
+                        <button 
+                          onClick={() => handleToggleBehavior(student.id, 'Positivo')}
+                          className={cn(
+                            "iconoComPos transition-transform hover:scale-110",
+                            studentBehavior?.tipo === 'Positivo' ? "text-green-600 scale-110" : "text-gray-300"
+                          )}
+                        >
+                          <ThumbsUp className={cn("h-5 w-5", studentBehavior?.tipo === 'Positivo' ? "fill-current" : "")} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="h-6" />
+                    )}
+                  </div>
 
                   <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Button 

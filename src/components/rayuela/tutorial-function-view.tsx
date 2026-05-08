@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState } from 'react';
@@ -77,7 +76,7 @@ export function TutorialFunctionView({ profesorId, grupoTutorizado }: { profesor
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 justify-items-center">
            {students.map(student => (
-             <div key={student.id} className="itemAlumnoEnClase relative group flex flex-col items-center pt-3 h-[190px] hover:border-[#89a54e] hover:shadow-md transition-all bg-white shadow-sm">
+             <div key={student.id} className="itemAlumnoEnClase relative group flex flex-col items-center hover:border-[#89a54e] hover:shadow-md transition-all bg-white shadow-sm">
                 <Avatar 
                   className="imagenAlumnoEnClase h-[73px] w-[73px] cursor-pointer"
                   onClick={() => setSelectedStudent(student)}
@@ -90,7 +89,7 @@ export function TutorialFunctionView({ profesorId, grupoTutorizado }: { profesor
                   {student.nombrePersona || student.usuario}
                 </div>
 
-                <div className="w-full px-2 mt-auto pb-3">
+                <div className="w-full px-2 mt-auto">
                    <Button 
                     variant="outline" 
                     size="sm" 
