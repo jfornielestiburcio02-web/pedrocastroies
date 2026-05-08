@@ -19,7 +19,9 @@ import {
   Trash2,
   Pencil,
   ChevronDown,
-  Calendar
+  Calendar,
+  MoreVertical,
+  ArrowLeft
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -132,8 +134,6 @@ export function AlumnadoIncidenteView({ profesorId, userData, targetStudentId, o
   const [selectedCourse, setSelectedCourse] = useState<string>("1º E.S.O.");
   const [selectedGroup, setSelectedGroup] = useState("Cualquiera");
   const [visibilityFilter, setVisibilityFilter] = useState<'all' | 'with' | 'without'>('all');
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [viewExpedienteId, setViewExpedienteId] = useState<string | null>(null);
@@ -212,7 +212,6 @@ export function AlumnadoIncidenteView({ profesorId, userData, targetStudentId, o
     return base;
   }, [students, selectedCourse, visibilityFilter, allIncidents]);
 
-  // Lógica de correcciones permitidas por rol
   const isDirectivo = userData?.rolesUsuario?.includes('EsDireccion');
   const isTutorOfStudent = useMemo(() => {
     const student = students.find(s => s.id === formData.alumnoId);
@@ -277,17 +276,6 @@ export function AlumnadoIncidenteView({ profesorId, userData, targetStudentId, o
       createdAt: new Date().toISOString()
     });
 
-    // Notificaciones
-    addDocumentNonBlocking(collection(db, 'mensajes'), {
-      remitenteId: 'SISTEMA',
-      destinatarioId: formData.alumnoId,
-      asunto: 'Aviso de Conducta: Rayuela',
-      cuerpo: `Se ha registrado una nueva conducta hacia tu persona en el lugar: ${formData.lugar}. Para verla entre en Comportamiento -> Amonestaciones\n\nAmonestación puesta por ${profName}`,
-      leido: false,
-      eliminado: false,
-      createdAt: new Date().toISOString()
-    });
-
     toast({ title: "Incidencia Registrada", description: "El expediente disciplinario ha sido actualizado." });
     setIsDialogOpen(false);
     resetForm();
@@ -338,10 +326,132 @@ export function AlumnadoIncidenteView({ profesorId, userData, targetStudentId, o
     );
   }
 
+  // MODO EXPEDIENTE (VISTA DETALLADA DEL ALUMNO)
+  if (viewExpedienteId) {
+    const student = students.find(s => s.id === viewExpedienteId);
+    const incidents = allIncidents?.filter(i => i.alumnoId === viewExpedienteId) || [];
+    const isTutor = userData?.esTutor && student?.cursoAlumno === userData.esTutor;
+
+    return (
+      <div className="animate-in fade-in duration-500 space-y-10 max-w-7xl mx-auto w-full font-verdana text-gray-800">
+         <div className="flex justify-start">
+            <Button variant="ghost" onClick={() => setViewExpedienteId(null)} className="gap-2 text-gray-500 hover:text-black uppercase text-[10px] font-bold">
+               <ArrowLeft className="h-4 w-4" /> Volver al listado
+            </Button>
+         </div>
+
+         {/* CABECERA EXPEDIENTE (FLOTANTE SEGÚN IMAGEN) */}
+         <div className="bg-white border border-gray-200 rounded-lg shadow-xl p-8 max-w-2xl mx-auto grid grid-cols-2 gap-y-4 text-[13px]">
+            <div className="flex gap-2">
+               <span className="font-medium text-gray-500">Año académico:</span>
+               <span className="font-bold text-purple-700">{academicYear}</span>
+            </div>
+            <div className="flex gap-2">
+               <span className="font-medium text-gray-500">Curso:</span>
+               <span className="font-bold text-purple-700">{student?.cursoAlumno || "S/C"}</span>
+            </div>
+            <div className="flex gap-2">
+               <span className="font-medium text-gray-500">Alumnado:</span>
+               <span className="font-bold text-purple-700 uppercase">{student?.nombrePersona || student?.usuario}</span>
+            </div>
+            <div className="flex gap-2">
+               <span className="font-medium text-gray-500">Grupo:</span>
+               <span className="font-bold text-purple-700">{student?.cursoAlumno?.split(' ').pop()}</span>
+            </div>
+         </div>
+
+         <div className="space-y-2">
+            <p className="text-[13px] font-medium">Número total de registros: {incidents.length}</p>
+            
+            <div className="bg-white border border-gray-300 shadow-sm overflow-hidden overflow-x-auto">
+               <table className="w-full text-left border-collapse text-[11px]">
+                  <thead>
+                     <tr className="bg-[#9c84a5] text-white font-bold text-center">
+                        <th className="p-3 border-r border-white/20 whitespace-nowrap">Fecha</th>
+                        <th className="p-3 border-r border-white/20">Incidente</th>
+                        <th className="p-3 border-r border-white/20">Efectividad registrada</th>
+                        <th className="p-3 border-r border-white/20">Inicio periodo de aplicación</th>
+                        <th className="p-3 border-r border-white/20">¿Colectiva?</th>
+                        <th className="p-3 border-r border-white/20">Profesor que notificó el incidente</th>
+                        <th className="p-3 border-r border-white/20">Conductas desarrolladas</th>
+                        <th className="p-3">Correcciones aplicadas</th>
+                     </tr>
+                  </thead>
+                  <tbody>
+                     {incidents.length === 0 ? (
+                       <tr><td colSpan={8} className="p-20 text-center italic text-gray-400">No constan incidencias en el expediente digital.</td></tr>
+                     ) : (
+                       incidents.map(inc => (
+                         <tr key={inc.id} className="border-b border-gray-200 hover:bg-gray-50/50 transition-colors odd:bg-white even:bg-gray-50/30">
+                            <td className="p-3 text-purple-800 font-bold whitespace-nowrap text-center">{format(new Date(inc.fecha), 'dd/MM/yyyy')}</td>
+                            <td className="p-3">
+                               <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                     <button className="text-purple-800 font-bold hover:underline text-left outline-none uppercase">
+                                        {inc.tituloIncidente || "Ver detalle"}
+                                     </button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent className="w-64 p-0 border-purple-800 font-verdana">
+                                     <DropdownMenuItem className="p-3 text-[11px] font-bold text-purple-800 border-b cursor-pointer">
+                                        Detalle del incidente
+                                     </DropdownMenuItem>
+                                     {isTutor && (
+                                       <>
+                                          <DropdownMenuItem className="p-3 text-[11px] font-bold text-gray-800 border-b cursor-pointer hover:bg-gray-100">
+                                             Modificar incidencia
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem 
+                                            onClick={() => deleteDocumentNonBlocking(doc(db!, 'incidencias', inc.id))}
+                                            className="p-3 text-[11px] font-bold text-red-600 cursor-pointer hover:bg-red-50"
+                                          >
+                                             Eliminar incidencia
+                                          </DropdownMenuItem>
+                                       </>
+                                     )}
+                                  </DropdownMenuContent>
+                               </DropdownMenu>
+                            </td>
+                            <td className="p-3 text-center text-gray-500">{inc.efectividadCorreccion}</td>
+                            <td className="p-3 text-center text-gray-400">--</td>
+                            <td className="p-3 text-center text-gray-400">No</td>
+                            <td className="p-3 text-gray-600 font-medium">
+                               {teachers.find(t => t.id === inc.profesorComunicadorId)?.nombrePersona || inc.profesorComunicadorId}
+                            </td>
+                            <td className="p-3">
+                               <ul className="list-none space-y-1">
+                                  {inc.conductas?.map((c: string) => (
+                                    <li key={c} className="text-gray-600 leading-tight flex gap-2">
+                                       <span className="text-gray-400">-</span> {c}
+                                    </li>
+                                  ))}
+                               </ul>
+                            </td>
+                            <td className="p-3">
+                               <ul className="list-none space-y-1">
+                                  {inc.medidasCorrectoras?.map((m: string) => (
+                                    <li key={m} className="text-gray-600 leading-tight flex gap-2">
+                                       <span className="text-gray-400">-</span> {m}
+                                    </li>
+                                  ))}
+                                  {inc.medidasCorrectoras?.length === 0 && <span className="text-gray-400 italic">Ninguna</span>}
+                               </ul>
+                            </td>
+                         </tr>
+                       ))
+                     )}
+                  </tbody>
+               </table>
+            </div>
+         </div>
+      </div>
+    );
+  }
+
+  // MODO LISTADO GENERAL
   return (
     <div className="animate-in fade-in duration-500 space-y-10 max-w-7xl mx-auto w-full font-verdana text-gray-800">
       
-      {/* PANEL DE FILTROS SUPERIOR (REPLICANDO IMAGEN) */}
+      {/* PANEL DE FILTROS SUPERIOR */}
       <div className="bg-white border border-gray-200 rounded-lg shadow-md p-6 max-w-2xl mx-auto space-y-4">
          <div className="flex items-center gap-4">
             <Label className="text-[13px] font-medium min-w-[120px]">Año académico:</Label>
@@ -417,7 +527,7 @@ export function AlumnadoIncidenteView({ profesorId, userData, targetStudentId, o
          </div>
       </div>
 
-      {/* TABLA ESTADÍSTICA (REPLICANDO IMAGEN) */}
+      {/* TABLA ESTADÍSTICA GENERAL */}
       <div className="space-y-2">
          <p className="text-[13px] font-medium">Número total de registros: {filteredStudents.length}</p>
          
@@ -488,15 +598,6 @@ export function AlumnadoIncidenteView({ profesorId, userData, targetStudentId, o
             </table>
          </div>
       </div>
-
-      {/* DIALOGO DE EXPEDIENTE (EXISTENTE) */}
-      {viewExpedienteId && (
-        <ExpedienteDisciplinarioDialog 
-          alumnoId={viewExpedienteId} 
-          onClose={() => setViewExpedienteId(null)} 
-          incidencias={allIncidents?.filter(i => i.alumnoId === viewExpedienteId) || []}
-        />
-      )}
 
       {/* DIALOGO DE NUEVA AMONESTACIÓN (EL FORMULARIO DETALLADO) */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -740,7 +841,7 @@ export function AlumnadoIncidenteView({ profesorId, userData, targetStudentId, o
                    <div className="border border-purple-200 rounded-lg p-8 space-y-8 bg-white relative">
                       <div className="flex items-center gap-4">
                          <Label className="w-64 text-[13px] font-medium text-gray-700">Estado de la corrección:</Label>
-                         <div className="flex-1 max-w-xl">
+                         <div className="flex-1 max-xl">
                             <Select 
                               value={formData.estadoCorreccion} 
                               onValueChange={(val) => setFormData({...formData, estadoCorreccion: val})}
@@ -900,137 +1001,6 @@ export function AlumnadoIncidenteView({ profesorId, userData, targetStudentId, o
         }
       `}</style>
     </div>
-  );
-}
-
-function ExpedienteDisciplinarioDialog({ alumnoId, onClose, incidencias }: { alumnoId: string, onClose: () => void, incidencias: any[] }) {
-  const db = useFirestore();
-  const [alumno, setAlumno] = useState<any>(null);
-  const [selectedIncident, setSelectedIncident] = useState<any>(null);
-
-  useEffect(() => {
-    if (db && alumnoId) {
-      getDoc(doc(db, 'usuarios', alumnoId)).then(s => s.exists() && setAlumno(s.data()));
-    }
-  }, [db, alumnoId]);
-
-  return (
-    <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl font-verdana p-0 border-none overflow-hidden max-h-[90vh] flex flex-col">
-        <DialogHeader className="bg-[#f2f2f2] p-6 border-b shrink-0">
-           <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                 <Avatar className="h-12 w-12 border-2 border-white shadow-sm">
-                   <AvatarImage src={alumno?.imagenPerfil} />
-                   <AvatarFallback>{alumno?.usuario?.substring(0,2).toUpperCase()}</AvatarFallback>
-                 </Avatar>
-                 <div className="text-left">
-                    <DialogTitle className="text-sm font-bold uppercase tracking-tight">Expediente Disciplinario Digital</DialogTitle>
-                    <p className="text-[11px] font-bold text-[#89a54e] uppercase">{alumno?.nombrePersona || alumno?.usuario} ({alumno?.cursoAlumno})</p>
-                 </div>
-              </div>
-              <Badge className="bg-red-700 text-white font-bold uppercase px-3 py-1">{incidencias.length} INCIDENCIAS</Badge>
-           </div>
-        </DialogHeader>
-
-        <div className="flex-1 flex overflow-hidden">
-           <div className="w-1/3 border-r bg-gray-50/50 flex flex-col overflow-y-auto">
-              <div className="p-4 border-b bg-gray-100 text-[10px] font-bold text-gray-500 uppercase">Listado de Incidencias</div>
-              {incidencias.length === 0 ? (
-                <div className="p-8 text-center text-xs text-gray-400 italic">No hay registros previos.</div>
-              ) : (
-                incidencias.map((inc) => (
-                  <div 
-                    key={inc.id} 
-                    onClick={() => setSelectedIncident(inc)}
-                    className={cn(
-                      "p-4 border-b cursor-pointer transition-colors hover:bg-white group",
-                      selectedIncident?.id === inc.id ? "bg-white border-l-4 border-l-red-700" : ""
-                    )}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[10px] font-bold text-gray-400 uppercase">{format(new Date(inc.fecha), 'dd/MM/yyyy')}</span>
-                      <Badge variant="outline" className={cn("text-[8px] font-bold uppercase border-none", inc.tipoIncidencia === 'Grave' ? "bg-red-100 text-red-700" : "bg-orange-100 text-orange-700")}>
-                        {inc.tipoIncidencia}
-                      </Badge>
-                    </div>
-                    <p className="text-[11px] font-bold text-gray-700 group-hover:text-red-700 truncate">{inc.tituloIncidente || inc.descripcion}</p>
-                  </div>
-                ))
-              )}
-           </div>
-
-           <div className="flex-1 bg-white p-8 overflow-y-auto">
-              {selectedIncident ? (
-                <div className="animate-in fade-in slide-in-from-right-2 duration-300 space-y-8">
-                   <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-bold text-gray-800 uppercase tracking-tight flex items-center gap-2">
-                        {selectedIncident.tituloIncidente || "Detalle de la Incidencia"}
-                        <Badge className="bg-red-700">{selectedIncident.gravedad}/5</Badge>
-                      </h3>
-                      <span className="text-xs text-gray-400 italic">ID: {selectedIncident.id}</span>
-                   </div>
-
-                   <div className="grid grid-cols-2 gap-8">
-                      <div className="space-y-1">
-                        <Label className="text-[10px] font-bold uppercase text-gray-400">Lugar del suceso</Label>
-                        <p className="text-sm font-bold text-gray-700 uppercase flex items-center gap-2"><MapPin className="h-3 w-3 text-red-600" /> {selectedIncident.lugar || "No especificado"}</p>
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-[10px] font-bold uppercase text-gray-400">Fecha del Registro</Label>
-                        <p className="text-sm font-bold text-gray-700">{format(new Date(selectedIncident.fecha), "eeee d 'de' MMMM 'a las' HH:mm", { locale: es })}</p>
-                      </div>
-                   </div>
-
-                   <div className="space-y-2">
-                      <Label className="text-[10px] font-bold uppercase text-gray-400">Relato de los Hechos</Label>
-                      <div className="bg-gray-50 p-4 rounded-lg border border-dashed border-gray-200 text-sm italic leading-relaxed text-gray-600">
-                        "{selectedIncident.descripcion}"
-                      </div>
-                   </div>
-
-                   <div className="space-y-2">
-                      <Label className="text-[10px] font-bold uppercase text-gray-400">Conductas Específicas</Label>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedIncident.conductas?.map((c: string) => (
-                          <Badge key={c} variant="outline" className="bg-white text-[9px] font-bold text-gray-500 uppercase border-gray-200">{c}</Badge>
-                        ))}
-                      </div>
-                   </div>
-
-                   {selectedIncident.medidasCorrectoras?.length > 0 && (
-                     <div className="space-y-2">
-                        <Label className="text-[10px] font-bold uppercase text-gray-400">Medidas Correctoras Aplicadas</Label>
-                        <div className="flex flex-wrap gap-2">
-                          {selectedIncident.medidasCorrectoras.map((m: string) => (
-                            <Badge key={m} className="bg-lila text-white text-[9px] font-bold uppercase border-none">{m}</Badge>
-                          ))}
-                        </div>
-                     </div>
-                   )}
-
-                   <div className="pt-4 border-t flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-[10px] font-bold text-blue-800 uppercase bg-blue-50 px-3 py-1 rounded">
-                        {selectedIncident.comunicadoFamilia ? <CheckCircle2 className="h-4 w-4" /> : <X className="h-4 w-4" />}
-                        {selectedIncident.comunicadoFamilia ? 'Familia Informada' : 'Pendiente comunicación familia'}
-                      </div>
-                      <span className="text-[10px] font-bold text-gray-400 uppercase">Profesor: {selectedIncident.profesorId}</span>
-                   </div>
-                </div>
-              ) : (
-                <div className="h-full flex flex-col items-center justify-center text-center space-y-4 opacity-40">
-                   <Eye className="h-16 w-16" />
-                   <p className="text-sm italic">Seleccione una incidencia del listado para ver los detalles completos.</p>
-                </div>
-              )}
-           </div>
-        </div>
-
-        <DialogFooter className="bg-gray-50 p-6 border-t shrink-0">
-           <Button onClick={onClose} className="bg-gray-700 hover:bg-gray-800 text-white text-[11px] font-bold uppercase h-10 px-8">Cerrar Expediente</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   );
 }
 
