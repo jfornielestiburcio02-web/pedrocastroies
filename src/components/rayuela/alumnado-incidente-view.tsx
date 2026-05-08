@@ -11,7 +11,11 @@ import {
   CheckCircle2, 
   AlertTriangle, 
   Eye, 
-  X 
+  X,
+  Calendar as CalendarIcon,
+  Eraser,
+  User,
+  MapPin
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -58,6 +62,7 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface AlumnadoIncidenteViewProps {
   profesorId: string;
@@ -72,6 +77,21 @@ export function AlumnadoIncidenteView({ profesorId, targetStudentId, onActionCom
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [viewExpedienteId, setViewExpedienteId] = useState<string | null>(null);
   
+  const [formData, setFormData] = useState({
+    alumnoId: '',
+    profesorComunicadorId: profesorId,
+    fecha: new Date().toISOString().split('T')[0],
+    lugar: 'Aula',
+    tituloIncidente: '',
+    descripcion: '',
+    tipoIncidencia: 'Contraria',
+    gravedad: 1,
+    conductas: [] as string[],
+    medidasCorrectoras: '',
+    observaciones: '',
+    comunicadoFamilia: false
+  });
+
   // Efecto para abrir automáticamente el expediente si viene de una redirección
   useEffect(() => {
     if (targetStudentId) {
@@ -82,10 +102,13 @@ export function AlumnadoIncidenteView({ profesorId, targetStudentId, onActionCom
 
   const usersQuery = useMemoFirebase(() => {
     if (!db) return null;
-    return query(collection(db, 'usuarios'), where('rolesUsuario', 'array-contains', 'EsAlumno'));
+    return collection(db, 'usuarios');
   }, [db]);
 
-  const { data: allStudents, isLoading: loadingStudents } = useCollection(usersQuery);
+  const { data: allUsers, isLoading: loadingUsers } = useCollection(usersQuery);
+
+  const students = useMemo(() => allUsers?.filter(u => u.rolesUsuario?.includes('EsAlumno')) || [], [allUsers]);
+  const teachers = useMemo(() => allUsers?.filter(u => u.rolesUsuario?.includes('EsProfesor')) || [], [allUsers]);
 
   const incidentsQuery = useMemoFirebase(() => {
     if (!db) return null;
@@ -95,84 +118,61 @@ export function AlumnadoIncidenteView({ profesorId, targetStudentId, onActionCom
   const { data: allIncidents } = useCollection(incidentsQuery);
 
   const courses = useMemo(() => {
-    if (!allStudents) return [];
-    const unique = Array.from(new Set(allStudents.map(s => s.cursoAlumno || "SIN CURSO")));
+    if (!students) return [];
+    const unique = Array.from(new Set(students.map(s => s.cursoAlumno || "SIN CURSO")));
     return ["TODOS", ...unique];
-  }, [allStudents]);
+  }, [students]);
 
   const filteredStudents = useMemo(() => {
-    if (!allStudents) return [];
-    if (selectedCourse === "TODOS") return allStudents;
-    return allStudents.filter(s => (s.cursoAlumno || "SIN CURSO") === selectedCourse);
-  }, [allStudents, selectedCourse]);
-
-  const [formData, setFormData] = useState({
-    alumnoId: '',
-    tipoIncidencia: 'Contraria',
-    gravedad: 1,
-    descripcion: '',
-    conductas: [] as string[],
-    medidasCorrectoras: '',
-    observaciones: '',
-    comunicadoFamilia: false
-  });
-
-  const conductList = [
-    "Perturbación del normal desarrollo de las clases",
-    "Falta de colaboración sistemática",
-    "Uso de teléfonos móviles o dispositivos electrónicos",
-    "Incumplimiento de normas de vestimenta",
-    "Faltas injustificadas de puntualidad",
-    "Deterioro leve de instalaciones o materiales",
-    "Desobediencia a las instrucciones del profesorado"
-  ];
+    if (!students) return [];
+    if (selectedCourse === "TODOS") return students;
+    return students.filter(s => (s.cursoAlumno || "SIN CURSO") === selectedCourse);
+  }, [students, selectedCourse]);
 
   const handleSaveIncident = async () => {
-    if (!db || !formData.alumnoId || !formData.descripcion) {
-      toast({ variant: "destructive", title: "Error", description: "Complete el alumno y la descripción." });
+    if (!db || !formData.alumnoId || !formData.descripcion || !formData.tituloIncidente) {
+      toast({ variant: "destructive", title: "Error", description: "Complete los campos obligatorios (*)." });
       return;
     }
 
-    const student = allStudents?.find(s => s.id === formData.alumnoId);
+    const student = students?.find(s => s.id === formData.alumnoId);
     const studentCourse = student?.cursoAlumno;
     
-    // Obtener nombre del profesor para el mensaje
-    const profSnap = await getDoc(doc(db, 'usuarios', profesorId));
-    const profName = profSnap.exists() ? (profSnap.data().nombrePersona || profSnap.data().usuario) : profesorId;
+    // Obtener nombre del profesor comunicador
+    const profSnap = await getDoc(doc(db, 'usuarios', formData.profesorComunicadorId));
+    const profName = profSnap.exists() ? (profSnap.data().nombrePersona || profSnap.data().usuario) : formData.profesorComunicadorId;
 
-    // Guardar incidencia y obtener referencia para el enlace
+    // Guardar incidencia
     const incidentRef = await addDocumentNonBlocking(collection(db, 'incidencias'), {
       ...formData,
-      profesorId,
+      profesorId: profesorId, // El que lo registra
       curso: studentCourse || "SIN CURSO",
-      fecha: new Date().toISOString(),
       createdAt: new Date().toISOString()
     });
 
     if (!incidentRef) return;
 
-    // 1. Enviar mensaje al ALUMNO (Aviso solicitado)
+    // 1. Enviar mensaje al ALUMNO
     addDocumentNonBlocking(collection(db, 'mensajes'), {
       remitenteId: 'SISTEMA',
       destinatarioId: formData.alumnoId,
       asunto: 'Aviso de Conducta: Rayuela',
-      cuerpo: `Se ha registrado una nueva conducta hacia tu persona, para verla entre en Comportamiento -> Amonestaciones\n\nAmonestación puesta por ${profName}`,
+      cuerpo: `Se ha registrado una nueva conducta hacia tu persona en el lugar: ${formData.lugar}. Para verla entre en Comportamiento -> Amonestaciones\n\nAmonestación puesta por ${profName}`,
       leido: false,
       eliminado: false,
       createdAt: new Date().toISOString()
     });
 
-    // 2. Enviar notificación al tutor si existe
-    if (studentCourse && studentCourse !== "SIN CURSO") {
+    // 2. Enviar notificación al tutor
+    if (studentCourse) {
       const tutorsQuery = query(collection(db, 'usuarios'), where('esTutor', '==', studentCourse));
       const tutorsSnap = await getDocs(tutorsQuery);
-      
       tutorsSnap.forEach(tutorDoc => {
         addDocumentNonBlocking(collection(db, 'mensajes'), {
           remitenteId: 'SISTEMA',
           destinatarioId: tutorDoc.id,
           asunto: 'Plataforma Rayuela: Nueva Incidencia de Alumno',
-          cuerpo: `${profName} ha registrado una nueva conducta ${formData.tipoIncidencia} para el alumno ${student?.nombrePersona || student?.usuario}, para verla -pulse aqui- [REF:${student?.id}]`,
+          cuerpo: `${profName} ha registrado una nueva incidencia [${formData.tituloIncidente}] para el alumno ${student?.nombrePersona || student?.usuario}, ocurrida en ${formData.lugar}. Para verla -pulse aqui- [REF:${student?.id}]`,
           leido: false,
           eliminado: false,
           createdAt: new Date().toISOString()
@@ -180,13 +180,21 @@ export function AlumnadoIncidenteView({ profesorId, targetStudentId, onActionCom
       });
     }
 
-    toast({ title: "Incidencia Registrada", description: "Se ha añadido al expediente disciplinario y se ha notificado al interesado." });
+    toast({ title: "Incidencia Registrada", description: "El expediente disciplinario ha sido actualizado." });
     setIsDialogOpen(false);
+    resetForm();
+  };
+
+  const resetForm = () => {
     setFormData({
       alumnoId: '',
+      profesorComunicadorId: profesorId,
+      fecha: new Date().toISOString().split('T')[0],
+      lugar: 'Aula',
+      tituloIncidente: '',
+      descripcion: '',
       tipoIncidencia: 'Contraria',
       gravedad: 1,
-      descripcion: '',
       conductas: [] as string[],
       medidasCorrectoras: '',
       observaciones: '',
@@ -198,7 +206,7 @@ export function AlumnadoIncidenteView({ profesorId, targetStudentId, onActionCom
     return allIncidents?.filter(i => i.alumnoId === studentId).length || 0;
   };
 
-  if (loadingStudents) {
+  if (loadingUsers) {
     return (
       <div className="flex justify-center p-20">
         <Loader2 className="h-8 w-8 animate-spin text-[#89a54e]" />
@@ -207,7 +215,7 @@ export function AlumnadoIncidenteView({ profesorId, targetStudentId, onActionCom
   }
 
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 space-y-6 max-w-6xl mx-auto w-full">
+    <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 space-y-6 max-w-6xl mx-auto w-full font-verdana">
       <div className="bg-white border rounded-lg shadow-sm overflow-hidden">
         <div className="bg-[#f8f9fa] border-b p-4 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -286,7 +294,7 @@ export function AlumnadoIncidenteView({ profesorId, targetStudentId, onActionCom
               ) : (
                 <TableRow>
                   <TableCell colSpan={5} className="h-40 text-center text-muted-foreground italic text-sm">
-                    No se han encontrado alumnos para el curso seleccionado.
+                    No se han encontrado alumnos.
                   </TableCell>
                 </TableRow>
               )}
@@ -295,120 +303,190 @@ export function AlumnadoIncidenteView({ profesorId, targetStudentId, onActionCom
         </div>
       </div>
 
-      {(viewExpedienteId || targetStudentId) && (
+      {viewExpedienteId && (
         <ExpedienteDisciplinarioDialog 
-          alumnoId={(viewExpedienteId || targetStudentId)!} 
-          onClose={() => { setViewExpedienteId(null); if (onActionComplete) onActionComplete(); }} 
-          incidencias={allIncidents?.filter(i => i.alumnoId === (viewExpedienteId || targetStudentId)) || []}
+          alumnoId={viewExpedienteId} 
+          onClose={() => setViewExpedienteId(null)} 
+          incidencias={allIncidents?.filter(i => i.alumnoId === viewExpedienteId) || []}
         />
       )}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl font-verdana p-0 border-none overflow-hidden max-h-[90vh] flex flex-col">
-          <DialogHeader className="bg-[#f2f2f2] p-6 text-center shrink-0 border-b">
-             <div className="flex items-center justify-center gap-2 text-red-700 mb-1">
-                <AlertTriangle className="h-5 w-5" />
+        <DialogContent className="max-w-5xl font-verdana p-0 border-none overflow-hidden max-h-[95vh] flex flex-col shadow-2xl rounded-xl">
+          <DialogHeader className="bg-[#f2f2f2] p-4 text-center shrink-0 border-b flex flex-row items-center justify-between">
+             <div className="flex items-center gap-2 text-gray-800">
+                <AlertTriangle className="h-5 w-5 text-red-700" />
                 <DialogTitle className="text-sm font-bold uppercase tracking-tight">Registro de Amonestación / Incidencia</DialogTitle>
              </div>
-             <DialogDescription className="text-[11px] font-bold text-gray-500 uppercase">EXPEDIENTE DISCIPLINARIO DIGITAL - I.E.S PEDRO CASTRO</DialogDescription>
+             <Button variant="ghost" size="icon" onClick={() => setIsDialogOpen(false)} className="h-8 w-8">
+               <X className="h-4 w-4" />
+             </Button>
           </DialogHeader>
 
-          <ScrollArea className="flex-1 p-6 bg-white">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-               <div className="space-y-6">
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-bold uppercase text-gray-400">Alumno Implicado</Label>
-                    <Select value={formData.alumnoId} onValueChange={(val) => setFormData({...formData, alumnoId: val})}>
-                      <SelectTrigger className="text-xs font-bold border-gray-300">
-                        <SelectValue placeholder="Seleccione alumno..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {allStudents?.map(s => (
-                          <SelectItem key={s.id} value={s.id} className="text-xs font-bold">{s.nombrePersona || s.usuario} ({s.cursoAlumno || "S/C"})</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+          <Tabs defaultValue="incidente" className="flex-1 flex flex-col overflow-hidden">
+             <div className="px-6 bg-[#f2f2f2] border-b">
+                <TabsList className="bg-transparent h-auto p-0 gap-1">
+                   <TabsTrigger value="incidente" className="rounded-t-lg rounded-b-none border-x border-t border-gray-300 data-[state=active]:bg-white data-[state=active]:text-lila font-bold text-[11px] px-6 py-2 uppercase">Incidente</TabsTrigger>
+                   <TabsTrigger value="conductas" className="rounded-t-lg rounded-b-none border-x border-t border-gray-300 data-[state=active]:bg-white font-bold text-[11px] px-6 py-2 uppercase opacity-60">Conductas desarrolladas en este incidente</TabsTrigger>
+                   <TabsTrigger value="correcciones" className="rounded-t-lg rounded-b-none border-x border-t border-gray-300 data-[state=active]:bg-white font-bold text-[11px] px-6 py-2 uppercase opacity-60">Correcciones aplicadas en este incidente</TabsTrigger>
+                </TabsList>
+             </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label className="text-[10px] font-bold uppercase text-gray-400">Tipo Incidencia</Label>
-                      <Select value={formData.tipoIncidencia} onValueChange={(val) => setFormData({...formData, tipoIncidencia: val})}>
-                        <SelectTrigger className="text-xs font-bold border-gray-300">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Contraria" className="text-xs">Contraria</SelectItem>
-                          <SelectItem value="Grave" className="text-xs">Grave</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-[10px] font-bold uppercase text-gray-400">Nivel Gravedad (1-5)</Label>
-                      <Select value={formData.gravedad.toString()} onValueChange={(val) => setFormData({...formData, gravedad: parseInt(val)})}>
-                        <SelectTrigger className="text-xs font-bold border-gray-300">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {[1,2,3,4,5].map(v => <SelectItem key={v} value={v.toString()} className="text-xs">{v}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-bold uppercase text-gray-400">Descripción del Suceso</Label>
-                    <Textarea 
-                      className="min-h-[100px] text-xs font-medium leading-relaxed" 
-                      placeholder="Relate detalladamente los hechos ocurridos..."
-                      value={formData.descripcion}
-                      onChange={(e) => setFormData({...formData, descripcion: e.target.value})}
-                    />
-                  </div>
-               </div>
-
-               <div className="space-y-6">
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-bold uppercase text-gray-400">Conductas Observadas</Label>
-                    <div className="bg-gray-50 border rounded-lg p-3 space-y-2 h-[150px] overflow-y-auto">
-                       {conductList.map(item => (
-                         <div key={item} className="flex items-center gap-2 group cursor-pointer" onClick={() => {
-                           const current = formData.conductas;
-                           setFormData({...formData, conductas: current.includes(item) ? current.filter(c => c !== item) : [...current, item]});
-                         }}>
-                            <Checkbox checked={formData.conductas.includes(item)} onCheckedChange={() => {}} />
-                            <span className="text-[9px] font-medium leading-tight group-hover:text-primary transition-colors">{item}</span>
+             <ScrollArea className="flex-1 bg-white">
+                <TabsContent value="incidente" className="p-8 m-0 space-y-8">
+                   <div className="border border-purple-200 rounded-lg p-8 space-y-6 relative bg-white">
+                      {/* FILA 1: FECHA */}
+                      <div className="flex items-center gap-4">
+                         <Label className="w-48 text-[13px] font-medium text-gray-700">Fecha:</Label>
+                         <div className="flex items-center gap-2">
+                            <Input 
+                              type="date" 
+                              value={formData.fecha} 
+                              onChange={e => setFormData({...formData, fecha: e.target.value})}
+                              className="w-44 h-8 border-gray-400 font-bold text-[13px] rounded-md shadow-sm"
+                            />
+                            <span className="text-red-500 font-bold">*</span>
+                            <div className="bg-gray-100 p-1.5 border border-gray-300 rounded shadow-sm">
+                               <CalendarIcon className="h-4 w-4 text-green-700" />
+                            </div>
                          </div>
-                       ))}
-                    </div>
-                  </div>
+                      </div>
 
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-bold uppercase text-gray-400">Medidas Correctoras Aplicadas</Label>
-                    <Input 
-                      className="text-xs h-8" 
-                      placeholder="Ej: Amonestación escrita, Expulsión de aula..."
-                      value={formData.medidasCorrectoras}
-                      onChange={(e) => setFormData({...formData, medidasCorrectoras: e.target.value})}
-                    />
-                  </div>
+                      {/* FILA 2: PROFESIONAL */}
+                      <div className="flex items-center gap-4">
+                         <Label className="w-48 text-[13px] font-medium text-gray-700">Profesional que ha comunicado el incidente:</Label>
+                         <div className="flex-1 flex items-center gap-2 max-w-2xl">
+                            <Select 
+                              value={formData.profesorComunicadorId} 
+                              onValueChange={val => setFormData({...formData, profesorComunicadorId: val})}
+                            >
+                               <SelectTrigger className="h-8 border-gray-300 shadow-sm text-[13px]">
+                                  <SelectValue />
+                               </SelectTrigger>
+                               <SelectContent>
+                                  {teachers.map(t => (
+                                    <SelectItem key={t.id} value={t.id} className="text-[13px]">
+                                      {t.nombrePersona || t.usuario}
+                                    </SelectItem>
+                                  ))}
+                               </SelectContent>
+                            </Select>
+                            <span className="text-lila font-bold">*</span>
+                         </div>
+                      </div>
 
-                  <div className="flex items-center space-x-2 bg-blue-50/50 p-3 rounded-md border border-blue-100">
-                    <Checkbox id="comunicado" checked={formData.comunicadoFamilia} onCheckedChange={(val) => setFormData({...formData, comunicadoFamilia: !!val})} />
-                    <Label htmlFor="comunicado" className="text-[10px] font-bold text-blue-800 uppercase cursor-pointer">Se ha comunicado a la familia</Label>
-                  </div>
-               </div>
-            </div>
-          </ScrollArea>
+                      {/* FILA 3: LUGAR */}
+                      <div className="flex items-center gap-4">
+                         <Label className="w-48 text-[13px] font-medium text-gray-700">Lugar del incidente:</Label>
+                         <div className="flex-1 max-w-xl">
+                            <Select 
+                              value={formData.lugar} 
+                              onValueChange={val => setFormData({...formData, lugar: val})}
+                            >
+                               <SelectTrigger className="h-8 border-gray-300 shadow-sm text-[13px]">
+                                  <SelectValue />
+                               </SelectTrigger>
+                               <SelectContent>
+                                  <SelectItem value="Aula" className="text-[13px]">Aula</SelectItem>
+                                  <SelectItem value="Patio" className="text-[13px]">Patio</SelectItem>
+                                  <SelectItem value="Pasillos" className="text-[13px]">Pasillos</SelectItem>
+                                  <SelectItem value="Biblioteca" className="text-[13px]">Biblioteca</SelectItem>
+                                  <SelectItem value="Comedor" className="text-[13px]">Comedor</SelectItem>
+                                  <SelectItem value="Gimnasio" className="text-[13px]">Gimnasio</SelectItem>
+                                  <SelectItem value="Entorno Centro" className="text-[13px]">Entorno Centro</SelectItem>
+                                  <SelectItem value="Otros" className="text-[13px]">Otros</SelectItem>
+                               </SelectContent>
+                            </Select>
+                         </div>
+                      </div>
 
-          <DialogFooter className="bg-gray-50 p-6 border-t gap-4 shrink-0">
-             <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="text-[11px] font-bold uppercase h-10 px-8">Cancelar</Button>
-             <Button onClick={handleSaveIncident} className="bg-red-700 hover:bg-red-800 text-white text-[11px] font-bold uppercase h-10 px-8 gap-2 shadow-md">
+                      {/* FILA 4: INCIDENTE */}
+                      <div className="flex items-center gap-4">
+                         <Label className="w-48 text-[13px] font-medium text-gray-700">Incidente:</Label>
+                         <div className="flex-1 flex items-center gap-2">
+                            <Input 
+                              value={formData.tituloIncidente}
+                              onChange={e => setFormData({...formData, tituloIncidente: e.target.value})}
+                              className="h-8 border-gray-300 shadow-sm text-[13px]"
+                              placeholder="Título breve del suceso..."
+                            />
+                            <span className="text-lila font-bold">*</span>
+                         </div>
+                      </div>
+
+                      {/* FILA 5: DESCRIPCIÓN */}
+                      <div className="space-y-2">
+                         <div className="flex items-center gap-2">
+                            <Label className="text-[13px] font-medium text-gray-700">Descripción detallada:</Label>
+                            <Eraser className="h-5 w-5 text-gray-300 cursor-pointer hover:text-red-500 transition-colors" onClick={() => setFormData({...formData, descripcion: ''})} />
+                         </div>
+                         <Textarea 
+                            value={formData.descripcion}
+                            onChange={e => setFormData({...formData, descripcion: e.target.value})}
+                            className="min-h-[120px] border-gray-400 shadow-inner text-[13px] resize-none leading-relaxed focus-visible:ring-lila"
+                            placeholder="Relate detalladamente los hechos ocurridos..."
+                         />
+                      </div>
+                   </div>
+
+                   {/* SELECTOR DE ALUMNO (Fuera del recuadro lila para claridad) */}
+                   <div className="flex items-center gap-6 p-4 bg-blue-50/50 border border-blue-100 rounded-xl">
+                      <div className="flex items-center gap-3">
+                         <User className="h-5 w-5 text-blue-600" />
+                         <Label className="text-[13px] font-bold text-blue-800 uppercase">Alumno implicado:</Label>
+                      </div>
+                      <div className="flex-1 max-w-md">
+                         <Select value={formData.alumnoId} onValueChange={val => setFormData({...formData, alumnoId: val})}>
+                            <SelectTrigger className="h-10 border-blue-200 bg-white shadow-sm font-bold">
+                               <SelectValue placeholder="Seleccione alumno del centro..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                               {students.map(s => (
+                                 <SelectItem key={s.id} value={s.id} className="font-medium text-[13px]">
+                                   {s.nombrePersona || s.usuario} ({s.cursoAlumno || "S/C"})
+                                 </SelectItem>
+                               ))}
+                            </SelectContent>
+                         </Select>
+                      </div>
+                   </div>
+                </TabsContent>
+
+                <TabsContent value="conductas" className="p-20 text-center space-y-4 opacity-40">
+                   <ShieldAlert className="h-16 w-16 mx-auto text-gray-300" />
+                   <p className="italic">Esperando definición de conductas específicas...</p>
+                </TabsContent>
+
+                <TabsContent value="correcciones" className="p-20 text-center space-y-4 opacity-40">
+                   <AlertTriangle className="h-16 w-16 mx-auto text-gray-300" />
+                   <p className="italic">Esperando definición de medidas correctoras...</p>
+                </TabsContent>
+             </ScrollArea>
+          </Tabs>
+
+          <DialogFooter className="bg-gray-100 p-6 border-t gap-4 shrink-0">
+             <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="text-[11px] font-bold uppercase h-10 px-8 border-gray-300 hover:bg-white">Cancelar</Button>
+             <Button onClick={handleSaveIncident} className="bg-[#89a54e] hover:bg-[#728a41] text-white text-[11px] font-bold uppercase h-10 px-10 gap-2 shadow-lg transition-all active:scale-95">
                <Save className="h-4 w-4" /> Registrar en Rayuela
              </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <style jsx global>{`
+        .text-lila {
+          color: #9c4d96 !important;
+        }
+        .bg-lila {
+          background-color: #9c4d96 !important;
+        }
+        .border-lila {
+          border-color: #9c4d96 !important;
+        }
+        .focus-visible\:ring-lila:focus-visible {
+          --tw-ring-color: #9c4d96 !important;
+        }
+      `}</style>
     </div>
   );
 }
@@ -464,7 +542,7 @@ function ExpedienteDisciplinarioDialog({ alumnoId, onClose, incidencias }: { alu
                         {inc.tipoIncidencia}
                       </Badge>
                     </div>
-                    <p className="text-[11px] font-bold text-gray-700 group-hover:text-red-700 truncate">{inc.descripcion}</p>
+                    <p className="text-[11px] font-bold text-gray-700 group-hover:text-red-700 truncate">{inc.tituloIncidente || inc.descripcion}</p>
                   </div>
                 ))
               )}
@@ -475,7 +553,7 @@ function ExpedienteDisciplinarioDialog({ alumnoId, onClose, incidencias }: { alu
                 <div className="animate-in fade-in slide-in-from-right-2 duration-300 space-y-8">
                    <div className="flex items-center justify-between">
                       <h3 className="text-lg font-bold text-gray-800 uppercase tracking-tight flex items-center gap-2">
-                        Detalle de la Incidencia
+                        {selectedIncident.tituloIncidente || "Detalle de la Incidencia"}
                         <Badge className="bg-red-700">{selectedIncident.gravedad}/5</Badge>
                       </h3>
                       <span className="text-xs text-gray-400 italic">ID: {selectedIncident.id}</span>
@@ -483,8 +561,8 @@ function ExpedienteDisciplinarioDialog({ alumnoId, onClose, incidencias }: { alu
 
                    <div className="grid grid-cols-2 gap-8">
                       <div className="space-y-1">
-                        <Label className="text-[10px] font-bold uppercase text-gray-400">Tipo de conducta</Label>
-                        <p className="text-sm font-bold text-gray-700">{selectedIncident.tipoIncidencia}</p>
+                        <Label className="text-[10px] font-bold uppercase text-gray-400">Lugar del suceso</Label>
+                        <p className="text-sm font-bold text-gray-700 uppercase flex items-center gap-2"><MapPin className="h-3 w-3 text-red-600" /> {selectedIncident.lugar || "No especificado"}</p>
                       </div>
                       <div className="space-y-1">
                         <Label className="text-[10px] font-bold uppercase text-gray-400">Fecha del Registro</Label>
@@ -506,11 +584,6 @@ function ExpedienteDisciplinarioDialog({ alumnoId, onClose, incidencias }: { alu
                           <Badge key={c} variant="outline" className="bg-white text-[9px] font-bold text-gray-500 uppercase border-gray-200">{c}</Badge>
                         ))}
                       </div>
-                   </div>
-
-                   <div className="space-y-2">
-                      <Label className="text-[10px] font-bold uppercase text-gray-400">Medidas Correctoras</Label>
-                      <p className="text-sm font-bold text-gray-800">{selectedIncident.medidasCorrectoras || "Ninguna registrada."}</p>
                    </div>
 
                    <div className="pt-4 border-t flex items-center justify-between">
