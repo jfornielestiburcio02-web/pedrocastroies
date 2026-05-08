@@ -540,12 +540,12 @@ function AttendanceHistoryDialog({ alumnoId, claseId, grupoId, onClose }: { alum
 
                   {item.motivo && (
                     <div className="p-2 bg-white rounded border border-gray-100 text-[10px] italic text-gray-600">
-                      <strong>Motivo:</strong> {item.motivo}
+                      <strong>Motivo:</strong> {item.motivo} {item.isFullDay && "(Día completo)"}
                     </div>
                   )}
 
                   <div className="flex justify-end gap-2 pt-1 border-t border-gray-200/50">
-                    {item.tipo !== 'J' && justifyingId !== item.id && (
+                    {!item.isFullDay && item.tipo !== 'J' && justifyingId !== item.id && (
                       <Button 
                         variant="ghost" 
                         size="icon" 
@@ -555,14 +555,19 @@ function AttendanceHistoryDialog({ alumnoId, claseId, grupoId, onClose }: { alum
                         <Check className="h-4 w-4" />
                       </Button>
                     )}
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => handleDelete(item.id)}
-                      className="h-7 w-7 text-destructive hover:bg-destructive/10"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    {!item.isFullDay && (
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => handleDelete(item.id)}
+                        className="h-7 w-7 text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {item.isFullDay && (
+                       <span className="text-[9px] font-bold text-gray-400 uppercase">Registro Protegido (Día Completo)</span>
+                    )}
                   </div>
 
                   {justifyingId === item.id && (
