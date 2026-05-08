@@ -1,3 +1,4 @@
+
 'use client';
 
 import { firebaseConfig } from '@/firebase/config';
@@ -10,12 +11,12 @@ import {
   persistentMultipleTabManager 
 } from 'firebase/firestore';
 
-// Instancia única de los SDKs para evitar errores de re-inicialización b815/ca9
+// Instancia única de los SDKs para evitar errores de re-inicialización (Singleton ca9)
 let sdks: any = null;
 
 /**
- * Inicializa Firebase con una configuración optimizada para entornos de proxy (Cloud Workstations).
- * Utiliza experimentalForceLongPolling para evitar fallos de WebSockets.
+ * Inicializa Firebase con una configuración optimizada para entornos de proxy.
+ * Utiliza experimentalForceLongPolling para evitar fallos de aserción interna.
  */
 export function initializeFirebase() {
   if (sdks) return sdks;
@@ -24,7 +25,7 @@ export function initializeFirebase() {
     ? initializeApp(firebaseConfig) 
     : getApp();
 
-  // Configuración de Firestore con Long Polling forzado y caché persistente
+  // Configuración de Firestore con Long Polling forzado para eliminar errores ca9
   const firestore = initializeFirestore(firebaseApp, {
     experimentalForceLongPolling: true,
     localCache: persistentLocalCache({

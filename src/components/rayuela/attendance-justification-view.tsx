@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -103,6 +104,7 @@ export function AttendanceJustificationView({ alumno, onClose, profesorId }: Att
       const docRef = doc(db, 'asistenciasInasistencias', attendanceId);
       
       // SOLAPAMIENTO TOTAL: Seteamos con merge: true pero forzamos el nuevo estado del tutor
+      // Esto sobreescribe cualquier registro de profesor previo para ese día.
       batch.set(docRef, {
         alumnoId: alumno.id,
         claseId: session.id,
@@ -111,7 +113,8 @@ export function AttendanceJustificationView({ alumno, onClose, profesorId }: Att
         motivo: action === 'Just' ? 'Día Completo' : '',
         profesorId,
         isFullDay: true,
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
+        createdAt: new Date().toISOString()
       }, { merge: true });
     });
 
@@ -194,12 +197,23 @@ export function AttendanceJustificationView({ alumno, onClose, profesorId }: Att
                           const date = addDays(weekStart, diaIndex);
                           return (
                             <th key={dayNombre} className="border border-gray-200 min-w-[120px] bg-white">
-                               <div className="flex flex-col items-center py-1.5 bg-blue-50/5">
-                                  <span className="text-blue-500 font-bold text-[10px]">{format(date, 'd MMMM')}</span>
-                                  <span className="text-blue-900 font-black text-[9px] uppercase">{dayNombre}</span>
-                                  <div className="flex gap-1 mt-1">
-                                     <button onClick={() => handleDayAction(dayNombre, 'Inj')} className="bg-white border border-gray-300 px-2 py-0.5 text-[8px] font-black rounded hover:bg-gray-50 shadow-sm transition-all active:scale-95 uppercase">Inj</button>
-                                     <button onClick={() => handleDayAction(dayNombre, 'Just')} className="bg-white border border-gray-300 px-2 py-0.5 text-[8px] font-black rounded hover:bg-gray-50 shadow-sm transition-all active:scale-95 uppercase">Just</button>
+                               <div className="flex flex-col items-center py-2 bg-blue-50/10">
+                                  <span className="text-blue-500 font-bold text-[10px]">{format(date, 'd MMM')}</span>
+                                  <span className="text-blue-900 font-black text-[9px] uppercase mb-2">{dayNombre}</span>
+                                  <div className="flex gap-2">
+                                     {/* BOTONES DE DIA COMPLETO SEGUN IMAGEN */}
+                                     <button 
+                                      onClick={() => handleDayAction(dayNombre, 'Inj')} 
+                                      className="bg-white border border-gray-300 px-3 py-1 text-[9px] font-black rounded-md hover:bg-gray-50 shadow-sm transition-all active:scale-95 uppercase text-black"
+                                     >
+                                       INJ
+                                     </button>
+                                     <button 
+                                      onClick={() => handleDayAction(dayNombre, 'Just')} 
+                                      className="bg-white border border-gray-300 px-3 py-1 text-[9px] font-black rounded-md hover:bg-gray-50 shadow-sm transition-all active:scale-95 uppercase text-black"
+                                     >
+                                       JUST
+                                     </button>
                                   </div>
                                </div>
                             </th>
@@ -227,7 +241,7 @@ export function AttendanceJustificationView({ alumno, onClose, profesorId }: Att
                             const isFullDay = attendance?.isFullDay;
 
                             return (
-                              <td key={dayNombre} className="border border-gray-200 p-1.5 align-middle h-16">
+                              <td key={dayNombre} className="border border-gray-200 p-1.5 align-middle h-14">
                                  {isInj && (
                                    <div className="flex items-center gap-1 animate-in zoom-in-95 duration-200">
                                       <span className="boton_rectangulo scale-75 origin-left" data-type="I">Inj</span>
