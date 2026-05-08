@@ -44,7 +44,8 @@ export function AttendanceJustificationView({ alumno, onClose, profesorId }: Att
     if (!db || !alumno?.id) return null;
     return query(collection(db, 'horarios'), where('alumnosIds', 'array-contains', alumno.id));
   }, [db, alumno?.id]);
-  const { data: studentSchedules, isLoading: loadingSchedule } = useCollection(studentSchedules);
+
+  const { data: studentSchedules, isLoading: loadingSchedule } = useCollection(schedulesQuery);
 
   // 2. Obtener asistencias de la semana
   const attendanceQuery = useMemoFirebase(() => {
@@ -56,6 +57,7 @@ export function AttendanceJustificationView({ alumno, onClose, profesorId }: Att
       where('fecha', '<=', format(weekEnd, 'yyyy-MM-dd'))
     );
   }, [db, alumno?.id, weekStart, weekEnd]);
+
   const { data: attendances } = useCollection(attendanceQuery);
 
   // 3. Determinar qué días de la semana tienen clases para el alumno
