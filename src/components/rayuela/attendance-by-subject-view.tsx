@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -526,15 +527,21 @@ function AttendanceHistoryDialog({ alumnoId, claseId, grupoId, onClose }: { alum
                       <span className="text-[11px] font-bold text-gray-700">{format(new Date(item.fecha), 'EEEE d MMMM', { locale: es })}</span>
                       <span className="text-[9px] text-gray-400 uppercase">Registrado el {format(new Date(item.createdAt), 'HH:mm')}</span>
                     </div>
-                    <Badge className={cn(
-                      "text-[10px] font-bold px-3 border-none",
-                      item.tipo === 'I' ? "bg-[#EB8A5F] text-white" : 
-                      item.tipo === 'R' ? "bg-[#FFCD2D] text-gray-800" :
-                      item.tipo === 'J' ? "bg-[#78B64E] text-white" :
-                      "bg-blue-50 text-blue-600"
-                    )}>
-                      {item.tipo === 'I' ? 'INJUSTIFICADA' : item.tipo === 'R' ? 'RETRASO' : item.tipo === 'J' ? 'JUSTIFICADA' : 'NOTIFICADA'}
-                    </Badge>
+                    {item.isFullDay ? (
+                      <span className="boton_rectangulo" data-type={item.tipo === 'J' ? 'J' : 'I'}>
+                        {item.tipo === 'J' ? 'Just' : 'Inj'}
+                      </span>
+                    ) : (
+                      <Badge className={cn(
+                        "text-[10px] font-bold px-3 border-none",
+                        item.tipo === 'I' ? "bg-[#EB8A5F] text-white" : 
+                        item.tipo === 'R' ? "bg-[#FFCD2D] text-gray-800" :
+                        item.tipo === 'J' ? "bg-[#78B64E] text-white" :
+                        "bg-blue-50 text-blue-600"
+                      )}>
+                        {item.tipo === 'I' ? 'INJUSTIFICADA' : item.tipo === 'R' ? 'RETRASO' : item.tipo === 'J' ? 'JUSTIFICADA' : 'NOTIFICADA'}
+                      </Badge>
+                    )}
                   </div>
 
                   {item.motivo && (
@@ -565,7 +572,7 @@ function AttendanceHistoryDialog({ alumnoId, claseId, grupoId, onClose }: { alum
                       </Button>
                     )}
                     {item.isFullDay && (
-                       <span className="text-[9px] font-bold text-gray-400 uppercase">Registro Protegido (Día Completo)</span>
+                       <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter italic">Registro Protegido (Tutoría)</span>
                     )}
                   </div>
 

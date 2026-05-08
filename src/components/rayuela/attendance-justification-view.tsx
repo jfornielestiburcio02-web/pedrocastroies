@@ -100,7 +100,7 @@ export function AttendanceJustificationView({ alumno, onClose, profesorId }: Att
     
     const batch = writeBatch(db);
     daySessions.forEach(session => {
-      const attendanceId = `${alumno.id}_${session.id}_${targetDate}`;
+      const attendanceId = `${alumno.id}_session_${session.id}_${targetDate}`;
       const docRef = doc(db, 'asistenciasInasistencias', attendanceId);
       
       batch.set(docRef, {
@@ -122,76 +122,71 @@ export function AttendanceJustificationView({ alumno, onClose, profesorId }: Att
 
   return (
     <div className="fixed inset-0 z-[100] bg-white flex flex-col font-verdana animate-in fade-in duration-300">
-      {/* Cabecera Estilo Card Rayuela */}
-      <div className="bg-[#f0f0f0] p-6 flex flex-col items-center border-b shadow-sm shrink-0">
-        <div className="bg-white p-8 rounded-2xl border shadow-sm max-w-2xl w-full flex flex-col items-center gap-6 relative">
-           <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-black"><XCircle className="h-6 w-6" /></button>
+      {/* Cabecera Estilo Card Rayuela - MODO COMPACTO */}
+      <div className="bg-[#f0f0f0] p-4 flex flex-col items-center border-b shadow-sm shrink-0">
+        <div className="bg-white p-4 rounded-xl border shadow-sm max-w-2xl w-full flex flex-col items-center gap-4 relative">
+           <button onClick={onClose} className="absolute top-2 right-2 text-gray-400 hover:text-black transition-colors"><XCircle className="h-5 w-5" /></button>
            
-           <div className="flex items-center gap-8 w-full justify-center">
-              <Avatar className="h-24 w-24 border-4 border-white shadow-md">
+           <div className="flex items-center gap-6 w-full justify-center">
+              <Avatar className="h-16 w-16 border-2 border-white shadow-sm">
                 <AvatarImage src={alumno?.imagenPerfil} />
-                <AvatarFallback className="text-2xl">{alumno?.usuario?.substring(0,2).toUpperCase()}</AvatarFallback>
+                <AvatarFallback className="text-xl">{alumno?.usuario?.substring(0,2).toUpperCase()}</AvatarFallback>
               </Avatar>
               
-              <div className="space-y-4">
+              <div className="space-y-1">
                  <div className="text-center md:text-left">
-                    <p className="text-lg font-bold text-gray-700 uppercase leading-tight">{alumno?.nombrePersona || alumno?.usuario}</p>
-                    <div className="flex gap-4 mt-2 text-[11px] font-bold text-gray-500 uppercase">
-                       <span>Quiero registrar nueva:</span>
-                       <span className="text-blue-600 hover:underline cursor-pointer flex items-center gap-1"><Phone className="h-3 w-3" /> Llamada</span>
-                       <span className="text-blue-600 hover:underline cursor-pointer flex items-center gap-1"><FileText className="h-3 w-3" /> Carta</span>
-                       <span className="text-blue-600 hover:underline cursor-pointer flex items-center gap-1"><Mail className="h-3 w-3" /> Mensaje</span>
+                    <p className="text-base font-bold text-gray-700 uppercase leading-tight">{alumno?.nombrePersona || alumno?.usuario}</p>
+                    <div className="flex gap-3 mt-1 text-[9px] font-bold text-gray-500 uppercase">
+                       <span className="text-blue-600 hover:underline cursor-pointer flex items-center gap-1"><Phone className="h-2.5 w-2.5" /> Llamada</span>
+                       <span className="text-blue-600 hover:underline cursor-pointer flex items-center gap-1"><FileText className="h-2.5 w-2.5" /> Carta</span>
+                       <span className="text-blue-600 hover:underline cursor-pointer flex items-center gap-1"><Mail className="h-2.5 w-2.5" /> Mensaje</span>
                     </div>
                  </div>
 
-                 <div className="flex items-center gap-4 text-[11px] font-bold text-gray-500 uppercase">
-                    <div className="flex items-center gap-2">
+                 <div className="flex items-center gap-4 text-[9px] font-bold text-gray-500 uppercase pt-1">
+                    <div className="flex items-center gap-1.5">
                        <span>Desde:</span>
-                       <div className="bg-white border rounded px-2 py-1 flex items-center gap-2">
-                          {format(weekStart, 'dd/MM/yyyy')} <CalendarIcon className="h-3 w-3 text-gray-400" />
+                       <div className="bg-white border rounded px-1.5 py-0.5 flex items-center gap-1.5">
+                          {format(weekStart, 'dd/MM/yyyy')} <CalendarIcon className="h-2.5 w-2.5 text-gray-400" />
                        </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
                        <span>Hasta:</span>
                        <span className="text-green-600">{format(weekEnd, 'dd/MM/yyyy')}</span>
                     </div>
                  </div>
               </div>
            </div>
-           
-           <p className="text-[10px] text-gray-400 italic text-center">
-             Para justificar faltas por el <b>mismo motivo</b>, pulse el botón <i>Justificar por motivo</i>, del margen superior derecho.
-           </p>
         </div>
       </div>
 
-      {/* Grid de Asistencia */}
+      {/* Grid de Asistencia - COMPACTO */}
       <div className="flex-1 overflow-hidden flex flex-col">
-        <div className="flex items-center justify-between p-4 bg-white border-b px-8">
-           <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => setCurrentDate(addDays(currentDate, -7))} className="h-8 gap-2 text-[10px] font-bold uppercase"><ChevronLeft className="h-4 w-4" /> Anterior</Button>
-              <Button variant="outline" size="sm" onClick={() => setCurrentDate(addDays(currentDate, 7))} className="h-8 gap-2 text-[10px] font-bold uppercase">Siguiente <ChevronRight className="h-4 w-4" /></Button>
+        <div className="flex items-center justify-between p-2 bg-white border-b px-4">
+           <div className="flex gap-1.5">
+              <Button variant="outline" size="sm" onClick={() => setCurrentDate(addDays(currentDate, -7))} className="h-7 gap-1 text-[9px] font-bold uppercase"><ChevronLeft className="h-3 w-3" /> Sem. Ant.</Button>
+              <Button variant="outline" size="sm" onClick={() => setCurrentDate(addDays(currentDate, 7))} className="h-7 gap-1 text-[9px] font-bold uppercase">Sem. Sig. <ChevronRight className="h-3 w-3" /></Button>
            </div>
-           <Button className="bg-[#fb8500] hover:bg-[#e07600] text-white text-[10px] font-bold uppercase h-8 px-6">Justificar por motivo</Button>
+           <Button className="bg-[#fb8500] hover:bg-[#e07600] text-white text-[9px] font-bold uppercase h-7 px-4 shadow-sm">Justificar por motivo</Button>
         </div>
 
         <ScrollArea className="flex-1">
-           <div className="min-w-max p-8">
-              <table className="w-full border-collapse border border-gray-200 shadow-sm">
+           <div className="min-w-max p-4">
+              <table className="w-full border-collapse border border-gray-200 shadow-sm text-[10px]">
                  <thead>
                     <tr className="bg-white">
-                       <th className="border border-gray-200 p-4 w-64"></th>
+                       <th className="border border-gray-200 p-2 w-48 bg-gray-50"></th>
                        {activeDays.map((dayNombre) => {
                           const diaIndex = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"].indexOf(dayNombre);
                           const date = addDays(weekStart, diaIndex);
                           return (
-                            <th key={dayNombre} className="border border-gray-200 min-w-[180px]">
-                               <div className="flex flex-col items-center py-3 bg-blue-50/10">
-                                  <span className="text-blue-500 font-bold text-sm">{format(date, 'd MMMM')}</span>
-                                  <span className="text-blue-900 font-black text-xs uppercase">{dayNombre}</span>
-                                  <div className="flex gap-2 mt-3">
-                                     <button onClick={() => handleDayAction(dayNombre, 'Inj')} className="bg-white border border-gray-300 px-4 py-1 text-[11px] font-black rounded hover:bg-gray-50 shadow-sm">Inj</button>
-                                     <button onClick={() => handleDayAction(dayNombre, 'Just')} className="bg-white border border-gray-300 px-4 py-1 text-[11px] font-black rounded hover:bg-gray-50 shadow-sm">Just</button>
+                            <th key={dayNombre} className="border border-gray-200 min-w-[140px] bg-white">
+                               <div className="flex flex-col items-center py-2 bg-blue-50/10">
+                                  <span className="text-blue-500 font-bold text-[11px]">{format(date, 'd MMMM')}</span>
+                                  <span className="text-blue-900 font-black text-[10px] uppercase">{dayNombre}</span>
+                                  <div className="flex gap-1 mt-2">
+                                     <button onClick={() => handleDayAction(dayNombre, 'Inj')} className="bg-white border border-gray-300 px-3 py-0.5 text-[9px] font-black rounded hover:bg-gray-50 shadow-sm transition-all active:scale-95 uppercase">Inj</button>
+                                     <button onClick={() => handleDayAction(dayNombre, 'Just')} className="bg-white border border-gray-300 px-3 py-0.5 text-[9px] font-black rounded hover:bg-gray-50 shadow-sm transition-all active:scale-95 uppercase">Just</button>
                                   </div>
                                </div>
                             </th>
@@ -202,46 +197,43 @@ export function AttendanceJustificationView({ alumno, onClose, profesorId }: Att
                  <tbody>
                     {uniqueSubjects.map((subject) => (
                       <tr key={subject} className="bg-[#f9f9f9] hover:bg-white transition-colors">
-                         <td className="border border-gray-200 p-4 text-[11px] font-bold text-gray-500 uppercase bg-white">
+                         <td className="border border-gray-200 p-3 text-[10px] font-bold text-gray-500 uppercase bg-white">
                             {subject}
                          </td>
                          {activeDays.map((dayNombre) => {
                             const diaIndex = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"].indexOf(dayNombre);
                             const targetDate = format(addDays(weekStart, diaIndex), 'yyyy-MM-dd');
                             
-                            // Encontrar si este alumno tiene esta materia este día
                             const session = studentSchedules?.find(s => s.dia === dayNombre && s.asignatura === subject);
                             
-                            if (!session) return <td key={dayNombre} className="border border-gray-200 bg-gray-100/30"></td>;
+                            if (!session) return <td key={dayNombre} className="border border-gray-200 bg-gray-100/10"></td>;
 
                             const attendance = attendances?.find(a => a.claseId === session.id && a.fecha === targetDate);
                             const isInj = attendance?.tipo === 'I';
                             const isJust = attendance?.tipo === 'J';
-                            const isFullDay = attendance?.motivo === 'Día Completo';
+                            const isFullDay = attendance?.isFullDay;
 
                             return (
-                              <td key={dayNombre} className="border border-gray-200 p-4 align-top h-32">
+                              <td key={dayNombre} className="border border-gray-200 p-2 align-middle h-20">
                                  {isInj && (
-                                   <div className="flex flex-col gap-2 animate-in zoom-in-95 duration-200">
-                                      <div className="flex items-center justify-between">
-                                         <span className="text-red-600 font-bold text-sm tracking-tighter">Inj</span>
-                                         <button 
-                                          onClick={() => handleJustifyHour(session.id, targetDate)}
-                                          className="bg-white border border-gray-300 px-2 py-0.5 text-[10px] font-bold rounded shadow-sm hover:bg-blue-50 text-gray-700"
-                                         >
-                                           Just
-                                         </button>
-                                      </div>
+                                   <div className="flex items-center gap-1.5 animate-in zoom-in-95 duration-200">
+                                      <span className="boton_rectangulo" data-type="I">Inj</span>
+                                      <button 
+                                       onClick={() => handleJustifyHour(session.id, targetDate)}
+                                       className="bg-white border border-gray-300 px-2 py-0.5 text-[9px] font-bold rounded shadow-sm hover:bg-blue-50 text-gray-600 transition-all uppercase"
+                                      >
+                                        Just
+                                      </button>
                                    </div>
                                  )}
                                  
                                  {isJust && (
                                    <div className={cn(
-                                     "p-2 rounded border flex items-center gap-2 animate-in fade-in duration-300",
+                                     "p-1.5 rounded border flex items-center justify-between gap-1.5 animate-in fade-in duration-300",
                                      isFullDay ? "bg-gray-100 border-gray-300" : "bg-green-50 border-green-200"
                                    )}>
-                                      <span className={cn("text-[11px] font-bold", isFullDay ? "text-gray-600" : "text-green-700")}>
-                                        Just {isFullDay && "| Día Completo"}
+                                      <span className={cn("text-[9px] font-bold uppercase", isFullDay ? "text-gray-600" : "text-green-700")}>
+                                        {isFullDay ? 'Just Día' : 'Justificada'}
                                       </span>
                                       <CheckCircle2 className={cn("h-3 w-3", isFullDay ? "text-gray-400" : "text-green-600")} />
                                    </div>
@@ -255,6 +247,12 @@ export function AttendanceJustificationView({ alumno, onClose, profesorId }: Att
               </table>
            </div>
         </ScrollArea>
+
+        <div className="bg-gray-50 border-t p-2 text-center">
+           <p className="text-[9px] text-gray-400 italic">
+             Para justificar faltas por el mismo motivo, utilice el botón superior.
+           </p>
+        </div>
       </div>
     </div>
   );
