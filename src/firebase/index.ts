@@ -2,10 +2,9 @@
 'use client';
 
 import { firebaseConfig } from '@/firebase/config';
-import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
+import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { 
-  getFirestore, 
   initializeFirestore, 
   persistentLocalCache, 
   persistentMultipleTabManager 
@@ -16,7 +15,7 @@ let sdks: any = null;
 
 /**
  * Inicializa Firebase con una configuración optimizada para entornos de proxy.
- * Utiliza experimentalForceLongPolling para evitar fallos de aserción interna.
+ * Utiliza experimentalForceLongPolling para eliminar errores de aserción interna (ID: ca9).
  */
 export function initializeFirebase() {
   if (sdks) return sdks;
@@ -26,12 +25,20 @@ export function initializeFirebase() {
     : getApp();
 
   // Configuración de Firestore con Long Polling forzado para eliminar errores ca9
-  const firestore = initializeFirestore(firebaseApp, {
-    experimentalForceLongPolling: true,
-    localCache: persistentLocalCache({
-      tabManager: persistentMultipleTabManager()
-    })
-  });
+  // Es crítico que initializeFirestore solo se llame una vez.
+  let firestore;
+  try {
+    firestore = initializeFirestore(firebaseApp, {
+      experimentalForceLongPolling: true,
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager()
+      })
+    });
+  } catch (e) {
+    // Si ya estaba inicializado, obtenemos la instancia existente
+    const { getFirestore } = require('firebase/firestore');
+    firestore = getFirestore(firebaseApp);
+  }
 
   const auth = getAuth(firebaseApp);
 

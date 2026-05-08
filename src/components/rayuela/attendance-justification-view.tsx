@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, doc, writeBatch } from 'firebase/firestore';
-import { addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { format, addDays, startOfWeek, endOfWeek } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -90,11 +90,8 @@ export function AttendanceJustificationView({ alumno, onClose, profesorId }: Att
     return null;
   };
 
-  const handleDayAction = async (diaNombre: string, action: 'Inj' | 'Just') => {
+  const handleDayAction = async (diaNombre: string, action: 'Inj' | 'Just' | 'Delete') => {
     if (!db || !studentSchedules) return;
-    
-    const currentStatus = getDayFullStatus(diaNombre);
-    const isAlreadyActive = (action === 'Inj' && currentStatus === 'I') || (action === 'Just' && currentStatus === 'J');
     
     const diaIndex = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"].indexOf(diaNombre);
     const targetDate = format(addDays(weekStart, diaIndex), 'yyyy-MM-dd');
@@ -106,7 +103,7 @@ export function AttendanceJustificationView({ alumno, onClose, profesorId }: Att
       const attendanceId = `${alumno.id}_${session.id}_${targetDate}`;
       const docRef = doc(db, 'asistenciasInasistencias', attendanceId);
       
-      if (isAlreadyActive) {
+      if (action === 'Delete') {
         batch.delete(docRef);
       } else {
         batch.set(docRef, {
@@ -125,7 +122,7 @@ export function AttendanceJustificationView({ alumno, onClose, profesorId }: Att
 
     await batch.commit();
 
-    if (action === 'Inj' && !isAlreadyActive) {
+    if (action === 'Inj') {
       addDocumentNonBlocking(collection(db, 'mensajes'), {
         remitenteId: 'SISTEMA',
         destinatarioId: alumno.id,
@@ -238,7 +235,7 @@ export function AttendanceJustificationView({ alumno, onClose, profesorId }: Att
                                  </div>
                                  {dayStatus && (
                                    <button 
-                                     onClick={() => handleDayAction(dayNombre, dayStatus === 'I' ? 'Inj' : 'Just')}
+                                     onClick={() => handleDayAction(dayNombre, 'Delete')}
                                      className="text-red-500 hover:text-red-700 font-bold text-[8px] uppercase underline mt-0.5"
                                    >
                                      Eliminar día completo
