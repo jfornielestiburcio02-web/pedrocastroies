@@ -15,7 +15,8 @@ import {
   Calendar as CalendarIcon,
   Eraser,
   User,
-  MapPin
+  MapPin,
+  Trash2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -64,6 +65,31 @@ import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
+const CONDUCTAS_CONTRARIAS = [
+  "Actuaciones incorrectas hacia algún miembro de la comunidad educativa (Contraria)",
+  "Daños en instalaciones o docum. del Centro o en pertenencias de un miembro (Contraria)",
+  "Falta de colaboración sistemática en la realización de las actividades (Contraria)",
+  "Faltas injustificadas de asistencia a clase (Contraria)",
+  "Faltas injustificadas de puntualidad (Contraria)",
+  "Impedir o dificultar el estudio a sus compañeros (Contraria)",
+  "Perturbación del normal desarrollo de las actividades de clase (Contraria)"
+];
+
+const CONDUCTAS_GRAVES = [
+  "Acoso escolar y/o ciberacoso (Gravemente perjudicial)",
+  "Actuaciones perjudiciales para la salud y la integridad, o incitación a ellas (Gravemente perjudicial)",
+  "Agresión física a un miembro de la comunidad educativa (Gravemente perjudicial)",
+  "Amenazas o coacciones a un miembro de la comunidad educativa (Gravemente perjudicial)",
+  "Deterioro grave de instalac. o docum. del Centro, o pertenencias de un miembro (Gravemente perjudicial)",
+  "Impedir el normal desarrollo de las actividades del centro (Gravemente perjudicial)",
+  "Incumplimiento de las correcciones impuestas (Gravemente perjudicial)",
+  "Injurias y ofensas contra un miembro de la comunidad educativa (Gravemente perjudicial)",
+  "Reiteración en un mismo curso de conductas contrarias a normas de convivencia (Gravemente perjudicial)",
+  "Suplantación de la personalidad, y falsificación o sustracción de documentos (Gravemente perjudicial)",
+  "Uso indebido de medios electrónicos durante las horas lectivas (Gravemente perjudicial)",
+  "Vejaciones o humillaciones contra un miembro de la comunidad educativa (Gravemente perjudicial)"
+];
+
 interface AlumnadoIncidenteViewProps {
   profesorId: string;
   targetStudentId?: string;
@@ -89,8 +115,13 @@ export function AlumnadoIncidenteView({ profesorId, targetStudentId, onActionCom
     conductas: [] as string[],
     medidasCorrectoras: '',
     observaciones: '',
-    comunicadoFamilia: false
+    comunicadoFamilia: false,
+    otrasConductasChecked: false,
+    otrasConductasDesc: ''
   });
+
+  const [selectedConductType, setSelectedConductType] = useState<string>("Contraria");
+  const [currentSelectedConduct, setCurrentSelectedConduct] = useState<string>("");
 
   // Efecto para abrir automáticamente el expediente si viene de una redirección
   useEffect(() => {
@@ -128,6 +159,22 @@ export function AlumnadoIncidenteView({ profesorId, targetStudentId, onActionCom
     if (selectedCourse === "TODOS") return students;
     return students.filter(s => (s.cursoAlumno || "SIN CURSO") === selectedCourse);
   }, [students, selectedCourse]);
+
+  const handleAddConduct = () => {
+    if (!currentSelectedConduct) return;
+    if (formData.conductas.includes(currentSelectedConduct)) return;
+    setFormData({
+      ...formData,
+      conductas: [...formData.conductas, currentSelectedConduct]
+    });
+  };
+
+  const handleRemoveConduct = (conduct: string) => {
+    setFormData({
+      ...formData,
+      conductas: formData.conductas.filter(c => c !== conduct)
+    });
+  };
 
   const handleSaveIncident = async () => {
     if (!db || !formData.alumnoId || !formData.descripcion || !formData.tituloIncidente) {
@@ -198,8 +245,12 @@ export function AlumnadoIncidenteView({ profesorId, targetStudentId, onActionCom
       conductas: [] as string[],
       medidasCorrectoras: '',
       observaciones: '',
-      comunicadoFamilia: false
+      comunicadoFamilia: false,
+      otrasConductasChecked: false,
+      otrasConductasDesc: ''
     });
+    setSelectedConductType("Contraria");
+    setCurrentSelectedConduct("");
   };
 
   const getIncidentCount = (studentId: string) => {
@@ -237,7 +288,7 @@ export function AlumnadoIncidenteView({ profesorId, targetStudentId, onActionCom
                  </SelectContent>
                </Select>
              </div>
-             <Button onClick={() => setIsDialogOpen(true)} size="sm" className="bg-[#89a54e] hover:bg-[#728a41] text-white text-[10px] font-bold uppercase h-8 px-4 gap-2 shadow-sm">
+             <Button onClick={() => { resetForm(); setIsDialogOpen(true); }} size="sm" className="bg-[#89a54e] hover:bg-[#728a41] text-white text-[10px] font-bold uppercase h-8 px-4 gap-2 shadow-sm">
                <Plus className="h-3 w-3" /> Nueva Incidencia
              </Button>
           </div>
@@ -327,7 +378,7 @@ export function AlumnadoIncidenteView({ profesorId, targetStudentId, onActionCom
              <div className="px-6 bg-[#f2f2f2] border-b">
                 <TabsList className="bg-transparent h-auto p-0 gap-1">
                    <TabsTrigger value="incidente" className="rounded-t-lg rounded-b-none border-x border-t border-gray-300 data-[state=active]:bg-white data-[state=active]:text-lila font-bold text-[11px] px-6 py-2 uppercase">Incidente</TabsTrigger>
-                   <TabsTrigger value="conductas" className="rounded-t-lg rounded-b-none border-x border-t border-gray-300 data-[state=active]:bg-white font-bold text-[11px] px-6 py-2 uppercase opacity-60">Conductas desarrolladas en este incidente</TabsTrigger>
+                   <TabsTrigger value="conductas" className="rounded-t-lg rounded-b-none border-x border-t border-gray-300 data-[state=active]:bg-white data-[state=active]:text-lila font-bold text-[11px] px-6 py-2 uppercase">Conductas desarrolladas en este incidente</TabsTrigger>
                    <TabsTrigger value="correcciones" className="rounded-t-lg rounded-b-none border-x border-t border-gray-300 data-[state=active]:bg-white font-bold text-[11px] px-6 py-2 uppercase opacity-60">Correcciones aplicadas en este incidente</TabsTrigger>
                 </TabsList>
              </div>
@@ -335,7 +386,6 @@ export function AlumnadoIncidenteView({ profesorId, targetStudentId, onActionCom
              <ScrollArea className="flex-1 bg-white">
                 <TabsContent value="incidente" className="p-8 m-0 space-y-8">
                    <div className="border border-purple-200 rounded-lg p-8 space-y-6 relative bg-white">
-                      {/* FILA 1: FECHA */}
                       <div className="flex items-center gap-4">
                          <Label className="w-48 text-[13px] font-medium text-gray-700">Fecha:</Label>
                          <div className="flex items-center gap-2">
@@ -352,7 +402,6 @@ export function AlumnadoIncidenteView({ profesorId, targetStudentId, onActionCom
                          </div>
                       </div>
 
-                      {/* FILA 2: PROFESIONAL */}
                       <div className="flex items-center gap-4">
                          <Label className="w-48 text-[13px] font-medium text-gray-700">Profesional que ha comunicado el incidente:</Label>
                          <div className="flex-1 flex items-center gap-2 max-w-2xl">
@@ -375,7 +424,6 @@ export function AlumnadoIncidenteView({ profesorId, targetStudentId, onActionCom
                          </div>
                       </div>
 
-                      {/* FILA 3: LUGAR */}
                       <div className="flex items-center gap-4">
                          <Label className="w-48 text-[13px] font-medium text-gray-700">Lugar del incidente:</Label>
                          <div className="flex-1 max-w-xl">
@@ -400,7 +448,6 @@ export function AlumnadoIncidenteView({ profesorId, targetStudentId, onActionCom
                          </div>
                       </div>
 
-                      {/* FILA 4: INCIDENTE */}
                       <div className="flex items-center gap-4">
                          <Label className="w-48 text-[13px] font-medium text-gray-700">Incidente:</Label>
                          <div className="flex-1 flex items-center gap-2">
@@ -414,7 +461,6 @@ export function AlumnadoIncidenteView({ profesorId, targetStudentId, onActionCom
                          </div>
                       </div>
 
-                      {/* FILA 5: DESCRIPCIÓN */}
                       <div className="space-y-2">
                          <div className="flex items-center gap-2">
                             <Label className="text-[13px] font-medium text-gray-700">Descripción detallada:</Label>
@@ -429,7 +475,6 @@ export function AlumnadoIncidenteView({ profesorId, targetStudentId, onActionCom
                       </div>
                    </div>
 
-                   {/* SELECTOR DE ALUMNO (Fuera del recuadro lila para claridad) */}
                    <div className="flex items-center gap-6 p-4 bg-blue-50/50 border border-blue-100 rounded-xl">
                       <div className="flex items-center gap-3">
                          <User className="h-5 w-5 text-blue-600" />
@@ -452,9 +497,107 @@ export function AlumnadoIncidenteView({ profesorId, targetStudentId, onActionCom
                    </div>
                 </TabsContent>
 
-                <TabsContent value="conductas" className="p-20 text-center space-y-4 opacity-40">
-                   <ShieldAlert className="h-16 w-16 mx-auto text-gray-300" />
-                   <p className="italic">Esperando definición de conductas específicas...</p>
+                <TabsContent value="conductas" className="p-8 m-0 space-y-8 animate-in fade-in duration-300">
+                   <div className="border border-purple-200 rounded-lg p-8 space-y-8 bg-white relative">
+                      {/* FILA 1: TIPO DE CONDUCTA */}
+                      <div className="flex items-center gap-4">
+                         <Label className="w-64 text-[13px] font-medium text-gray-700">Tipo de conducta:</Label>
+                         <div className="flex-1 max-w-xl">
+                            <Select 
+                              value={selectedConductType} 
+                              onValueChange={(val) => {
+                                setSelectedConductType(val);
+                                setCurrentSelectedConduct("");
+                              }}
+                            >
+                               <SelectTrigger className="h-8 border-gray-300 shadow-sm text-[13px]">
+                                  <SelectValue />
+                               </SelectTrigger>
+                               <SelectContent>
+                                  <SelectItem value="Contraria" className="text-[13px]">Contraria</SelectItem>
+                                  <SelectItem value="Grave" className="text-[13px]">Grave</SelectItem>
+                               </SelectContent>
+                            </Select>
+                         </div>
+                      </div>
+
+                      {/* FILA 2: LISTADO CONDUCTAS */}
+                      <div className="flex items-start gap-4">
+                         <Label className="w-64 text-[13px] font-medium text-gray-700 pt-2">Conductas contrarias/gravemente perjudiciales:</Label>
+                         <div className="flex-1 flex items-center gap-4">
+                            <Select value={currentSelectedConduct} onValueChange={setCurrentSelectedConduct}>
+                               <SelectTrigger className="h-8 border-gray-300 shadow-sm text-[13px] flex-1">
+                                  <SelectValue placeholder="Seleccione una conducta..." />
+                               </SelectTrigger>
+                               <SelectContent>
+                                  {(selectedConductType === 'Contraria' ? CONDUCTAS_CONTRARIAS : CONDUCTAS_GRAVES).map(c => (
+                                    <SelectItem key={c} value={c} className="text-[11px]">{c}</SelectItem>
+                                  ))}
+                               </SelectContent>
+                            </Select>
+                            <Button 
+                              onClick={handleAddConduct}
+                              className="bg-[#9c4d96] hover:bg-[#833d7d] text-white text-[11px] font-bold uppercase h-8 px-6 rounded-md shadow-sm"
+                            >
+                              Añadir
+                            </Button>
+                         </div>
+                      </div>
+
+                      {/* FILA 3: CONDUCTAS DESARROLLADAS */}
+                      <div className="flex items-start gap-4">
+                         <Label className="w-64 text-[13px] font-medium text-gray-700 pt-2">Conductas desarrolladas:</Label>
+                         <div className="flex-1 flex items-start gap-4">
+                            <div className="flex-1 min-h-[140px] border border-gray-400 bg-white rounded shadow-inner p-2 space-y-1">
+                               {formData.conductas.length === 0 ? (
+                                 <p className="text-[11px] text-gray-300 italic p-2">No se han añadido conductas todavía.</p>
+                               ) : (
+                                 formData.conductas.map(c => (
+                                   <div 
+                                    key={c} 
+                                    onClick={() => setCurrentSelectedConduct(c)}
+                                    className={cn(
+                                      "text-[11px] p-1.5 rounded cursor-pointer transition-colors leading-tight",
+                                      currentSelectedConduct === c ? "bg-blue-100 text-blue-900 font-bold" : "hover:bg-gray-50"
+                                    )}
+                                   >
+                                      {c}
+                                   </div>
+                                 ))
+                               )}
+                            </div>
+                            <Button 
+                              variant="outline"
+                              onClick={() => handleRemoveConduct(currentSelectedConduct)}
+                              disabled={!currentSelectedConduct || !formData.conductas.includes(currentSelectedConduct)}
+                              className="border-[#9c4d96] text-[#9c4d96] hover:bg-purple-50 text-[11px] font-bold uppercase h-8 px-6 rounded-md shadow-sm"
+                            >
+                              Quitar
+                            </Button>
+                         </div>
+                      </div>
+
+                      {/* FILA 4: OTRAS CONDUCTAS */}
+                      <div className="space-y-4 pt-4">
+                         <div className="flex items-center gap-3">
+                            <Checkbox 
+                              id="otras-conductas" 
+                              checked={formData.otrasConductasChecked} 
+                              onCheckedChange={(val) => setFormData({...formData, otrasConductasChecked: !!val})}
+                            />
+                            <Label htmlFor="otras-conductas" className="text-[12px] font-medium text-gray-700 cursor-pointer">
+                               Otras conductas contrarias/gravemente perjudiciales no incluidas en los artículos 37 o 40. Describirlas:
+                            </Label>
+                         </div>
+                         <Textarea 
+                            disabled={!formData.otrasConductasChecked}
+                            value={formData.otrasConductasDesc}
+                            onChange={(e) => setFormData({...formData, otrasConductasDesc: e.target.value})}
+                            className="min-h-[100px] border-gray-300 shadow-inner text-[13px] resize-none"
+                            placeholder="Especifique otras conductas observadas..."
+                         />
+                      </div>
+                   </div>
                 </TabsContent>
 
                 <TabsContent value="correcciones" className="p-20 text-center space-y-4 opacity-40">
