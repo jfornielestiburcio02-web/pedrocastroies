@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Loader2, 
   Users, 
   FileText, 
   UserCircle,
-  Search
+  Search,
+  Clock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
@@ -17,13 +18,13 @@ import { AttendanceJustificationView } from './attendance-justification-view';
 
 /**
  * Vista de Función Tutorial de Rayuela.
- * Muestra a los alumnos del grupo que el profesor tutela.
+ * Muestra a los alumnos del grupo que el profesor tutela con contadores de faltas.
  */
 export function TutorialFunctionView({ profesorId, grupoTutorizado }: { profesorId: string, grupoTutorizado: string }) {
   const db = useFirestore();
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
 
-  // Query para obtener los alumnos del grupo tutorizado
+  // 1. Query para obtener los alumnos del grupo tutorizado
   const studentsQuery = useMemoFirebase(() => {
     if (!db || !grupoTutorizado) return null;
     return query(
@@ -33,9 +34,20 @@ export function TutorialFunctionView({ profesorId, grupoTutorizado }: { profesor
     );
   }, [db, grupoTutorizado]);
 
-  const { data: students, isLoading } = useCollection(studentsQuery);
+  const { data: students, isLoading: loadingStudents } = useCollection(studentsQuery);
 
-  if (isLoading) {
+  // 2. Query para obtener todas las asistencias del grupo para calcular los contadores
+  const attendancesQuery = useMemoFirebase(() => {
+    if (!db) return null;
+    return query(
+      collection(db, 'asistenciasInasistencias'),
+      where('tipo', '==', 'I')
+    );
+  }, [db]);
+
+  const { data: allAbsences, isLoading: loadingAbsences } = useCollection(attendancesQuery);
+
+  if (loadingStudents || loadingAbsences) {
     return (
       <div className="flex justify-center p-20">
         <Loader2 className="h-8 w-8 animate-spin text-[#89a54e]" />
@@ -75,36 +87,46 @@ export function TutorialFunctionView({ profesorId, grupoTutorizado }: { profesor
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 justify-items-center">
-           {students.map(student => (
-             <div key={student.id} className="itemAlumnoEnClase relative group flex flex-col items-center hover:border-[#89a54e] hover:shadow-md transition-all bg-white shadow-sm">
-                <Avatar 
-                  className="imagenAlumnoEnClase h-[73px] w-[73px] cursor-pointer"
-                  onClick={() => setSelectedStudent(student)}
-                >
-                  <AvatarImage src={student.imagenPerfil} />
-                  <AvatarFallback>{student.usuario?.substring(0, 2).toUpperCase()}</AvatarFallback>
-                </Avatar>
-                
-                <div className="nombreAlumno px-2 mt-2 font-bold text-center text-gray-700" onClick={() => setSelectedStudent(student)}>
-                  {student.nombrePersona || student.usuario}
-                </div>
+           {students.map(student => {
+             // Calcular faltas específicas para este alumno
+             const studentAbsences = allAbsences?.filter(a => a.alumnoId === student.id) || [];
+             const classAbsencesCount = studentAbsences.filter(a => !a.isFullDay).length;
+             const fullDayAbsencesCount = studentAbsences.filter(a => a.isFullDay).length;
 
-                <div className="w-full px-2 mt-auto">
-                   <Button 
-                    variant="outline" 
-                    size="sm" 
+             return (
+               <div key={student.id} className="itemAlumnoEnClase relative group flex flex-col items-center hover:border-[#89a54e] hover:shadow-md transition-all bg-white shadow-sm pb-4">
+                  <Avatar 
+                    className="imagenAlumnoEnClase h-[73px] w-[73px] cursor-pointer"
                     onClick={() => setSelectedStudent(student)}
-                    className="w-full h-8 text-[10px] font-bold uppercase border-gray-200 hover:bg-[#89a54e]/10 text-gray-600 gap-1"
-                   >
-                     <FileText className="h-3 w-3" /> Ficha Tutoría
-                   </Button>
-                </div>
+                  >
+                    <AvatarImage src={student.imagenPerfil} />
+                    <AvatarFallback>{student.usuario?.substring(0, 2).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  
+                  <div className="nombreAlumno px-2 mt-2 font-bold text-center text-gray-700 h-auto min-h-0 mb-4" onClick={() => setSelectedStudent(student)}>
+                    {student.nombrePersona || student.usuario}
+                  </div>
 
-                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <UserCircle className="h-4 w-4 text-[#89a54e]" />
-                </div>
-             </div>
-           ))}
+                  <div className="w-full px-2 space-y-2 mt-auto">
+                     {/* Contador Amarillo: Faltas por clase */}
+                     <div className="flex items-center justify-between bg-[#FFCD2D] rounded px-2 py-1.5 shadow-sm border border-yellow-400">
+                        <span className="text-[9px] font-black text-gray-700 uppercase tracking-tighter">Injustif. Clases</span>
+                        <span className="text-[12px] font-black text-gray-800">{classAbsencesCount}</span>
+                     </div>
+
+                     {/* Contador Naranja: Faltas Día Completo */}
+                     <div className="flex items-center justify-between bg-[#EB8A5F] rounded px-2 py-1.5 shadow-sm border border-orange-400">
+                        <span className="text-[9px] font-black text-white uppercase tracking-tighter">Inj. Día Completo</span>
+                        <span className="text-[12px] font-black text-white">{fullDayAbsencesCount}</span>
+                     </div>
+                  </div>
+
+                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <UserCircle className="h-4 w-4 text-[#89a54e]" />
+                  </div>
+               </div>
+             );
+           })}
         </div>
       )}
     </div>
