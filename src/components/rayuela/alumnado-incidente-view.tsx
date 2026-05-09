@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -139,7 +138,7 @@ export function AlumnadoIncidenteView({ profesorId, userData, targetStudentId, o
   const db = useFirestore();
   const { toast } = useToast();
   
-  const [academicYear, setAcademicYear] = useState("2023-2024");
+  const [academicYear, setAcademicYear] = useState("2025-2026");
   const [selectedCourse, setSelectedCourse] = useState<string>("1º E.S.O.");
   const [selectedGroup, setSelectedGroup] = useState("Cualquiera");
   const [visibilityFilter, setVisibilityFilter] = useState<'all' | 'with' | 'without'>('all');
