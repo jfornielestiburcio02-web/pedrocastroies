@@ -425,6 +425,7 @@ export default function Page() {
                   paddingBottom: "30px",
                 }}
               >
+                IES Pedro Castro
                 <br />
               </div>
 
