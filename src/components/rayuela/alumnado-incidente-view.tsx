@@ -223,13 +223,6 @@ export function AlumnadoIncidenteView({ profesorId, userData, targetStudentId, o
     return userData?.esTutor && student?.cursoAlumno === userData.esTutor;
   };
 
-  const tipoCorreccionOpciones = useMemo(() => {
-    const studentId = formData.alumnoId || viewExpedienteId || "";
-    const isTutor = isTutorOfStudent(studentId);
-    if (isDirectivo) return ["Contraria", "Gravemente Perjudiciales"];
-    return ["Contraria"];
-  }, [isDirectivo, userData, formData.alumnoId, viewExpedienteId, students]);
-
   const availableCorrections = useMemo(() => {
     const studentId = formData.alumnoId || viewExpedienteId || "";
     const isTutor = isTutorOfStudent(studentId);
@@ -268,10 +261,36 @@ export function AlumnadoIncidenteView({ profesorId, userData, targetStudentId, o
       updateDocumentNonBlocking(doc(db, 'incidencias', currentIncidentId), incidentData);
       toast({ title: "Incidencia Actualizada" });
     } else {
-      addDocumentNonBlocking(collection(db, 'incidencias'), {
+      // 1. Registrar nueva incidencia
+      await addDocumentNonBlocking(collection(db, 'incidencias'), {
         ...incidentData,
         createdAt: new Date().toISOString()
       });
+
+      // 2. PROTOCOLO AUTOMÁTICO: Verificar si llega a 3 amonestaciones
+      const studentIncidentsCount = (allIncidents?.filter(i => i.alumnoId === formData.alumnoId).length || 0) + 1;
+      
+      if (studentIncidentsCount === 3) {
+        const studentName = student?.nombrePersona || student?.usuario || formData.alumnoId;
+        const studentGroup = student?.cursoAlumno;
+
+        // Buscar al tutor del grupo
+        const tutor = allUsers?.find(u => u.esTutor === studentGroup && u.rolesUsuario?.includes('EsProfesor'));
+        
+        if (tutor) {
+          addDocumentNonBlocking(collection(db, 'mensajes'), {
+            remitenteId: 'SISTEMA',
+            destinatarioId: tutor.id,
+            asunto: 'PROTOCOLO: Umbral de Amonestaciones Alcanzado',
+            cuerpo: `El alumno ${studentName} ha acumulado un total de 3 conductas conntrarias / graves, según el protocolo debe aplicar correciones`,
+            leido: false,
+            eliminado: false,
+            createdAt: new Date().toISOString()
+          });
+          toast({ title: "Protocolo Activado", description: "Se ha notificado al tutor por acumulación de faltas." });
+        }
+      }
+
       toast({ title: "Incidencia Registrada" });
     }
 
