@@ -172,7 +172,7 @@ export function AlumnadoIncidenteView({ profesorId, userData, targetStudentId, o
 
   const [selectedConductType, setSelectedConductType] = useState<string>("Contraria");
   const [currentSelectedConduct, setCurrentSelectedConduct] = useState<string>("");
-  const [selectedCorrectionType, setSelectedCorrectionType] = useState<string>("");
+  const [selectedCorrectionType, setSelectedCorrectionType] = useState<string>("Contraria");
   const [currentSelectedCorrection, setCurrentSelectedCorrection] = useState<string>("");
 
   useEffect(() => {
@@ -227,15 +227,8 @@ export function AlumnadoIncidenteView({ profesorId, userData, targetStudentId, o
     const studentId = formData.alumnoId || viewExpedienteId || "";
     const isTutor = isTutorOfStudent(studentId);
     if (isDirectivo) return ["Contraria", "Gravemente Perjudiciales"];
-    if (isTutor) return ["Contrarias"];
     return ["Contraria"];
   }, [isDirectivo, userData, formData.alumnoId, viewExpedienteId, students]);
-
-  useEffect(() => {
-    if (!selectedCorrectionType && tipoCorreccionOpciones.length > 0) {
-      setSelectedCorrectionType(tipoCorreccionOpciones[0]);
-    }
-  }, [tipoCorreccionOpciones, selectedCorrectionType]);
 
   const availableCorrections = useMemo(() => {
     const studentId = formData.alumnoId || viewExpedienteId || "";
@@ -421,16 +414,16 @@ export function AlumnadoIncidenteView({ profesorId, userData, targetStudentId, o
                                     </button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent className="w-64 p-0 border-purple-800 font-verdana">
-                                    <DropdownMenuItem onSelect={() => openView(inc)} className="p-3 text-[11px] font-bold text-purple-800 border-b cursor-pointer">
+                                    <DropdownMenuItem onSelect={(e) => { e.preventDefault(); openView(inc); }} className="p-3 text-[11px] font-bold text-purple-800 border-b cursor-pointer">
                                       Detalle del incidente
                                     </DropdownMenuItem>
                                     {isTutor && (
                                       <>
-                                        <DropdownMenuItem onSelect={() => openModify(inc)} className="p-3 text-[11px] font-bold text-gray-800 border-b cursor-pointer hover:bg-gray-100">
+                                        <DropdownMenuItem onSelect={(e) => { e.preventDefault(); openModify(inc); }} className="p-3 text-[11px] font-bold text-gray-800 border-b cursor-pointer hover:bg-gray-100">
                                           Modificar incidencia
                                         </DropdownMenuItem>
                                         <DropdownMenuItem 
-                                          onSelect={() => setDeleteConfirmId(inc.id)}
+                                          onSelect={(e) => { e.preventDefault(); setDeleteConfirmId(inc.id); }}
                                           className="p-3 text-[11px] font-bold text-red-600 cursor-pointer hover:bg-red-50"
                                         >
                                           Eliminar incidencia
@@ -548,8 +541,8 @@ export function AlumnadoIncidenteView({ profesorId, userData, targetStudentId, o
                                      <button className="text-[#9c4d96] hover:underline text-left outline-none uppercase tracking-tight">{student.nombrePersona || student.usuario}</button>
                                    </DropdownMenuTrigger>
                                    <DropdownMenuContent align="start" className="w-80 p-0 border-[#9c4d96] shadow-xl font-verdana">
-                                      <DropdownMenuItem onSelect={() => { resetForm(); setFormData({...formData, alumnoId: student.id}); setIsDialogOpen(true); }} className="p-3 text-[12px] font-bold text-gray-800 hover:bg-gray-100 cursor-pointer border-b">Nueva conducta contraria/grave del alumnado</DropdownMenuItem>
-                                      <DropdownMenuItem onSelect={() => setViewExpedienteId(student.id)} className="p-3 text-[12px] font-bold text-gray-800 hover:bg-gray-100 cursor-pointer border-b">Conductas contrarias/graves del alumnado</DropdownMenuItem>
+                                      <DropdownMenuItem onSelect={(e) => { e.preventDefault(); resetForm(); setFormData({...formData, alumnoId: student.id}); setIsDialogOpen(true); }} className="p-3 text-[12px] font-bold text-gray-800 hover:bg-gray-100 cursor-pointer border-b">Nueva conducta contraria/grave del alumnado</DropdownMenuItem>
+                                      <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setViewExpedienteId(student.id); }} className="p-3 text-[12px] font-bold text-gray-800 hover:bg-gray-100 cursor-pointer border-b">Conductas contrarias/graves del alumnado</DropdownMenuItem>
                                    </DropdownMenuContent>
                                  </DropdownMenu>
                               </td>
@@ -569,7 +562,7 @@ export function AlumnadoIncidenteView({ profesorId, userData, targetStudentId, o
         </div>
       )}
 
-      {/* FORMULARIO DE INCIDENCIA (Único para toda la vista) */}
+      {/* FORMULARIO DE INCIDENCIA */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-5xl font-verdana p-0 border-none overflow-hidden h-[95vh] flex flex-col shadow-2xl rounded-xl">
           <DialogHeader className="bg-[#f2f2f2] p-4 text-center shrink-0 border-b flex flex-row items-center justify-between">
@@ -698,7 +691,7 @@ export function AlumnadoIncidenteView({ profesorId, userData, targetStudentId, o
         </DialogContent>
       </Dialog>
 
-      {/* DIALOGO DE CONFIRMACIÓN DE ELIMINACIÓN */}
+      {/* CONFIRMACIÓN DE ELIMINACIÓN */}
       <AlertDialog open={!!deleteConfirmId} onOpenChange={() => setDeleteConfirmId(null)}>
          <AlertDialogContent>
            <AlertDialogHeader>
