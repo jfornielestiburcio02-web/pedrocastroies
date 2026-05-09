@@ -414,16 +414,16 @@ export function AlumnadoIncidenteView({ profesorId, userData, targetStudentId, o
                                     </button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent className="w-64 p-0 border-purple-800 font-verdana">
-                                    <DropdownMenuItem onSelect={(e) => { e.preventDefault(); openView(inc); }} className="p-3 text-[11px] font-bold text-purple-800 border-b cursor-pointer">
+                                    <DropdownMenuItem onSelect={(e) => { e.preventDefault(); e.stopPropagation(); openView(inc); }} className="p-3 text-[11px] font-bold text-purple-800 border-b cursor-pointer">
                                       Detalle del incidente
                                     </DropdownMenuItem>
                                     {isTutor && (
                                       <>
-                                        <DropdownMenuItem onSelect={(e) => { e.preventDefault(); openModify(inc); }} className="p-3 text-[11px] font-bold text-gray-800 border-b cursor-pointer hover:bg-gray-100">
+                                        <DropdownMenuItem onSelect={(e) => { e.preventDefault(); e.stopPropagation(); openModify(inc); }} className="p-3 text-[11px] font-bold text-gray-800 border-b cursor-pointer hover:bg-gray-100">
                                           Modificar incidencia
                                         </DropdownMenuItem>
                                         <DropdownMenuItem 
-                                          onSelect={(e) => { e.preventDefault(); setDeleteConfirmId(inc.id); }}
+                                          onSelect={(e) => { e.preventDefault(); e.stopPropagation(); setDeleteConfirmId(inc.id); }}
                                           className="p-3 text-[11px] font-bold text-red-600 cursor-pointer hover:bg-red-50"
                                         >
                                           Eliminar incidencia
@@ -541,8 +541,8 @@ export function AlumnadoIncidenteView({ profesorId, userData, targetStudentId, o
                                      <button className="text-[#9c4d96] hover:underline text-left outline-none uppercase tracking-tight">{student.nombrePersona || student.usuario}</button>
                                    </DropdownMenuTrigger>
                                    <DropdownMenuContent align="start" className="w-80 p-0 border-[#9c4d96] shadow-xl font-verdana">
-                                      <DropdownMenuItem onSelect={(e) => { e.preventDefault(); resetForm(); setFormData({...formData, alumnoId: student.id}); setIsDialogOpen(true); }} className="p-3 text-[12px] font-bold text-gray-800 hover:bg-gray-100 cursor-pointer border-b">Nueva conducta contraria/grave del alumnado</DropdownMenuItem>
-                                      <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setViewExpedienteId(student.id); }} className="p-3 text-[12px] font-bold text-gray-800 hover:bg-gray-100 cursor-pointer border-b">Conductas contrarias/graves del alumnado</DropdownMenuItem>
+                                      <DropdownMenuItem onSelect={(e) => { e.preventDefault(); e.stopPropagation(); resetForm(); setFormData({...formData, alumnoId: student.id}); setIsDialogOpen(true); }} className="p-3 text-[12px] font-bold text-gray-800 hover:bg-gray-100 cursor-pointer border-b">Nueva conducta contraria/grave del alumnado</DropdownMenuItem>
+                                      <DropdownMenuItem onSelect={(e) => { e.preventDefault(); e.stopPropagation(); setViewExpedienteId(student.id); }} className="p-3 text-[12px] font-bold text-gray-800 hover:bg-gray-100 cursor-pointer border-b">Conductas contrarias/graves del alumnado</DropdownMenuItem>
                                    </DropdownMenuContent>
                                  </DropdownMenu>
                               </td>
@@ -563,7 +563,19 @@ export function AlumnadoIncidenteView({ profesorId, userData, targetStudentId, o
       )}
 
       {/* FORMULARIO DE INCIDENCIA */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog 
+        open={isDialogOpen} 
+        onOpenChange={(open) => {
+          setIsDialogOpen(open);
+          if (!open) {
+            // Safety cleanup for scroll lock freeze in NextJS/Radix
+            setTimeout(() => {
+              document.body.style.pointerEvents = 'auto';
+              document.body.style.overflow = 'auto';
+            }, 100);
+          }
+        }}
+      >
         <DialogContent className="max-w-5xl font-verdana p-0 border-none overflow-hidden h-[95vh] flex flex-col shadow-2xl rounded-xl">
           <DialogHeader className="bg-[#f2f2f2] p-4 text-center shrink-0 border-b flex flex-row items-center justify-between">
              <div className="flex items-center gap-2 text-gray-800">
@@ -665,7 +677,7 @@ export function AlumnadoIncidenteView({ profesorId, userData, targetStudentId, o
                                <SelectTrigger className="h-8 border-gray-300 text-[13px] flex-1"><SelectValue placeholder="Seleccione..." /></SelectTrigger>
                                <SelectContent>{availableCorrections.map(c => <SelectItem key={c} value={c} className="text-[11px]">{c}</SelectItem>)}</SelectContent>
                             </Select>
-                            <Button disabled={formMode === 'view' || formData.estadoCorreccion === 'No se aplica corrección'} onClick={handleAddCorrection} className="bg-[#9c4d96] text-white text-[11px] h-8">Añadir</Button>
+                            <Button disabled={formMode === 'view'} onClick={handleAddCorrection} className="bg-[#9c4d96] text-white text-[11px] h-8">Añadir</Button>
                          </div>
                       </div>
                       <div className="flex items-start gap-4">
