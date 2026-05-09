@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useState, useMemo } from 'react';
@@ -371,6 +372,7 @@ export default function SeleccioneModuloAccesoPage() {
               onNavigateToIncident={handleNavigateToIncident}
               targetIncidentStudentId={targetIncidentData?.studentId}
               onActionComplete={() => setTargetIncidentData(null)}
+              onSetSidebarMode={setSidebarMode}
             />
           )}
 

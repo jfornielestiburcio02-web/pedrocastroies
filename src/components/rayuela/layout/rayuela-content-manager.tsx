@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from 'react';
@@ -44,6 +45,9 @@ import {
   StudentScheduleView 
 } from '@/components/rayuela/student-views';
 import { DualCompaniesView, DualStudentsView, DualDocumentsView } from '@/components/rayuela/fp-dual-views';
+import { RayuelaDesktopView } from '@/components/rayuela/layout/rayuela-desktop-view';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { query, collection, where } from 'firebase/firestore';
 
 interface RayuelaContentManagerProps {
   activeSubContent: string | null;
@@ -57,6 +61,7 @@ interface RayuelaContentManagerProps {
   onNavigateToIncident: (studentId: string) => void;
   targetIncidentStudentId?: string;
   onActionComplete: () => void;
+  onSetSidebarMode: (mode: 'ACADEMIC' | 'MESSAGING') => void;
 }
 
 export function RayuelaContentManager({
@@ -70,9 +75,26 @@ export function RayuelaContentManager({
   onSetActiveSubContent,
   onNavigateToIncident,
   targetIncidentStudentId,
-  onActionComplete
+  onActionComplete,
+  onSetSidebarMode
 }: RayuelaContentManagerProps) {
   
+  const db = useFirestore();
+
+  // Obtener mensajes sin leer para el escritorio
+  const unreadMessagesQuery = useMemoFirebase(() => {
+    if (!db || !usuarioId) return null;
+    return query(
+      collection(db, 'mensajes'),
+      where('destinatarioId', '==', usuarioId),
+      where('leido', '==', false),
+      where('eliminado', '==', false)
+    );
+  }, [db, usuarioId]);
+
+  const { data: unreadMessages } = useCollection(unreadMessagesQuery);
+  const unreadCount = unreadMessages?.length || 0;
+
   const renderView = () => {
     switch (activeSubContent) {
       case 'Modificar / crear Horarios': return <ScheduleCreationView />;
@@ -210,45 +232,16 @@ export function RayuelaContentManager({
            );
         }
 
+        // VISTA PREDETERMINADA: ESCRITORIO OFICIAL DE RAYUELA
         return (
-          <div className="flex-1 flex flex-col items-center justify-center">
-            <div className="p-12 border-2 border-gray-100 bg-gray-50/30 rounded-3xl w-full text-center space-y-6 shadow-inner">
-                <p className="text-xl text-gray-600">Acceso activo como <span className="font-bold text-primary">{activeRole}</span></p>
-                <div className="bg-white p-8 rounded-xl border border-200 text-base text-gray-700 italic leading-relaxed shadow-sm max-w-3xl mx-auto">
-                  {activeRole === 'Profesor' 
-                    ? "Seleccione una option del menú lateral para comenzar el seguimiento de sus alumnos." 
-                    : activeRole === 'PROA+'
-                    ? `Usted está actuando como profesor de refuerzo (PROA+). ${userData?.esDADDe ? 'Visualiza y gestiona el horario de ' + userData.esDADDe + '.' : 'Seleccione una opción para gestionar las medidas de apoyo.'}`
-                    : activeRole === 'Profesor Gestión'
-                    ? "Perfil de profesorado con acceso a herramientas de gestión administrativa y coordinación horaria. Utilice el menú lateral morado."
-                    : activeRole === 'Alumno'
-                    ? "Entorno de seguimiento académico activo para consulta de notas y asistencia personal."
-                    : activeRole === 'Dirección'
-                    ? "Entorno de gestión del equipo directivo para la administración del centro."
-                    : activeRole === 'Secretaría'
-                    ? "Entorno de secretaría virtual para trámites administrativos y expedientes."
-                    : activeRole === 'CAU'
-                    ? "Entorno de soporte técnico y atención de usuarios activo."
-                    : activeRole === 'Ciudadano'
-                    ? "Entorno de trámites públicos y servicios al ciudadano. Este perfil no requiere menú lateral para facilitar la navegación directa."
-                    : activeRole === 'Calificador Diagnóstico (coord)'
-                    ? "Entorno de coordinación para las pruebas de diagnóstico. Utilice el menú lateral morado para gestionar la apertura y resultados."
-                    : activeRole === 'act extraesc.(coord)'
-                    ? "Entorno de gestión de actividades complementarias y extraescolares. Utilice el menú lateral morado para planificar las salidas del centro."
-                    : activeRole === 'Coordinacion Bienestar'
-                    ? "Perfil de coordinación de bienestar. Utilice el menú lateral morado para gestionar recursos y guías de ayuda al alumnado."
-                    : activeRole === 'Coordinacion FP Dual'
-                    ? "Entorno de gestión para la Formación Profesional Dual. Gestione empresas, alumnos y convenios desde el menú lateral morado."
-                    : `Usted está operando con el perfil especial de ${activeRole}. Seleccione una opción del menú para gestionar sus responsabilidades.`}
-                </div>
-                <div className="flex justify-center pt-2">
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-green-100 text-green-800 rounded-full text-[10px] font-bold uppercase tracking-wider">
-                    <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
-                    Sesión OK
-                  </div>
-                </div>
-            </div>
-          </div>
+          <RayuelaDesktopView 
+            unreadCount={unreadCount} 
+            onNavigateToMessages={() => {
+              onSetSelectedModule('SEGUIMIENTO');
+              onSetSidebarMode('MESSAGING');
+              onSetActiveSubContent('Mis Mensajes');
+            }}
+          />
         );
     }
   };
@@ -265,7 +258,7 @@ export function RayuelaContentManager({
           </Button>
         </div>
 
-        <div className="flex-1">
+        <div className="flex-1 flex flex-col">
           {renderView()}
         </div>
        </div>
