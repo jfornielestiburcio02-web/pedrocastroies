@@ -72,7 +72,8 @@ export default function SeleccioneModuloAccesoPage() {
     'pt_root': false,
     'sincro_root': false,
     'bienestar_ayuda': false,
-    'dual_root': false
+    'dual_root': false,
+    'absentistas': false
   });
   
   const router = useRouter();

@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState } from 'react';
@@ -203,6 +204,15 @@ export function RayuelaSidebar({
                         <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
                           <SidebarItem color="#9c4d96" label="Alumnado del centro" isSubItem onClick={() => onSetActiveSubContent('Alumnado del centro')} active={activeSubContent === 'Alumnado del centro'} />
                           <SidebarItem color="#9c4d96" label="Gestión de Grupos" isSubItem onClick={() => onSetActiveSubContent('Gestión de Grupos')} active={activeSubContent === 'Gestión de Grupos'} />
+                        </div>
+                      )}
+                   </div>
+
+                   <div className="flex flex-col">
+                      <SidebarHeading label="Alumnado Absentista" expanded={expandedItems['absentistas']} onClick={() => onToggleExpanded('absentistas')} />
+                      {expandedItems['absentistas'] && (
+                        <div className="flex flex-col ml-6 border-l border-gray-200 mt-0.5 animate-in slide-in-from-top-1 duration-200">
+                          <SidebarItem color="#9c4d96" label="Búsqueda directa" isSubItem onClick={() => onSetActiveSubContent('Búsqueda directa')} active={activeSubContent === 'Búsqueda directa'} />
                         </div>
                       )}
                    </div>

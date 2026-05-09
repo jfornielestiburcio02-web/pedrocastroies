@@ -155,6 +155,7 @@ export function RayuelaContentManager({
       case 'Recursos': return <WellbeingResourcesView usuarioId={usuarioId} />;
       case 'Guías': return <WellbeingGuidesView />;
       case 'Título de bachillerato': return <SecretaryErrorView code="19832" title={activeSubContent} />;
+      case 'Búsqueda directa': return <SecretaryErrorView code="2938293" title="Error del Sistema" />;
       case 'Formación Profesional': return <SecretaryPlaceholderView title={activeSubContent} />;
       case 'Por Alumno':
       case 'Por centro': return <CenterStudentsView />;
@@ -185,7 +186,7 @@ export function RayuelaContentManager({
                      <Files className="h-8 w-8" />
                   </div>
                   <h2 className="text-2xl font-bold text-gray-800 uppercase tracking-tight">{activeRole}: {activeSubContent}</h2>
-                  <p className="text-gray-500 italic max-w-md">
+                  <p className="text-gray-500 italic max-w-md mx-auto leading-relaxed">
                     Contenido del módulo de {selectedModule?.toLowerCase()} para la sección de {activeSubContent.toLowerCase()} gestionado como {activeRole}.
                   </p>
                </div>
