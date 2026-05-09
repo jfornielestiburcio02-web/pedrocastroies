@@ -243,11 +243,11 @@ export default function Page() {
                 }}
               >
                 <div className="rayuela-title">
-                  Rayuela
+                  
                 </div>
 
                 <div className="rayuela-subtitle">
-                  Plataforma Educativa Extremeña
+
                 </div>
               </div>
             </td>
@@ -358,19 +358,19 @@ export default function Page() {
               className="lila"
             >
               <div className="panel-text">
-                Gestión de Centros
+               
               </div>
             </td>
 
             <td className="moradoclaro">
               <div className="panel-text">
-                RAY
+                
               </div>
             </td>
 
             <td className="lila">
               <div className="panel-text">
-                UELA
+                
               </div>
             </td>
 
@@ -383,13 +383,13 @@ export default function Page() {
 
             <td className="verdeagua">
               <div className="panel-text">
-                Plataforma
+                
               </div>
             </td>
 
             <td className="verde">
               <div className="panel-text">
-                Educativa
+                
               </div>
             </td>
 
@@ -404,7 +404,7 @@ export default function Page() {
 
             <td>
               <div className="footer-text">
-                Extremadura
+                
               </div>
             </td>
 
@@ -425,9 +425,7 @@ export default function Page() {
                   paddingBottom: "30px",
                 }}
               >
-                Junta de Extremadura
                 <br />
-                Fondo Europeo FEDER
               </div>
 
             </td>
