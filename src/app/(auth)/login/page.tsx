@@ -1,112 +1,294 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { useToast } from '@/hooks/use-toast';
-import { useFirestore } from '@/firebase';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import React, { useEffect, useState } from "react";
+import Script from "next/script";
+import { useRouter } from "next/navigation";
+import { useFirestore } from "@/firebase";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 
-export default function LoginPage() {
-  const [isLoading, setIsLoading] = useState(false);
+declare global {
+  interface Window {
+    cifrar?: (text: string) => string;
+  }
+}
+
+export default function Page() {
   const router = useRouter();
-  const { toast } = useToast();
   const db = useFirestore();
 
+  const [usuario, setUsuario] = useState("");
+  const [clave, setClave] = useState("");
+  const [loading, setLoading] = useState(false);
+
   useEffect(() => {
-    // Usamos sessionStorage para que la sesión no sea persistente entre cierres de navegador
-    const session = sessionStorage.getItem('user_session');
+    const session = sessionStorage.getItem("user_session");
+
     if (session) {
-      router.push('/seleccionemoduloacceso');
+      router.push("/seleccionemoduloacceso");
     }
   }, [router]);
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setIsLoading(true);
+  const comprobarclave = async () => {
+    if (usuario.trim() === "") {
+      alert("El campo 'Usuario' es obligatorio");
+      return;
+    }
 
-    const formData = new FormData(event.currentTarget);
-    const usuarioInput = (formData.get('usuario') as string).toLowerCase().trim();
-    const contrasena = formData.get('contrasena') as string;
+    if (clave.trim() === "") {
+      alert("El campo 'Clave' es obligatorio");
+      return;
+    }
 
     if (!db) return;
 
+    setLoading(true);
+
     try {
-      const userRef = doc(db, 'usuarios', usuarioInput);
+      const usuarioLower = usuario.toLowerCase().trim();
+
+      const userRef = doc(db, "usuarios", usuarioLower);
       const userSnap = await getDoc(userRef);
 
-      if (userSnap.exists()) {
-        const userData = userSnap.data();
-        if (userData.contrasena === contrasena) {
-          // Generar JSESSIONID aleatorio
-          const jsessionid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-          
-          // Actualizar sesión en Firestore
-          await updateDoc(userRef, { sesion: jsessionid });
-
-          // Guardar en sessionStorage (se borra al cerrar la pestaña)
-          sessionStorage.setItem('user_session', JSON.stringify({
-            usuario: usuarioInput,
-            sesion: jsessionid,
-            displayName: userData.nombrePersona || userData.usuario
-          }));
-
-          toast({
-            title: "Acceso concedido",
-            description: `Bienvenido, sesión ${jsessionid.substring(0, 8)}...`,
-          });
-          router.push('/seleccionemoduloacceso');
-        } else {
-          throw new Error("Contraseña incorrecta");
-        }
-      } else {
-        throw new Error("El usuario no existe");
+      if (!userSnap.exists()) {
+        alert("El usuario no existe");
+        setLoading(false);
+        return;
       }
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Error de acceso",
-        description: error.message || "Credenciales inválidas.",
+
+      const userData = userSnap.data();
+
+      let claveFinal = clave;
+
+      // Si existe función de cifrado
+      if (typeof window.cifrar === "function") {
+        claveFinal = window.cifrar(clave);
+      }
+
+      if (
+        userData.contrasena !== clave &&
+        userData.contrasena !== claveFinal
+      ) {
+        alert("Contraseña incorrecta");
+        setLoading(false);
+        return;
+      }
+
+      // Generar sesión tipo JSESSIONID
+      const jsessionid =
+        Math.random().toString(36).substring(2, 15) +
+        Math.random().toString(36).substring(2, 15);
+
+      // Guardar sesión en Firestore
+      await updateDoc(userRef, {
+        sesion: jsessionid,
       });
-      setIsLoading(false);
+
+      // SessionStorage
+      sessionStorage.setItem(
+        "user_session",
+        JSON.stringify({
+          usuario: usuarioLower,
+          sesion: jsessionid,
+          displayName:
+            userData.nombrePersona || userData.usuario || usuarioLower,
+        })
+      );
+
+      router.push("/seleccionemoduloacceso");
+    } catch (error) {
+      console.error(error);
+      alert("Error interno del sistema");
     }
-  }
+
+    setLoading(false);
+  };
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4 bg-[#f0f0f0] font-verdana">
-      <div className="w-full max-w-[400px]">
-        <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold tracking-tight text-primary">Acceso Rayuela</h1>
-        </div>
+    <>
+      <Script
+        src="/scripts/consejeria/cifrado.js"
+        strategy="beforeInteractive"
+      />
 
-        <Card className="border-border shadow-xl bg-card rounded-none">
-          <CardHeader className="bg-gray-50 border-b mb-6">
-            <CardTitle className="text-xl uppercase tracking-tighter font-bold">Identificación</CardTitle>
-            <CardDescription className="text-[10px] font-bold uppercase text-gray-400">Introduzca sus credenciales de Rayuela</CardDescription>
-          </CardHeader>
-          <form onSubmit={handleSubmit}>
-            <CardContent className="grid gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="usuario" className="text-[10px] font-bold uppercase text-gray-500">Usuario</Label>
-                <Input id="usuario" name="usuario" type="text" className="rounded-none border-gray-300" required />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="contrasena" className="text-[10px] font-bold uppercase text-gray-500">Contraseña</Label>
-                <Input id="contrasena" name="contrasena" type="password" className="rounded-none border-gray-300" required />
-              </div>
-            </CardContent>
-            <CardFooter className="flex flex-col gap-4 mt-4">
-              <Button type="submit" className="w-full bg-primary hover:bg-primary/90 rounded-none h-12 font-bold uppercase text-[11px] tracking-widest shadow-md" disabled={isLoading}>
-                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Entrar"}
-              </Button>
-            </CardFooter>
-          </form>
-        </Card>
-      </div>
-    </div>
+      <style>{`
+        html, body {
+          height: 100%;
+          margin: 0;
+          padding: 0;
+          overflow: hidden;
+          font-family: Arial;
+        }
+
+        table {
+          border-collapse: collapse;
+        }
+
+        .morado { background-color: #9A6289 }
+        .lila { background-color: #BE9BB4 }
+        .moradoclaro { background-color: #DBC6D4 }
+        .verdeagua { background-color: #B7DDC8 }
+        .verde { background-color: #B3D76B }
+        .naranja { background-color: #EAB863 }
+
+        input {
+          font-family: Arial;
+          font-size: 8pt;
+          font-weight: bold;
+          color: #573957;
+          background-color: #DBC6D4;
+          border: 1px solid #fff;
+          padding: 3px;
+          width: 160px;
+        }
+
+        .usuario {
+          font-family: Arial;
+          font-size: 9pt;
+          font-weight: bold;
+          color: #FFFFFF;
+        }
+
+        .botones2 {
+          background-color: #F0AA94;
+          padding: 6px 20px;
+          border: 1px #E77551 solid;
+          font-family: Arial;
+          font-size: 10pt;
+          font-weight: bold;
+          color: #903214;
+          cursor: pointer;
+          display: inline-block;
+          user-select: none;
+        }
+
+        .botones2:hover {
+          background-color: #B3D76B;
+          color: #000;
+        }
+      `}</style>
+
+      <table width="100%" height="100vh">
+        <tbody>
+
+          {/* FILA 1 */}
+          <tr height="165">
+            <td colSpan={2} width="60%">
+              <img src="/images/puertaTrasera/logo_rayuela.gif" />
+            </td>
+
+            <td className="morado" width="30%" valign="top">
+              <table width="100%" height="100%">
+                <tbody>
+                  <tr>
+                    <td align="center">
+
+                      <div className="usuario">
+                        Usuario
+                        <br />
+
+                        <input
+                          type="text"
+                          value={usuario}
+                          onChange={(e) => setUsuario(e.target.value)}
+                        />
+                      </div>
+
+                      <div
+                        className="usuario"
+                        style={{ marginTop: 10 }}
+                      >
+                        Contraseña
+                        <br />
+
+                        <input
+                          type="password"
+                          value={clave}
+                          onChange={(e) => setClave(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              comprobarclave();
+                            }
+                          }}
+                        />
+                      </div>
+
+                      <div style={{ marginTop: 20 }}>
+                        <span
+                          className="botones2"
+                          onClick={comprobarclave}
+                        >
+                          {loading ? "Conectando..." : "Entrar"}
+                        </span>
+                      </div>
+
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </td>
+
+            <td width="10%"></td>
+          </tr>
+
+          {/* FILA 2 */}
+          <tr height="100">
+            <td colSpan={2} className="lila">
+              <table width="100%" height="100%">
+                <tbody>
+                  <tr align="center">
+                    <td></td>
+
+                    <td>
+                      <img src="https://cdn.discordapp.com/icons/1418980286594682892/afdaf4df1fe41b2215917ec0a74c1c63.webp?size=128&quality=lossless" />
+                    </td>
+
+                    <td></td>
+                  </tr>
+                </tbody>
+              </table>
+            </td>
+
+            <td className="moradoclaro">
+            </td>
+
+            <td className="lila">
+            </td>
+          </tr>
+
+          {/* FILA 3 */}
+          <tr height="63">
+            <td colSpan={2}></td>
+
+            <td className="verdeagua">
+            </td>
+
+            <td className="verde">
+            </td>
+          </tr>
+
+          {/* FILA 4 */}
+          <tr height="21">
+            <td colSpan={2}></td>
+
+            <td className="naranja"></td>
+
+            <td>
+            </td>
+          </tr>
+
+          {/* FILA FINAL */}
+          <tr>
+            <td colSpan={2}></td>
+
+            <td className="naranja" style={{ height: "100%" }}></td>
+
+            <td align="center">
+              <br />
+            </td>
+          </tr>
+
+        </tbody>
+      </table>
+    </>
   );
 }
