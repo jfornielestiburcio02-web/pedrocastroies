@@ -25,7 +25,7 @@ export function RayuelaDesktopView({ unreadCount, onNavigateToMessages }: Rayuel
   ];
 
   return (
-    <div className="flex-1 bg-white p-4 md:p-10 font-verdana animate-in fade-in duration-700 overflow-y-auto">
+    <div className="flex-1 bg-white p-4 md:p-10 font-verdana animate-in fade-in duration-700">
       <div className="max-w-6xl mx-auto space-y-12">
         
         {/* FILA SUPERIOR: ESCRITORIO Y NOTICIAS */}

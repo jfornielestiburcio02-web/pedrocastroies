@@ -236,7 +236,7 @@ export default function SeleccioneModuloAccesoPage() {
      userData?.perfilesAdicionales?.includes(activeRole));
 
   return (
-    <div className="min-h-screen bg-white font-verdana flex flex-col w-full overflow-x-hidden">
+    <div className="h-screen bg-white font-verdana flex flex-col w-full overflow-hidden">
       {selectedModule && (
         <RayuelaHeader 
           userData={userData}
@@ -293,7 +293,7 @@ export default function SeleccioneModuloAccesoPage() {
       </Dialog>
 
       {!selectedModule && (
-        <div className="w-full p-6 flex items-center justify-between border-b border-gray-200 bg-white">
+        <div className="w-full p-6 flex items-center justify-between border-b border-gray-200 bg-white shrink-0">
           <div className="flex items-center gap-4">
             <div className="flex items-baseline font-bold scale-90 md:scale-110 origin-left">
               <span className="text-4xl" style={{ color: '#9c4d96' }}>r</span>
@@ -325,7 +325,7 @@ export default function SeleccioneModuloAccesoPage() {
         </div>
       )}
 
-      <div className="flex-1 flex w-full relative">
+      <div className="flex-1 flex w-full relative overflow-hidden">
         {showSidebar && (
           <RayuelaSidebar 
             activeRole={activeRole}
@@ -343,7 +343,7 @@ export default function SeleccioneModuloAccesoPage() {
 
         <div className="flex-1 flex flex-col w-full overflow-y-auto">
           {!selectedModule ? (
-            <>
+            <div className="flex-1 flex flex-col">
               <div className="flex-1 bg-[#7d7d7d] flex flex-wrap items-center justify-center content-center gap-8 md:gap-16 p-8 min-h-[400px]">
                 {canSeeGestion && <ModuleBox label="Gestión" onClick={() => handleModuleClick("Gestión")} />}
                 {canSeeSecretaria && <ModuleBox label="Secretaría Virtual" onClick={() => handleModuleClick("Secretaría Virtual")} />}
@@ -358,25 +358,27 @@ export default function SeleccioneModuloAccesoPage() {
               <div className="w-full p-4 bg-white text-[12px] text-black text-left border-t border-gray-200 italic px-8">
                 En esta pantalla se muestran los diferentes servicios a los que usted tiene acceso. Pulse sobre aquel al que desee acceder
               </div>
-            </>
+            </div>
           ) : (
-            <RayuelaContentManager 
-              activeSubContent={activeSubContent}
-              selectedModule={selectedModule}
-              activeRole={activeRole}
-              effectiveTeacherId={effectiveTeacherId}
-              usuarioId={session.usuario}
-              userData={userData}
-              onSetSelectedModule={setSelectedModule}
-              onSetActiveSubContent={setActiveSubContent}
-              onNavigateToIncident={handleNavigateToIncident}
-              targetIncidentStudentId={targetIncidentData?.studentId}
-              onActionComplete={() => setTargetIncidentData(null)}
-              onSetSidebarMode={setSidebarMode}
-            />
+            <div className="flex-1 flex flex-col">
+              <RayuelaContentManager 
+                activeSubContent={activeSubContent}
+                selectedModule={selectedModule}
+                activeRole={activeRole}
+                effectiveTeacherId={effectiveTeacherId}
+                usuarioId={session.usuario}
+                userData={userData}
+                onSetSelectedModule={setSelectedModule}
+                onSetActiveSubContent={setActiveSubContent}
+                onNavigateToIncident={handleNavigateToIncident}
+                targetIncidentStudentId={targetIncidentData?.studentId}
+                onActionComplete={() => setTargetIncidentData(null)}
+                onSetSidebarMode={setSidebarMode}
+              />
+            </div>
           )}
 
-          <div className="bg-white p-6 flex justify-end items-center gap-8 border-t border-gray-100 px-8 w-full mt-auto">
+          <div className="bg-white p-6 flex justify-end items-center gap-8 border-t border-gray-100 px-8 w-full mt-auto shrink-0">
             <div className="text-right text-[10px] text-gray-500 leading-relaxed font-bold uppercase">
               <p>Fondo Europeo de Desarrollo Regional</p>
               <p>Una manera de hacer Europa</p>
