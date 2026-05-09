@@ -217,16 +217,19 @@ export function AlumnadoIncidenteView({ profesorId, userData, targetStudentId, o
   }, [students, selectedCourse, visibilityFilter, allIncidents]);
 
   const isDirectivo = userData?.rolesUsuario?.includes('EsDireccion');
-  const isTutorOfStudent = useMemo(() => {
-    const student = students.find(s => s.id === (formData.alumnoId || viewExpedienteId));
+  
+  const isTutorOfStudent = (studentId: string) => {
+    const student = students.find(s => s.id === studentId);
     return userData?.esTutor && student?.cursoAlumno === userData.esTutor;
-  }, [userData, students, formData.alumnoId, viewExpedienteId]);
+  };
 
   const tipoCorreccionOpciones = useMemo(() => {
+    const studentId = formData.alumnoId || viewExpedienteId || "";
+    const isTutor = isTutorOfStudent(studentId);
     if (isDirectivo) return ["Contraria", "Gravemente Perjudiciales"];
-    if (isTutorOfStudent) return ["Contrarias"];
+    if (isTutor) return ["Contrarias"];
     return ["Contraria"];
-  }, [isDirectivo, isTutorOfStudent]);
+  }, [isDirectivo, userData, formData.alumnoId, viewExpedienteId, students]);
 
   useEffect(() => {
     if (!selectedCorrectionType && tipoCorreccionOpciones.length > 0) {
@@ -235,10 +238,12 @@ export function AlumnadoIncidenteView({ profesorId, userData, targetStudentId, o
   }, [tipoCorreccionOpciones, selectedCorrectionType]);
 
   const availableCorrections = useMemo(() => {
+    const studentId = formData.alumnoId || viewExpedienteId || "";
+    const isTutor = isTutorOfStudent(studentId);
     if (selectedCorrectionType === "Gravemente Perjudiciales" && isDirectivo) return CORRECCIONES_DIRECCION_ADICIONAL;
-    if (isDirectivo || isTutorOfStudent) return CORRECCIONES_TUTOR;
+    if (isDirectivo || isTutor) return CORRECCIONES_TUTOR;
     return CORRECCIONES_PROFESOR;
-  }, [selectedCorrectionType, isDirectivo, isTutorOfStudent]);
+  }, [selectedCorrectionType, isDirectivo, userData, formData.alumnoId, viewExpedienteId, students]);
 
   const handleAddConduct = () => {
     if (!currentSelectedConduct || formMode === 'view') return;
@@ -306,14 +311,22 @@ export function AlumnadoIncidenteView({ profesorId, userData, targetStudentId, o
   };
 
   const openModify = (inc: any) => {
-    setFormData({ ...inc });
+    setFormData({ 
+      ...inc, 
+      conductas: inc.conductas || [],
+      medidasCorrectoras: inc.medidasCorrectoras || []
+    });
     setFormMode('edit');
     setCurrentIncidentId(inc.id);
     setIsDialogOpen(true);
   };
 
   const openView = (inc: any) => {
-    setFormData({ ...inc });
+    setFormData({ 
+      ...inc, 
+      conductas: inc.conductas || [],
+      medidasCorrectoras: inc.medidasCorrectoras || []
+    });
     setFormMode('view');
     setCurrentIncidentId(inc.id);
     setIsDialogOpen(true);
@@ -340,229 +353,223 @@ export function AlumnadoIncidenteView({ profesorId, userData, targetStudentId, o
 
   if (loadingUsers) return <div className="flex justify-center p-20"><Loader2 className="h-8 w-8 animate-spin text-[#9c4d96]" /></div>;
 
-  if (viewExpedienteId) {
-    const student = students.find(s => s.id === viewExpedienteId);
-    const incidents = allIncidents?.filter(i => i.alumnoId === viewExpedienteId) || [];
-    const isTutor = userData?.esTutor && student?.cursoAlumno === userData.esTutor;
-
-    return (
-      <div className="animate-in fade-in duration-500 space-y-10 max-w-7xl mx-auto w-full font-verdana text-gray-800">
-         <div className="flex justify-start">
+  return (
+    <div className="animate-in fade-in duration-500 space-y-10 max-w-7xl mx-auto w-full font-verdana text-gray-800">
+      {/* VISTA CONDICIONAL: EXPEDIENTE O LISTADO */}
+      {viewExpedienteId ? (
+        <div className="space-y-10 animate-in fade-in duration-500">
+          <div className="flex justify-start">
             <Button variant="ghost" onClick={() => setViewExpedienteId(null)} className="gap-2 text-gray-500 hover:text-black uppercase text-[10px] font-bold">
                <ArrowLeft className="h-4 w-4" /> Volver al listado
             </Button>
-         </div>
+          </div>
 
-         <div className="bg-white border border-gray-200 rounded-lg shadow-xl p-8 max-w-2xl mx-auto grid grid-cols-2 gap-y-4 text-[13px]">
-            <div className="flex gap-2">
-               <span className="font-medium text-gray-500">Año académico:</span>
-               <span className="font-bold text-purple-700">{academicYear}</span>
-            </div>
-            <div className="flex gap-2">
-               <span className="font-medium text-gray-500">Curso:</span>
-               <span className="font-bold text-purple-700">{student?.cursoAlumno || "S/C"}</span>
-            </div>
-            <div className="flex gap-2">
-               <span className="font-medium text-gray-500">Alumnado:</span>
-               <span className="font-bold text-purple-700 uppercase">{student?.nombrePersona || student?.usuario}</span>
-            </div>
-            <div className="flex gap-2">
-               <span className="font-medium text-gray-500">Grupo:</span>
-               <span className="font-bold text-purple-700">{student?.cursoAlumno?.split(' ').pop()}</span>
-            </div>
-         </div>
+          {(() => {
+            const student = students.find(s => s.id === viewExpedienteId);
+            const incidents = allIncidents?.filter(i => i.alumnoId === viewExpedienteId) || [];
+            const isTutor = isTutorOfStudent(viewExpedienteId);
 
-         <div className="space-y-2">
-            <p className="text-[13px] font-medium">Número total de registros: {incidents.length}</p>
-            <div className="bg-white border border-gray-300 shadow-sm overflow-hidden overflow-x-auto">
-               <table className="w-full text-left border-collapse text-[11px]">
-                  <thead>
-                     <tr className="bg-[#9c84a5] text-white font-bold text-center">
-                        <th className="p-3 border-r border-white/20 whitespace-nowrap">Fecha</th>
-                        <th className="p-3 border-r border-white/20">Incidente</th>
-                        <th className="p-3 border-r border-white/20">Efectividad registrada</th>
-                        <th className="p-3 border-r border-white/20">Inicio periodo de aplicación</th>
-                        <th className="p-3 border-r border-white/20">¿Colectiva?</th>
-                        <th className="p-3 border-r border-white/20">Profesor que notificó el incidente</th>
-                        <th className="p-3 border-r border-white/20">Conductas desarrolladas</th>
-                        <th className="p-3">Correcciones aplicadas</th>
-                     </tr>
-                  </thead>
-                  <tbody>
-                     {incidents.length === 0 ? (
-                       <tr><td colSpan={8} className="p-20 text-center italic text-gray-400">No constan incidencias en el expediente digital.</td></tr>
-                     ) : (
-                       incidents.map(inc => (
-                         <tr key={inc.id} className="border-b border-gray-200 hover:bg-gray-50/50 transition-colors odd:bg-white even:bg-gray-50/30">
-                            <td className="p-3 text-purple-800 font-bold whitespace-nowrap text-center">{format(new Date(inc.fecha), 'dd/MM/yyyy')}</td>
-                            <td className="p-3">
-                               <DropdownMenu>
+            return (
+              <>
+                <div className="bg-white border border-gray-200 rounded-lg shadow-xl p-8 max-w-2xl mx-auto grid grid-cols-2 gap-y-4 text-[13px]">
+                  <div className="flex gap-2">
+                    <span className="font-medium text-gray-500">Año académico:</span>
+                    <span className="font-bold text-purple-700">{academicYear}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="font-medium text-gray-500">Curso:</span>
+                    <span className="font-bold text-purple-700">{student?.cursoAlumno || "S/C"}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="font-medium text-gray-500">Alumnado:</span>
+                    <span className="font-bold text-purple-700 uppercase">{student?.nombrePersona || student?.usuario}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="font-medium text-gray-500">Grupo:</span>
+                    <span className="font-bold text-purple-700">{student?.cursoAlumno?.split(' ').pop()}</span>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-[13px] font-medium">Número total de registros: {incidents.length}</p>
+                  <div className="bg-white border border-gray-300 shadow-sm overflow-hidden overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-[11px]">
+                      <thead>
+                        <tr className="bg-[#9c84a5] text-white font-bold text-center">
+                          <th className="p-3 border-r border-white/20 whitespace-nowrap">Fecha</th>
+                          <th className="p-3 border-r border-white/20">Incidente</th>
+                          <th className="p-3 border-r border-white/20">Efectividad registrada</th>
+                          <th className="p-3 border-r border-white/20">Inicio periodo de aplicación</th>
+                          <th className="p-3 border-r border-white/20">¿Colectiva?</th>
+                          <th className="p-3 border-r border-white/20">Profesor que notificó el incidente</th>
+                          <th className="p-3 border-r border-white/20">Conductas desarrolladas</th>
+                          <th className="p-3">Correcciones aplicadas</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {incidents.length === 0 ? (
+                          <tr><td colSpan={8} className="p-20 text-center italic text-gray-400">No constan incidencias en el expediente digital.</td></tr>
+                        ) : (
+                          incidents.map(inc => (
+                            <tr key={inc.id} className="border-b border-gray-200 hover:bg-gray-50/50 transition-colors odd:bg-white even:bg-gray-50/30">
+                              <td className="p-3 text-purple-800 font-bold whitespace-nowrap text-center">{format(new Date(inc.fecha), 'dd/MM/yyyy')}</td>
+                              <td className="p-3">
+                                <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
-                                     <button className="text-purple-800 font-bold hover:underline text-left outline-none uppercase">
-                                        {inc.tituloIncidente || "Ver detalle"}
-                                     </button>
+                                    <button className="text-purple-800 font-bold hover:underline text-left outline-none uppercase">
+                                      {inc.tituloIncidente || "Ver detalle"}
+                                    </button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent className="w-64 p-0 border-purple-800 font-verdana">
-                                     <DropdownMenuItem onClick={() => openView(inc)} className="p-3 text-[11px] font-bold text-purple-800 border-b cursor-pointer">
-                                        Detalle del incidente
-                                     </DropdownMenuItem>
-                                     {isTutor && (
-                                       <>
-                                          <DropdownMenuItem onClick={() => openModify(inc)} className="p-3 text-[11px] font-bold text-gray-800 border-b cursor-pointer hover:bg-gray-100">
-                                             Modificar incidencia
-                                          </DropdownMenuItem>
-                                          <DropdownMenuItem 
-                                            onClick={() => setDeleteConfirmId(inc.id)}
-                                            className="p-3 text-[11px] font-bold text-red-600 cursor-pointer hover:bg-red-50"
-                                          >
-                                             Eliminar incidencia
-                                          </DropdownMenuItem>
-                                       </>
-                                     )}
+                                    <DropdownMenuItem onSelect={() => openView(inc)} className="p-3 text-[11px] font-bold text-purple-800 border-b cursor-pointer">
+                                      Detalle del incidente
+                                    </DropdownMenuItem>
+                                    {isTutor && (
+                                      <>
+                                        <DropdownMenuItem onSelect={() => openModify(inc)} className="p-3 text-[11px] font-bold text-gray-800 border-b cursor-pointer hover:bg-gray-100">
+                                          Modificar incidencia
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem 
+                                          onSelect={() => setDeleteConfirmId(inc.id)}
+                                          className="p-3 text-[11px] font-bold text-red-600 cursor-pointer hover:bg-red-50"
+                                        >
+                                          Eliminar incidencia
+                                        </DropdownMenuItem>
+                                      </>
+                                    )}
                                   </DropdownMenuContent>
-                               </DropdownMenu>
-                            </td>
-                            <td className="p-3 text-center text-gray-500">{inc.efectividadCorreccion}</td>
-                            <td className="p-3 text-center text-gray-400">--</td>
-                            <td className="p-3 text-center text-gray-400">No</td>
-                            <td className="p-3 text-gray-600 font-medium">
-                               {teachers.find(t => t.id === inc.profesorComunicadorId)?.nombrePersona || inc.profesorComunicadorId}
-                            </td>
-                            <td className="p-3">
-                               <ul className="list-none space-y-1">
+                                </DropdownMenu>
+                              </td>
+                              <td className="p-3 text-center text-gray-500">{inc.efectividadCorreccion}</td>
+                              <td className="p-3 text-center text-gray-400">--</td>
+                              <td className="p-3 text-center text-gray-400">No</td>
+                              <td className="p-3 text-gray-600 font-medium">
+                                {teachers.find(t => t.id === inc.profesorComunicadorId)?.nombrePersona || inc.profesorComunicadorId}
+                              </td>
+                              <td className="p-3">
+                                <ul className="list-none space-y-1">
                                   {inc.conductas?.map((c: string) => (
                                     <li key={c} className="text-gray-600 leading-tight flex gap-2">
-                                       <span className="text-gray-400">-</span> {c}
+                                      <span className="text-gray-400">-</span> {c}
                                     </li>
                                   ))}
-                               </ul>
-                            </td>
-                            <td className="p-3">
-                               <ul className="list-none space-y-1">
+                                </ul>
+                              </td>
+                              <td className="p-3">
+                                <ul className="list-none space-y-1">
                                   {inc.medidasCorrectoras?.map((m: string) => (
                                     <li key={m} className="text-gray-600 leading-tight flex gap-2">
-                                       <span className="text-gray-400">-</span> {m}
+                                      <span className="text-gray-400">-</span> {m}
                                     </li>
                                   ))}
                                   {inc.medidasCorrectoras?.length === 0 && <span className="text-gray-400 italic">Ninguna</span>}
-                               </ul>
-                            </td>
-                         </tr>
-                       ))
+                                </ul>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
+        </div>
+      ) : (
+        <div className="space-y-10 animate-in fade-in duration-500">
+          <div className="bg-white border border-gray-200 rounded-lg shadow-md p-6 max-w-2xl mx-auto space-y-4">
+            <div className="flex items-center gap-4">
+               <Label className="text-[13px] font-medium min-w-[120px]">Año académico:</Label>
+               <div className="flex items-center gap-1">
+                  <select className="bg-white border border-gray-300 rounded px-2 h-7 text-[13px] font-medium focus:outline-none" value={academicYear} onChange={e => setAcademicYear(e.target.value)}>
+                     <option>2023-2024</option><option>2024-2025</option><option>2025-2026</option>
+                  </select>
+                  <span className="text-purple-600 font-bold">*</span>
+               </div>
+            </div>
+            <div className="flex items-center gap-4">
+               <Label className="text-[13px] font-medium min-w-[120px]">Curso:</Label>
+               <div className="flex-1 flex items-center gap-1">
+                  <select className="w-full bg-white border border-gray-300 rounded px-2 h-7 text-[13px] font-medium focus:outline-none" value={selectedCourse} onChange={e => setSelectedCourse(e.target.value)}>
+                     <option value="Cualquiera">Cualquiera</option>
+                     {courses.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                  <span className="text-purple-600 font-bold">*</span>
+               </div>
+            </div>
+            <div className="flex items-center gap-4">
+               <Label className="text-[13px] font-medium min-w-[120px]">Grupo:</Label>
+               <div className="flex items-center gap-1">
+                  <select className="bg-white border border-gray-300 rounded px-2 h-7 text-[13px] font-medium focus:outline-none min-w-[150px]" value={selectedGroup} onChange={e => setSelectedGroup(e.target.value)}><option>Cualquiera</option></select>
+                  <span className="text-purple-600 font-bold">*</span>
+               </div>
+            </div>
+            <div className="flex items-center gap-4 pt-1">
+               <Label className="text-[13px] font-medium min-w-[120px]">Mostrar:</Label>
+               <div className="flex gap-4 text-[13px]">
+                  <button onClick={() => setVisibilityFilter('all')} className={cn("hover:underline", visibilityFilter === 'all' ? "font-bold text-gray-800" : "text-purple-700")}>todo el alumnado</button>
+                  <span className="text-gray-300">|</span>
+                  <button onClick={() => setVisibilityFilter('with')} className={cn("hover:underline", visibilityFilter === 'with' ? "font-bold text-gray-800" : "text-purple-700")}>sólo alumnado con incidente</button>
+                  <span className="text-gray-300">|</span>
+                  <button onClick={() => setVisibilityFilter('without')} className={cn("hover:underline", visibilityFilter === 'without' ? "font-bold text-gray-800" : "text-purple-700")}>sólo alumnado sin incidente</button>
+               </div>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-[13px] font-medium">Número total de registros: {filteredStudents.length}</p>
+            <div className="bg-white border border-gray-300 shadow-sm overflow-hidden">
+               <table className="w-full text-left border-collapse text-[13px]">
+                  <thead>
+                     <tr className="bg-[#9c84a5] text-white font-bold">
+                        <th className="p-2 border-r border-white/20 w-[25%]">Alumnado</th>
+                        <th className="p-2 border-r border-white/20 text-center leading-tight">Número de<br/>incidentes</th>
+                        <th className="p-2 border-r border-white/20 text-center leading-tight">Pendiente de<br/>registro de<br/>efectividad</th>
+                        <th className="p-0 border-r border-white/20">
+                           <div className="text-center p-2 border-b border-white/20">Conductas</div>
+                           <div className="flex"><div className="flex-1 text-center p-1 border-r border-white/20">Graves</div><div className="flex-1 text-center p-1">Contrarias</div></div>
+                        </th>
+                        <th className="p-2 border-r border-white/20 text-center leading-tight">Correcciones/<br/>medidas<br/>disciplinarias</th>
+                        <th className="p-2 text-center leading-tight">Decisión de<br/>no corrección</th>
+                     </tr>
+                  </thead>
+                  <tbody>
+                     {filteredStudents.length === 0 ? (
+                       <tr><td colSpan={6} className="p-20 text-center italic text-gray-400">No se han encontrado registros.</td></tr>
+                     ) : (
+                       filteredStudents.map(student => {
+                         const stats = getStudentStats(student.id);
+                         return (
+                           <tr key={student.id} className="border-b border-gray-200 hover:bg-gray-50/80 transition-colors odd:bg-white even:bg-gray-50/30">
+                              <td className="p-2 font-bold">
+                                 <DropdownMenu>
+                                   <DropdownMenuTrigger asChild>
+                                     <button className="text-[#9c4d96] hover:underline text-left outline-none uppercase tracking-tight">{student.nombrePersona || student.usuario}</button>
+                                   </DropdownMenuTrigger>
+                                   <DropdownMenuContent align="start" className="w-80 p-0 border-[#9c4d96] shadow-xl font-verdana">
+                                      <DropdownMenuItem onSelect={() => { resetForm(); setFormData({...formData, alumnoId: student.id}); setIsDialogOpen(true); }} className="p-3 text-[12px] font-bold text-gray-800 hover:bg-gray-100 cursor-pointer border-b">Nueva conducta contraria/grave del alumnado</DropdownMenuItem>
+                                      <DropdownMenuItem onSelect={() => setViewExpedienteId(student.id)} className="p-3 text-[12px] font-bold text-gray-800 hover:bg-gray-100 cursor-pointer border-b">Conductas contrarias/graves del alumnado</DropdownMenuItem>
+                                   </DropdownMenuContent>
+                                 </DropdownMenu>
+                              </td>
+                              <td className="p-2 text-center font-medium">{stats.total}</td>
+                              <td className="p-2 text-center font-medium">{stats.total > 0 ? stats.pendingEffectivity : ""}</td>
+                              <td className="p-0 border-l border-gray-100"><div className="flex"><div className="flex-1 text-center p-2 border-r border-gray-100">{stats.total > 0 ? stats.graves : 0}</div><div className="flex-1 text-center p-2">{stats.total > 0 ? stats.contrarias : 0}</div></div></td>
+                              <td className="p-2 text-center font-medium">{stats.total > 0 ? stats.correcciones : 0}</td>
+                              <td className="p-2 text-center font-medium">{stats.total > 0 ? stats.noCorreccion : 0}</td>
+                           </tr>
+                         );
+                       })
                      )}
                   </tbody>
                </table>
             </div>
-         </div>
-         <AlertDialog open={!!deleteConfirmId} onOpenChange={() => setDeleteConfirmId(null)}>
-           <AlertDialogContent>
-             <AlertDialogHeader>
-               <AlertDialogTitle className="uppercase font-bold text-red-600">¿Eliminar incidencia definitiva?</AlertDialogTitle>
-               <AlertDialogDescription>
-                 Esta acción no se puede deshacer. El registro desaparecerá del expediente digital del alumno en Rayuela.
-               </AlertDialogDescription>
-             </AlertDialogHeader>
-             <AlertDialogFooter>
-               <AlertDialogCancel className="uppercase text-[10px] font-bold">Cancelar</AlertDialogCancel>
-               <AlertDialogAction onClick={handleDeleteConfirmed} className="bg-red-600 hover:bg-red-700 uppercase text-[10px] font-bold">Eliminar permanentemente</AlertDialogAction>
-             </AlertDialogFooter>
-           </AlertDialogContent>
-         </AlertDialog>
-      </div>
-    );
-  }
+          </div>
+        </div>
+      )}
 
-  return (
-    <div className="animate-in fade-in duration-500 space-y-10 max-w-7xl mx-auto w-full font-verdana text-gray-800">
-      <div className="bg-white border border-gray-200 rounded-lg shadow-md p-6 max-w-2xl mx-auto space-y-4">
-         <div className="flex items-center gap-4">
-            <Label className="text-[13px] font-medium min-w-[120px]">Año académico:</Label>
-            <div className="flex items-center gap-1">
-               <select className="bg-white border border-gray-300 rounded px-2 h-7 text-[13px] font-medium focus:outline-none" value={academicYear} onChange={e => setAcademicYear(e.target.value)}>
-                  <option>2023-2024</option><option>2024-2025</option><option>2025-2026</option>
-               </select>
-               <span className="text-purple-600 font-bold">*</span>
-            </div>
-         </div>
-         <div className="flex items-center gap-4">
-            <Label className="text-[13px] font-medium min-w-[120px]">Curso:</Label>
-            <div className="flex-1 flex items-center gap-1">
-               <select className="w-full bg-white border border-gray-300 rounded px-2 h-7 text-[13px] font-medium focus:outline-none" value={selectedCourse} onChange={e => setSelectedCourse(e.target.value)}>
-                  <option value="Cualquiera">Cualquiera</option>
-                  {courses.map(c => <option key={c} value={c}>{c}</option>)}
-               </select>
-               <span className="text-purple-600 font-bold">*</span>
-            </div>
-         </div>
-         <div className="flex items-center gap-4">
-            <Label className="text-[13px] font-medium min-w-[120px]">Grupo:</Label>
-            <div className="flex items-center gap-1">
-               <select className="bg-white border border-gray-300 rounded px-2 h-7 text-[13px] font-medium focus:outline-none min-w-[150px]" value={selectedGroup} onChange={e => setSelectedGroup(e.target.value)}><option>Cualquiera</option></select>
-               <span className="text-purple-600 font-bold">*</span>
-            </div>
-         </div>
-         <div className="flex items-center gap-4 pt-1">
-            <Label className="text-[13px] font-medium min-w-[120px]">Mostrar:</Label>
-            <div className="flex gap-4 text-[13px]">
-               <button onClick={() => setVisibilityFilter('all')} className={cn("hover:underline", visibilityFilter === 'all' ? "font-bold text-gray-800" : "text-purple-700")}>todo el alumnado</button>
-               <span className="text-gray-300">|</span>
-               <button onClick={() => setVisibilityFilter('with')} className={cn("hover:underline", visibilityFilter === 'with' ? "font-bold text-gray-800" : "text-purple-700")}>sólo alumnado con incidente</button>
-               <span className="text-gray-300">|</span>
-               <button onClick={() => setVisibilityFilter('without')} className={cn("hover:underline", visibilityFilter === 'without' ? "font-bold text-gray-800" : "text-purple-700")}>sólo alumnado sin incidente</button>
-            </div>
-         </div>
-      </div>
-
-      <div className="space-y-2">
-         <p className="text-[13px] font-medium">Número total de registros: {filteredStudents.length}</p>
-         <div className="bg-white border border-gray-300 shadow-sm overflow-hidden">
-            <table className="w-full text-left border-collapse text-[13px]">
-               <thead>
-                  <tr className="bg-[#9c84a5] text-white font-bold">
-                     <th className="p-2 border-r border-white/20 w-[25%]">Alumnado</th>
-                     <th className="p-2 border-r border-white/20 text-center leading-tight">Número de<br/>incidentes</th>
-                     <th className="p-2 border-r border-white/20 text-center leading-tight">Pendiente de<br/>registro de<br/>efectividad</th>
-                     <th className="p-0 border-r border-white/20">
-                        <div className="text-center p-2 border-b border-white/20">Conductas</div>
-                        <div className="flex"><div className="flex-1 text-center p-1 border-r border-white/20">Graves</div><div className="flex-1 text-center p-1">Contrarias</div></div>
-                     </th>
-                     <th className="p-2 border-r border-white/20 text-center leading-tight">Correcciones/<br/>medidas<br/>disciplinarias</th>
-                     <th className="p-2 text-center leading-tight">Decisión de<br/>no corrección</th>
-                  </tr>
-               </thead>
-               <tbody>
-                  {filteredStudents.length === 0 ? (
-                    <tr><td colSpan={6} className="p-20 text-center italic text-gray-400">No se han encontrado registros.</td></tr>
-                  ) : (
-                    filteredStudents.map(student => {
-                      const stats = getStudentStats(student.id);
-                      return (
-                        <tr key={student.id} className="border-b border-gray-200 hover:bg-gray-50/80 transition-colors odd:bg-white even:bg-gray-50/30">
-                           <td className="p-2 font-bold">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <button className="text-[#9c4d96] hover:underline text-left outline-none uppercase tracking-tight">{student.nombrePersona || student.usuario}</button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="start" className="w-80 p-0 border-[#9c4d96] shadow-xl font-verdana">
-                                   <DropdownMenuItem onClick={() => { resetForm(); setFormData({...formData, alumnoId: student.id}); setIsDialogOpen(true); }} className="p-3 text-[12px] font-bold text-gray-800 hover:bg-gray-100 cursor-pointer border-b">Nueva conducta contraria/grave del alumnado</DropdownMenuItem>
-                                   <DropdownMenuItem onClick={() => setViewExpedienteId(student.id)} className="p-3 text-[12px] font-bold text-gray-800 hover:bg-gray-100 cursor-pointer border-b">Conductas contrarias/graves del alumnado</DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                           </td>
-                           <td className="p-2 text-center font-medium">{stats.total}</td>
-                           <td className="p-2 text-center font-medium">{stats.total > 0 ? stats.pendingEffectivity : ""}</td>
-                           <td className="p-0 border-l border-gray-100"><div className="flex"><div className="flex-1 text-center p-2 border-r border-gray-100">{stats.total > 0 ? stats.graves : 0}</div><div className="flex-1 text-center p-2">{stats.total > 0 ? stats.contrarias : 0}</div></div></td>
-                           <td className="p-2 text-center font-medium">{stats.total > 0 ? stats.correcciones : 0}</td>
-                           <td className="p-2 text-center font-medium">{stats.total > 0 ? stats.noCorreccion : 0}</td>
-                        </tr>
-                      );
-                    })
-                  )}
-               </tbody>
-            </table>
-         </div>
-      </div>
-
+      {/* FORMULARIO DE INCIDENCIA (Único para toda la vista) */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-5xl font-verdana p-0 border-none overflow-hidden h-[95vh] flex flex-col shadow-2xl rounded-xl">
           <DialogHeader className="bg-[#f2f2f2] p-4 text-center shrink-0 border-b flex flex-row items-center justify-between">
@@ -638,7 +645,7 @@ export function AlumnadoIncidenteView({ profesorId, userData, targetStudentId, o
                       <div className="flex items-start gap-4">
                          <Label className="w-64 text-[13px] font-medium text-gray-700 pt-2">Registradas:</Label>
                          <div className="flex-1 min-h-[140px] border border-gray-400 rounded p-2">
-                            {formData.conductas.map(c => <div key={c} className="text-[11px] p-1.5 hover:bg-gray-50" onClick={() => setCurrentSelectedConduct(c)}>{c}</div>)}
+                            {formData.conductas.map(c => <div key={c} className={cn("text-[11px] p-1.5 hover:bg-gray-50 cursor-pointer", currentSelectedConduct === c ? "bg-purple-50 font-bold" : "")} onClick={() => setCurrentSelectedConduct(c)}>{c}</div>)}
                          </div>
                          <Button disabled={formMode === 'view'} variant="outline" onClick={() => setFormData({...formData, conductas: formData.conductas.filter(c => c !== currentSelectedConduct)})} className="border-[#9c4d96] text-[#9c4d96] h-8">Quitar</Button>
                       </div>
@@ -671,9 +678,9 @@ export function AlumnadoIncidenteView({ profesorId, userData, targetStudentId, o
                       <div className="flex items-start gap-4">
                          <Label className="w-64 text-[13px] font-medium text-gray-700 pt-2">Aplicadas:</Label>
                          <div className="flex-1 min-h-[100px] border border-gray-400 rounded p-2">
-                            {formData.medidasCorrectoras.map(m => <div key={m} className="text-[11px] p-1.5" onClick={() => setCurrentSelectedCorrection(m)}>{m}</div>)}
+                            {formData.medidasCorrectoras.map(m => <div key={m} className={cn("text-[11px] p-1.5 cursor-pointer", currentSelectedCorrection === m ? "bg-purple-50 font-bold" : "")} onClick={() => setCurrentSelectedCorrection(m)}>{m}</div>)}
                          </div>
-                         <Button disabled={formMode === 'view' || formData.estadoCorreccion === 'No se aplica corrección'} variant="outline" onClick={() => setFormData({...formData, medidasCorrectoras: formData.medidasCorrectoras.filter(m => m !== currentSelectedCorrection)})} className="border-[#9c4d96] text-[#9c4d96] h-8">Quitar</Button>
+                         <Button disabled={formMode === 'view'} variant="outline" onClick={() => setFormData({...formData, medidasCorrectoras: formData.medidasCorrectoras.filter(m => m !== currentSelectedCorrection)})} className="border-[#9c4d96] text-[#9c4d96] h-8">Quitar</Button>
                       </div>
                    </div>
                 </TabsContent>
@@ -690,6 +697,22 @@ export function AlumnadoIncidenteView({ profesorId, userData, targetStudentId, o
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* DIALOGO DE CONFIRMACIÓN DE ELIMINACIÓN */}
+      <AlertDialog open={!!deleteConfirmId} onOpenChange={() => setDeleteConfirmId(null)}>
+         <AlertDialogContent>
+           <AlertDialogHeader>
+             <AlertDialogTitle className="uppercase font-bold text-red-600">¿Eliminar incidencia definitiva?</AlertDialogTitle>
+             <AlertDialogDescription>
+               Esta acción no se puede deshacer. El registro desaparecerá del expediente digital del alumno en Rayuela.
+             </AlertDialogDescription>
+           </AlertDialogHeader>
+           <AlertDialogFooter>
+             <AlertDialogCancel className="uppercase text-[10px] font-bold">Cancelar</AlertDialogCancel>
+             <AlertDialogAction onClick={handleDeleteConfirmed} className="bg-red-600 hover:bg-red-700 uppercase text-[10px] font-bold">Eliminar permanentemente</AlertDialogAction>
+           </AlertDialogFooter>
+         </AlertDialogContent>
+      </AlertDialog>
 
       <style jsx global>{`.text-lila { color: #9c4d96 !important; }.bg-lila { background-color: #9c4d96 !important; }`}</style>
     </div>
