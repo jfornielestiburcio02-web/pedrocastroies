@@ -297,13 +297,12 @@ export default function SeleccioneModuloAccesoPage() {
         <div className="w-full p-6 flex items-center justify-between border-b border-gray-200 bg-white shrink-0">
           <div className="flex items-center gap-4">
             <div className="flex items-baseline font-bold scale-90 md:scale-110 origin-left">
-              <span className="text-4xl" style={{ color: '#9c4d96' }}>r</span>
+              <span className="text-4xl" style={{ color: '#9c4d96' }}>R</span>
               <span className="text-4xl" style={{ color: '#e63946' }}>A</span>
-              <span className="text-4xl" style={{ color: '#ffb703' }}>Y</span>
-              <span className="text-4xl" style={{ color: '#8ecae6' }}>U</span>
+              <span className="text-4xl" style={{ color: '#ffb703' }}>I</span>
+              <span className="text-4xl" style={{ color: '#8ecae6' }}>C</span>
               <span className="text-4xl" style={{ color: '#fb8500' }}>E</span>
-              <span className="text-4xl" style={{ color: '#2a9d8f' }}>L</span>
-              <span className="text-4xl" style={{ color: '#0077b6' }}>A</span>
+              <span className="text-4xl" style={{ color: '#2a9d8f' }}>S</span>
             </div>
             <div className="hidden md:block h-10 w-[2px] bg-gray-300 mx-2"></div>
             <div className="flex flex-col">
