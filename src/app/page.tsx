@@ -1,112 +1,440 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { useToast } from '@/hooks/use-toast';
-import { useFirestore } from '@/firebase';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useToast } from "@/hooks/use-toast";
+import { useFirestore } from "@/firebase";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 
-export default function LoginPage() {
-  const [isLoading, setIsLoading] = useState(false);
+export default function Page() {
   const router = useRouter();
   const { toast } = useToast();
   const db = useFirestore();
 
+  const [usuario, setUsuario] = useState("");
+  const [clave, setClave] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
   useEffect(() => {
-    // Usamos sessionStorage para que la sesión no sea persistente entre cierres de navegador
-    const session = sessionStorage.getItem('user_session');
+    window.name = "NV_" + Date.now();
+
+    const session = sessionStorage.getItem("user_session");
+
     if (session) {
-      router.push('/seleccionemoduloacceso');
+      router.push("/seleccionemoduloacceso");
     }
   }, [router]);
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  function cifrar(texto: string) {
+    return btoa(texto);
+  }
+
+  async function comprobarclave(
+    e: React.FormEvent<HTMLFormElement>
+  ) {
+    e.preventDefault();
+
+    if (usuario.trim() === "") {
+      alert("El campo 'Usuario' es obligatorio");
+      return;
+    }
+
+    if (clave.trim() === "") {
+      alert("El campo 'Clave' es obligatorio");
+      return;
+    }
+
     setIsLoading(true);
 
-    const formData = new FormData(event.currentTarget);
-    const usuarioInput = (formData.get('usuario') as string).toLowerCase().trim();
-    const contrasena = formData.get('contrasena') as string;
-
-    if (!db) return;
-
     try {
-      const userRef = doc(db, 'usuarios', usuarioInput);
+      if (!db) {
+        throw new Error("Firestore no disponible");
+      }
+
+      const usuarioLower = usuario.toLowerCase().trim();
+
+      const userRef = doc(db, "usuarios", usuarioLower);
+
       const userSnap = await getDoc(userRef);
 
-      if (userSnap.exists()) {
-        const userData = userSnap.data();
-        if (userData.contrasena === contrasena) {
-          // Generar JSESSIONID aleatorio
-          const jsessionid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-          
-          // Actualizar sesión en Firestore
-          await updateDoc(userRef, { sesion: jsessionid });
-
-          // Guardar en sessionStorage (se borra al cerrar la pestaña)
-          sessionStorage.setItem('user_session', JSON.stringify({
-            usuario: usuarioInput,
-            sesion: jsessionid,
-            displayName: userData.nombrePersona || userData.usuario
-          }));
-
-          toast({
-            title: "Acceso concedido",
-            description: `Bienvenido, sesión ${jsessionid.substring(0, 8)}...`,
-          });
-          router.push('/seleccionemoduloacceso');
-        } else {
-          throw new Error("Contraseña incorrecta");
-        }
-      } else {
+      if (!userSnap.exists()) {
         throw new Error("El usuario no existe");
       }
+
+      const userData = userSnap.data();
+
+      if (userData.contrasena !== clave) {
+        throw new Error("Contraseña incorrecta");
+      }
+
+      const jsessionid =
+        Math.random().toString(36).substring(2) +
+        Math.random().toString(36).substring(2);
+
+      await updateDoc(userRef, {
+        sesion: jsessionid,
+        ultimaConexion: new Date().toISOString(),
+      });
+
+      sessionStorage.setItem(
+        "user_session",
+        JSON.stringify({
+          usuario: usuarioLower,
+          sesion: jsessionid,
+          displayName:
+            userData.nombrePersona || usuarioLower,
+        })
+      );
+
+      const claveCifrada = cifrar(clave);
+
+      console.log("CLAVECIFRADA:", claveCifrada);
+
+      setClave("");
+
+      toast({
+        title: "Acceso concedido",
+        description: `Sesión ${jsessionid.substring(
+          0,
+          8
+        )} iniciada`,
+      });
+
+      router.push("/seleccionemoduloacceso");
     } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Error de acceso",
-        description: error.message || "Credenciales inválidas.",
+        description:
+          error.message || "Credenciales inválidas",
       });
+
       setIsLoading(false);
     }
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4 bg-[#f0f0f0] font-verdana">
-      <div className="w-full max-w-[400px]">
-        <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold tracking-tight text-primary">Acceso Rayuela</h1>
-        </div>
+    <>
+      <style jsx global>{`
+        html,
+        body {
+          margin: 0;
+          padding: 0;
+          width: 100%;
+          height: 100%;
+          overflow: hidden;
+          font-family: Arial, Helvetica, sans-serif;
+          background: #ffffff;
+        }
 
-        <Card className="border-border shadow-xl bg-card rounded-none">
-          <CardHeader className="bg-gray-50 border-b mb-6">
-            <CardTitle className="text-xl uppercase tracking-tighter font-bold">Identificación</CardTitle>
-            <CardDescription className="text-[10px] font-bold uppercase text-gray-400">Introduzca sus credenciales de Rayuela</CardDescription>
-          </CardHeader>
-          <form onSubmit={handleSubmit}>
-            <CardContent className="grid gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="usuario" className="text-[10px] font-bold uppercase text-gray-500">Usuario</Label>
-                <Input id="usuario" name="usuario" type="text" className="rounded-none border-gray-300" required />
+        table {
+          border-collapse: collapse;
+        }
+
+        .morado {
+          background-color: #9a6289;
+        }
+
+        .lila {
+          background-color: #be9bb4;
+        }
+
+        .moradoclaro {
+          background-color: #dbc6d4;
+        }
+
+        .verdeagua {
+          background-color: #b7ddc8;
+        }
+
+        .verde {
+          background-color: #b3d76b;
+        }
+
+        .naranja {
+          background-color: #eab863;
+        }
+
+        input {
+          font-family: Arial, Helvetica, sans-serif;
+          font-size: 8pt;
+          font-weight: bold;
+          color: #573957;
+          background-color: #dbc6d4;
+          border: 1px solid #ffffff;
+          padding: 5px;
+          width: 170px;
+          outline: none;
+        }
+
+        input:focus {
+          background-color: #f1e5ed;
+        }
+
+        .usuario {
+          font-size: 9pt;
+          font-weight: bold;
+          color: #ffffff;
+        }
+
+        .botones2 {
+          background-color: #f0aa94;
+          padding: 5px 14px;
+          text-align: center;
+          border: 1px #e77551 solid;
+          font-size: 8pt;
+          font-weight: bold;
+          color: #903214;
+          width: 120px;
+          cursor: pointer;
+        }
+
+        .botones2:hover {
+          background-color: #b3d76b;
+          color: #000000;
+        }
+
+        .botones2:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        .rayuela-title {
+          font-size: 38px;
+          font-weight: bold;
+          color: white;
+          letter-spacing: -2px;
+          padding-left: 30px;
+        }
+
+        .rayuela-subtitle {
+          font-size: 12px;
+          color: #ffffffcc;
+          margin-top: 5px;
+          padding-left: 32px;
+        }
+
+        .panel-text {
+          font-size: 28px;
+          font-weight: bold;
+          color: #5f4157;
+          padding: 10px 20px;
+        }
+
+        .footer-text {
+          font-size: 13px;
+          font-weight: bold;
+          color: #5f4157;
+          text-align: center;
+          padding-top: 10px;
+        }
+      `}</style>
+
+      <table width="100%" height="100%">
+        <tbody>
+
+          {/* CABECERA */}
+          <tr height="170">
+
+            <td colSpan={2} width="60%">
+              <div
+                style={{
+                  paddingTop: "45px",
+                }}
+              >
+                <div className="rayuela-title">
+                  
+                </div>
+
+                <div className="rayuela-subtitle">
+
+                </div>
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="contrasena" className="text-[10px] font-bold uppercase text-gray-500">Contraseña</Label>
-                <Input id="contrasena" name="contrasena" type="password" className="rounded-none border-gray-300" required />
+            </td>
+
+            {/* LOGIN */}
+            <td
+              className="morado"
+              width="30%"
+              valign="top"
+            >
+              <table
+                align="center"
+                width="90%"
+                cellPadding="0"
+                cellSpacing="5"
+                height="100%"
+              >
+                <tbody>
+                  <tr>
+                    <td align="center">
+
+                      <form onSubmit={comprobarclave}>
+
+                        <table align="center">
+                          <tbody>
+
+                            <tr align="center">
+                              <td className="usuario">
+
+                                Usuario
+                                <br />
+
+                                <input
+                                  type="text"
+                                  autoComplete="username"
+                                  value={usuario}
+                                  onChange={(e) =>
+                                    setUsuario(
+                                      e.target.value
+                                    )
+                                  }
+                                />
+
+                              </td>
+                            </tr>
+
+                            <tr align="center">
+                              <td className="usuario">
+
+                                <br />
+
+                                Contraseña
+                                <br />
+
+                                <input
+                                  type="password"
+                                  autoComplete="current-password"
+                                  value={clave}
+                                  onChange={(e) =>
+                                    setClave(
+                                      e.target.value
+                                    )
+                                  }
+                                />
+
+                              </td>
+                            </tr>
+
+                            <tr>
+                              <td height="25"></td>
+                            </tr>
+
+                            <tr align="center">
+                              <td>
+
+                                <button
+                                  type="submit"
+                                  className="botones2"
+                                  disabled={isLoading}
+                                >
+                                  {isLoading
+                                    ? "Conectando..."
+                                    : "Entrar"}
+                                </button>
+
+                              </td>
+                            </tr>
+
+                          </tbody>
+                        </table>
+
+                      </form>
+
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </td>
+
+            <td width="10%"></td>
+          </tr>
+
+          {/* BLOQUE LILA */}
+          <tr height="100">
+
+            <td
+              colSpan={2}
+              className="lila"
+            >
+              <div className="panel-text">
+               
               </div>
-            </CardContent>
-            <CardFooter className="flex flex-col gap-4 mt-4">
-              <Button type="submit" className="w-full bg-primary hover:bg-primary/90 rounded-none h-12 font-bold uppercase text-[11px] tracking-widest shadow-md" disabled={isLoading}>
-                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Entrar"}
-              </Button>
-            </CardFooter>
-          </form>
-        </Card>
-      </div>
-    </div>
+            </td>
+
+            <td className="moradoclaro">
+              <div className="panel-text">
+                
+              </div>
+            </td>
+
+            <td className="lila">
+              <div className="panel-text">
+                
+              </div>
+            </td>
+
+          </tr>
+
+          {/* BLOQUE VERDE */}
+          <tr height="65">
+
+            <td colSpan={2}></td>
+
+            <td className="verdeagua">
+              <div className="panel-text">
+                
+              </div>
+            </td>
+
+            <td className="verde">
+              <div className="panel-text">
+                
+              </div>
+            </td>
+
+          </tr>
+
+          {/* BLOQUE NARANJA */}
+          <tr height="25">
+
+            <td colSpan={2}></td>
+
+            <td className="naranja"></td>
+
+            <td>
+              <div className="footer-text">
+                
+              </div>
+            </td>
+
+          </tr>
+
+          {/* FOOTER */}
+          <tr>
+
+            <td colSpan={2}></td>
+
+            <td className="naranja"></td>
+
+            <td align="center">
+
+              <div
+                className="footer-text"
+                style={{
+                  paddingBottom: "30px",
+                }}
+              >
+                IES Pedro Castro
+                <br />
+              </div>
+
+            </td>
+
+          </tr>
+
+        </tbody>
+      </table>
+    </>
   );
 }
