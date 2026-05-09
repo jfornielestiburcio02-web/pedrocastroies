@@ -173,7 +173,6 @@ export default function Page() {
           {/* FILA 1 */}
           <tr height="165">
             <td colSpan={2} width="60%">
-              <img src="/images/puertaTrasera/logo_rayuela.gif" />
             </td>
 
             <td className="morado" width="30%" valign="top">
