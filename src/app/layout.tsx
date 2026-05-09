@@ -5,7 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 
 export const metadata: Metadata = {
-  title: 'IES Pedro Castro (Inicio Sesion)',
+  title: 'IES Pedro Castro',
   description: 'Plataforma web ies pedro castro',
 };
 
