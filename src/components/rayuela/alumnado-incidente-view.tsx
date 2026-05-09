@@ -179,7 +179,7 @@ export function AlumnadoIncidenteView({ profesorId, userData, targetStudentId, o
       resetForm();
       setFormData(prev => ({ ...prev, alumnoId: targetStudentId }));
       setFormMode('create');
-      setIsDialogOpen(true);
+      setTimeout(() => setIsDialogOpen(true), 100);
       if (onActionComplete) onActionComplete();
     }
   }, [targetStudentId, onActionComplete]);
@@ -260,20 +260,16 @@ export function AlumnadoIncidenteView({ profesorId, userData, targetStudentId, o
       updateDocumentNonBlocking(doc(db, 'incidencias', currentIncidentId), incidentData);
       toast({ title: "Incidencia Actualizada" });
     } else {
-      // 1. Registrar nueva incidencia
       await addDocumentNonBlocking(collection(db, 'incidencias'), {
         ...incidentData,
         createdAt: new Date().toISOString()
       });
 
-      // 2. PROTOCOLO AUTOMÁTICO: Verificar si llega a 3 amonestaciones
       const studentIncidentsCount = (allIncidents?.filter(i => i.alumnoId === formData.alumnoId).length || 0) + 1;
       
       if (studentIncidentsCount === 3) {
         const studentName = student?.nombrePersona || student?.usuario || formData.alumnoId;
         const studentGroup = student?.cursoAlumno;
-
-        // Buscar al tutor del grupo
         const tutor = allUsers?.find(u => u.esTutor === studentGroup && u.rolesUsuario?.includes('EsProfesor'));
         
         if (tutor) {
@@ -329,7 +325,7 @@ export function AlumnadoIncidenteView({ profesorId, userData, targetStudentId, o
     });
     setFormMode('edit');
     setCurrentIncidentId(inc.id);
-    setIsDialogOpen(true);
+    setTimeout(() => setIsDialogOpen(true), 100);
   };
 
   const openView = (inc: any) => {
@@ -340,7 +336,7 @@ export function AlumnadoIncidenteView({ profesorId, userData, targetStudentId, o
     });
     setFormMode('view');
     setCurrentIncidentId(inc.id);
-    setIsDialogOpen(true);
+    setTimeout(() => setIsDialogOpen(true), 100);
   };
 
   const handleDeleteConfirmed = () => {
@@ -366,7 +362,6 @@ export function AlumnadoIncidenteView({ profesorId, userData, targetStudentId, o
 
   return (
     <div className="animate-in fade-in duration-500 space-y-10 max-w-7xl mx-auto w-full font-verdana text-gray-800">
-      {/* VISTA CONDICIONAL: EXPEDIENTE O LISTADO */}
       {viewExpedienteId ? (
         <div className="space-y-10 animate-in fade-in duration-500">
           <div className="flex justify-start">
@@ -432,16 +427,16 @@ export function AlumnadoIncidenteView({ profesorId, userData, targetStudentId, o
                                     </button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent className="w-64 p-0 border-purple-800 font-verdana">
-                                    <DropdownMenuItem onSelect={(e) => { e.preventDefault(); e.stopPropagation(); openView(inc); }} className="p-3 text-[11px] font-bold text-purple-800 border-b cursor-pointer">
+                                    <DropdownMenuItem onSelect={(e) => { e.preventDefault(); openView(inc); }} className="p-3 text-[11px] font-bold text-purple-800 border-b cursor-pointer">
                                       Detalle del incidente
                                     </DropdownMenuItem>
                                     {isTutor && (
                                       <>
-                                        <DropdownMenuItem onSelect={(e) => { e.preventDefault(); e.stopPropagation(); openModify(inc); }} className="p-3 text-[11px] font-bold text-gray-800 border-b cursor-pointer hover:bg-gray-100">
+                                        <DropdownMenuItem onSelect={(e) => { e.preventDefault(); openModify(inc); }} className="p-3 text-[11px] font-bold text-gray-800 border-b cursor-pointer hover:bg-gray-100">
                                           Modificar incidencia
                                         </DropdownMenuItem>
                                         <DropdownMenuItem 
-                                          onSelect={(e) => { e.preventDefault(); e.stopPropagation(); setDeleteConfirmId(inc.id); }}
+                                          onSelect={(e) => { e.preventDefault(); setDeleteConfirmId(inc.id); }}
                                           className="p-3 text-[11px] font-bold text-red-600 cursor-pointer hover:bg-red-50"
                                         >
                                           Eliminar incidencia
@@ -494,7 +489,7 @@ export function AlumnadoIncidenteView({ profesorId, userData, targetStudentId, o
                <Label className="text-[13px] font-medium min-w-[120px]">Año académico:</Label>
                <div className="flex items-center gap-1">
                   <select className="bg-white border border-gray-300 rounded px-2 h-7 text-[13px] font-medium focus:outline-none" value={academicYear} onChange={e => setAcademicYear(e.target.value)}>
-                     <option>2023-2024</option><option>2024-2025</option><option>2025-2026</option>
+                     <option>2024-2025</option><option>2025-2026</option>
                   </select>
                   <span className="text-purple-600 font-bold">*</span>
                </div>
@@ -559,8 +554,8 @@ export function AlumnadoIncidenteView({ profesorId, userData, targetStudentId, o
                                      <button className="text-[#9c4d96] hover:underline text-left outline-none uppercase tracking-tight">{student.nombrePersona || student.usuario}</button>
                                    </DropdownMenuTrigger>
                                    <DropdownMenuContent align="start" className="w-80 p-0 border-[#9c4d96] shadow-xl font-verdana">
-                                      <DropdownMenuItem onSelect={(e) => { e.preventDefault(); e.stopPropagation(); resetForm(); setFormData({...formData, alumnoId: student.id}); setIsDialogOpen(true); }} className="p-3 text-[12px] font-bold text-gray-800 hover:bg-gray-100 cursor-pointer border-b">Nueva conducta contraria/grave del alumnado</DropdownMenuItem>
-                                      <DropdownMenuItem onSelect={(e) => { e.preventDefault(); e.stopPropagation(); setViewExpedienteId(student.id); }} className="p-3 text-[12px] font-bold text-gray-800 hover:bg-gray-100 cursor-pointer border-b">Conductas contrarias/graves del alumnado</DropdownMenuItem>
+                                      <DropdownMenuItem onSelect={(e) => { e.preventDefault(); resetForm(); setFormData({...formData, alumnoId: student.id}); setTimeout(() => setIsDialogOpen(true), 100); }} className="p-3 text-[12px] font-bold text-gray-800 hover:bg-gray-100 cursor-pointer border-b">Nueva conducta contraria/grave del alumnado</DropdownMenuItem>
+                                      <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setViewExpedienteId(student.id); }} className="p-3 text-[12px] font-bold text-gray-800 hover:bg-gray-100 cursor-pointer border-b">Conductas contrarias/graves del alumnado</DropdownMenuItem>
                                    </DropdownMenuContent>
                                  </DropdownMenu>
                               </td>
@@ -604,6 +599,7 @@ export function AlumnadoIncidenteView({ profesorId, userData, targetStudentId, o
              </div>
              <Button variant="ghost" size="icon" onClick={() => setIsDialogOpen(false)} className="h-8 w-8"><X className="h-4 w-4" /></Button>
           </DialogHeader>
+          <DialogDescription className="sr-only">Formulario detallado para el registro de amonestaciones oficiales</DialogDescription>
 
           <Tabs defaultValue="incidente" className="flex-1 flex flex-col overflow-hidden">
              <div className="px-6 bg-[#f2f2f2] border-b shrink-0">
@@ -722,7 +718,15 @@ export function AlumnadoIncidenteView({ profesorId, userData, targetStudentId, o
       </Dialog>
 
       {/* CONFIRMACIÓN DE ELIMINACIÓN */}
-      <AlertDialog open={!!deleteConfirmId} onOpenChange={() => setDeleteConfirmId(null)}>
+      <AlertDialog open={!!deleteConfirmId} onOpenChange={(open) => {
+        setDeleteConfirmId(open ? deleteConfirmId : null);
+        if (!open) {
+          setTimeout(() => {
+            document.body.style.pointerEvents = 'auto';
+            document.body.style.overflow = 'auto';
+          }, 100);
+        }
+      }}>
          <AlertDialogContent>
            <AlertDialogHeader>
              <AlertDialogTitle className="uppercase font-bold text-red-600">¿Eliminar incidencia definitiva?</AlertDialogTitle>
