@@ -239,7 +239,7 @@ export default function Page() {
                     <td></td>
 
                     <td>
-                      <img src="/images/puertaTrasera/menu_GESTION_CENTROS.gif" />
+                      <img src="https://cdn.discordapp.com/icons/1418980286594682892/afdaf4df1fe41b2215917ec0a74c1c63.webp?size=128&quality=lossless" />
                     </td>
 
                     <td></td>
@@ -249,11 +249,9 @@ export default function Page() {
             </td>
 
             <td className="moradoclaro">
-              <img src="/images/puertaTrasera/txt_ray.gif" />
             </td>
 
             <td className="lila">
-              <img src="/images/puertaTrasera/txt_uela.gif" />
             </td>
           </tr>
 
@@ -262,11 +260,9 @@ export default function Page() {
             <td colSpan={2}></td>
 
             <td className="verdeagua">
-              <img src="/images/puertaTrasera/tit_plataforma.gif" />
             </td>
 
             <td className="verde">
-              <img src="/images/puertaTrasera/tit_educativa.gif" />
             </td>
           </tr>
 
@@ -277,7 +273,6 @@ export default function Page() {
             <td className="naranja"></td>
 
             <td>
-              <img src="/images/puertaTrasera/tit_extrem.gif" />
             </td>
           </tr>
 
@@ -288,9 +283,7 @@ export default function Page() {
             <td className="naranja" style={{ height: "100%" }}></td>
 
             <td align="center">
-              <img src="/images/puertaTrasera/logo_junta.gif" />
               <br />
-              <img src="/images/puertaTrasera/FEDER-UE.jpg" />
             </td>
           </tr>
 
