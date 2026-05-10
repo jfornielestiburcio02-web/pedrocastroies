@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -89,6 +88,13 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
   const schedules = manualScheduleId && manualScheduleData ? [manualScheduleData] : fetchedSchedules;
   const currentSchedule = useMemo(() => schedules?.find(s => s.id === selectedScheduleId), [schedules, selectedScheduleId]);
 
+  // Fetch linked group to resolve students dynamically
+  const groupDocRef = useMemoFirebase(() => {
+    if (!db || !currentSchedule?.grupoId) return null;
+    return doc(db, 'gruposAlumnos', currentSchedule.grupoId);
+  }, [db, currentSchedule?.grupoId]);
+  const { data: groupData } = useDoc(groupDocRef);
+
   const attendanceQuery = useMemoFirebase(() => {
     if (!db || !selectedScheduleId) return null;
     return query(
@@ -120,8 +126,15 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
 
   const students = useMemo(() => {
     if (!currentSchedule || !allUsers) return [];
+    
+    // RESOLUCIÓN DINÁMICA: Prioridad al curso vinculado del grupo
+    if (groupData?.cursoVinculado) {
+      return allUsers.filter(u => u.cursoAlumno === groupData.cursoVinculado && u.rolesUsuario?.includes('EsAlumno'));
+    }
+    
+    // Fallback a los IDs guardados en el horario
     return allUsers.filter(u => currentSchedule.alumnosIds?.includes(u.id));
-  }, [currentSchedule, allUsers]);
+  }, [currentSchedule, allUsers, groupData]);
 
   const scheduleDeferredMessage = (alumnoId: string, attendanceId: string) => {
     if (!db || !currentSchedule) return;
@@ -277,10 +290,12 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
           </div>
         </div>
 
-        {currentSchedule?.grupoId && (
+        {(currentSchedule?.grupoId || groupData?.cursoVinculado) && (
           <div className="bg-white px-3 py-1 border rounded flex items-center gap-2">
              <Layout className="h-3 w-3 text-[#89a54e]" />
-             <span className="text-[10px] font-bold text-[#89a54e] uppercase tracking-tight">Grupo Vinculado: {currentSchedule.asignatura}</span>
+             <span className="text-[10px] font-bold text-[#89a54e] uppercase tracking-tight">
+               Grupo: {currentSchedule?.asignatura} {groupData?.cursoVinculado ? `(Sincro: ${groupData.cursoVinculado})` : ''}
+             </span>
           </div>
         )}
 
@@ -309,7 +324,7 @@ export function AttendanceBySubjectView({ profesorId, manualScheduleId }: { prof
         </div>
       ) : students.length === 0 ? (
         <div className="py-20 text-center text-gray-400 italic text-sm">
-          No hay alumnos asignados a este tramo horario.
+          No hay alumnos asignados a este tramo horario {groupData?.cursoVinculado ? `en el curso ${groupData.cursoVinculado}` : ''}.
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 justify-items-center animate-in zoom-in-95 duration-300">

@@ -77,6 +77,11 @@ export function UserCreationView() {
       return;
     }
 
+    if (formData.roles.includes('EsAlumno') && !formData.curso) {
+      toast({ variant: "destructive", title: "Curso obligatorio", description: "Indique el curso del alumno para sincronizar con grupos." });
+      return;
+    }
+
     setIsSaving(true);
     
     const normalize = (str: string) => 
@@ -107,7 +112,7 @@ export function UserCreationView() {
       imagenPerfil: formData.imagenPerfil || defaultImage,
       rolesUsuario: formData.roles,
       perfilesAdicionales: [],
-      cursoAlumno: formData.roles.includes('EsAlumno') ? formData.curso : '',
+      cursoAlumno: formData.roles.includes('EsAlumno') ? formData.curso.toUpperCase().trim() : '',
       createdAt: new Date().toISOString()
     };
 
@@ -209,13 +214,14 @@ export function UserCreationView() {
 
               {formData.roles.includes('EsAlumno') && (
                 <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
-                  <Label className="text-[10px] font-bold text-gray-400 uppercase">Curso Asignado</Label>
+                  <Label className="text-[10px] font-bold text-gray-400 uppercase">Curso Académico (Sincro grupos)</Label>
                   <Input 
-                    placeholder="Ej: 4º ESO A" 
+                    placeholder="Ej: 1º E.S.O. (Debe coincidir con grupos)" 
                     value={formData.curso}
                     onChange={(e) => setFormData({...formData, curso: e.target.value})}
                     className="border-gray-300 font-bold text-sm bg-blue-50/30"
                   />
+                  <p className="text-[9px] text-[#9c4d96] font-bold">¡IMPORTANTE! Use el formato oficial: "1º E.S.O."</p>
                 </div>
               )}
             </div>
@@ -481,7 +487,7 @@ function EditRolesDialog({ user, onClose }: { user: any, onClose: () => void }) 
     setIsSaving(true);
     updateDocumentNonBlocking(doc(db, 'usuarios', user.id), {
       rolesUsuario: selectedRoles,
-      cursoAlumno: selectedRoles.includes('EsAlumno') ? curso : '',
+      cursoAlumno: selectedRoles.includes('EsAlumno') ? curso.toUpperCase().trim() : '',
       updatedAt: new Date().toISOString()
     });
     toast({ title: "Perfil actualizado", description: "Los cambios se han guardado en el censo oficial." });
@@ -526,7 +532,7 @@ function EditRolesDialog({ user, onClose }: { user: any, onClose: () => void }) 
                 <div className="space-y-1.5">
                    <Label className="text-[9px] font-bold text-gray-500 uppercase ml-1">Curso Académico:</Label>
                    <Input 
-                     placeholder="Ej: 2º ESO B..." 
+                     placeholder="Ej: 1º E.S.O. (Sincro grupos)" 
                      value={curso}
                      onChange={(e) => setCurso(e.target.value)}
                      className="h-10 border-gray-300 font-bold text-sm bg-blue-50/20"
