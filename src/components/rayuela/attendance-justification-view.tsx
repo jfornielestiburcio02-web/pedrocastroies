@@ -34,15 +34,36 @@ export function AttendanceJustificationView({ alumno, onClose, profesorId }: Att
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
 
-  // 1. Obtener el horario del alumno
+  // 1. Obtener TODOS los grupos para resolución dinámica
+  const groupsQuery = useMemoFirebase(() => {
+    if (!db) return null;
+    return collection(db, 'gruposAlumnos');
+  }, [db]);
+  const { data: allGroups } = useCollection(groupsQuery);
+
+  // 2. Obtener TODAS las sesiones de horario
   const schedulesQuery = useMemoFirebase(() => {
-    if (!db || !alumno?.id) return null;
-    return query(collection(db, 'horarios'), where('alumnosIds', 'array-contains', alumno.id));
-  }, [db, alumno?.id]);
+    if (!db) return null;
+    return collection(db, 'horarios');
+  }, [db]);
+  const { data: allSchedules, isLoading: loadingSchedule } = useCollection(schedulesQuery);
 
-  const { data: studentSchedules, isLoading: loadingSchedule } = useCollection(schedulesQuery);
+  // 3. Filtrar horarios que pertenecen al alumno (por ID estático o por Curso Vinculado al grupo)
+  const studentSchedules = useMemo(() => {
+    if (!allSchedules || !allGroups || !alumno) return [];
+    
+    // IDs de grupos que corresponden al curso del alumno
+    const courseGroupIds = allGroups
+      .filter(g => g.cursoVinculado === alumno.cursoAlumno)
+      .map(g => g.id);
 
-  // 2. Obtener asistencias de la semana
+    return allSchedules.filter(s => 
+      s.alumnosIds?.includes(alumno.id) || 
+      (s.grupoId && courseGroupIds.includes(s.grupoId))
+    );
+  }, [allSchedules, allGroups, alumno]);
+
+  // 4. Obtener asistencias de la semana
   const attendanceQuery = useMemoFirebase(() => {
     if (!db || !alumno?.id) return null;
     return query(
@@ -55,7 +76,7 @@ export function AttendanceJustificationView({ alumno, onClose, profesorId }: Att
 
   const { data: attendances } = useCollection(attendanceQuery);
 
-  // 3. Determinar qué días de la semana tienen clases
+  // 5. Determinar qué días de la semana tienen clases
   const activeDays = useMemo(() => {
     if (!studentSchedules) return [];
     const daysInHorario = Array.from(new Set(studentSchedules.map(s => s.dia)));
@@ -63,14 +84,14 @@ export function AttendanceJustificationView({ alumno, onClose, profesorId }: Att
     return allWeekDays.filter(day => daysInHorario.includes(day));
   }, [studentSchedules]);
 
-  // 4. Materias únicas del alumno
+  // 6. Materias únicas del alumno
   const uniqueSubjects = useMemo(() => {
     if (!studentSchedules) return [];
     return Array.from(new Set(studentSchedules.map(s => s.asignatura))).sort();
   }, [studentSchedules]);
 
   const getDayFullStatus = (diaNombre: string) => {
-    if (!studentSchedules || !attendances) return null;
+    if (studentSchedules.length === 0 || !attendances) return null;
     const diaIndex = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"].indexOf(diaNombre);
     const targetDate = format(addDays(weekStart, diaIndex), 'yyyy-MM-dd');
     const daySessions = studentSchedules.filter(s => s.dia === diaNombre);
@@ -81,9 +102,8 @@ export function AttendanceJustificationView({ alumno, onClose, profesorId }: Att
     
     if (dayAtts.length === 0) return null;
 
-    // Se considera estado de día completo si todas las sesiones son de tipo I o J y marcadas como FullDay
-    const allInj = dayAtts.every(a => a.tipo === 'I' && a.isFullDay);
-    const allJust = dayAtts.every(a => a.tipo === 'J' && a.isFullDay);
+    const allInj = dayAtts.length >= daySessions.length && dayAtts.every(a => a.tipo === 'I' && a.isFullDay);
+    const allJust = dayAtts.length >= daySessions.length && dayAtts.every(a => a.tipo === 'J' && a.isFullDay);
 
     if (allInj) return 'I';
     if (allJust) return 'J';
@@ -91,16 +111,15 @@ export function AttendanceJustificationView({ alumno, onClose, profesorId }: Att
   };
 
   const handleDayAction = async (diaNombre: string, action: 'Inj' | 'Just' | 'Delete') => {
-    if (!db || !studentSchedules) return;
+    if (!db || studentSchedules.length === 0) return;
     
     const diaIndex = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"].indexOf(diaNombre);
     const targetDate = format(addDays(weekStart, diaIndex), 'yyyy-MM-dd');
     const daySessions = studentSchedules.filter(s => s.dia === diaNombre);
     
-    // El batch asegura que la operación sea atómica y solape todo
     const batch = writeBatch(db);
     
-    // 1. ELIMINACIÓN PREVIA: Limpiar cualquier registro existente este día para solapar totalmente
+    // 1. ELIMINACIÓN PREVIA de cualquier registro este día
     const existingDayQuery = query(
       collection(db, 'asistenciasInasistencias'),
       where('alumnoId', '==', alumno.id),
@@ -109,7 +128,7 @@ export function AttendanceJustificationView({ alumno, onClose, profesorId }: Att
     const snap = await getDocs(existingDayQuery);
     snap.forEach(d => batch.delete(d.ref));
 
-    // 2. APLICAR NUEVA ACCIÓN (Si no es borrar)
+    // 2. APLICAR NUEVA ACCIÓN
     if (action !== 'Delete') {
       daySessions.forEach(session => {
         const attendanceId = `${alumno.id}_${session.id}_${targetDate}`;
@@ -128,13 +147,12 @@ export function AttendanceJustificationView({ alumno, onClose, profesorId }: Att
         });
       });
 
-      // Notificación automática si es INJ día completo
       if (action === 'Inj') {
         addDocumentNonBlocking(collection(db, 'mensajes'), {
           remitenteId: 'SISTEMA',
           destinatarioId: alumno.id,
           asunto: 'Aviso de Asistencia: Día Completo',
-          cuerpo: 'Se ha registrado una falta de dia completo para tu persona',
+          cuerpo: `Se ha registrado una falta de dia completo para tu persona el dia ${format(addDays(weekStart, diaIndex), 'dd/MM/yyyy')}`,
           leido: false,
           eliminado: false,
           createdAt: new Date().toISOString()
@@ -148,9 +166,7 @@ export function AttendanceJustificationView({ alumno, onClose, profesorId }: Att
   const handleJustifyHour = (claseId: string, fecha: string) => {
     if (!db) return;
     const attendanceId = `${alumno.id}_${claseId}_${fecha}`;
-    const docRef = doc(db, 'asistenciasInasistencias', attendanceId);
-    
-    setDocumentNonBlocking(docRef, {
+    setDocumentNonBlocking(doc(db, 'asistenciasInasistencias', attendanceId), {
       alumnoId: alumno.id,
       claseId,
       fecha,
@@ -172,7 +188,6 @@ export function AttendanceJustificationView({ alumno, onClose, profesorId }: Att
 
   return (
     <div className="animate-in fade-in duration-300 space-y-4 w-full font-verdana pb-10">
-      {/* HEADER CARD ALUMNO COMPACTO */}
       <div className="bg-white p-4 rounded-xl border shadow-sm flex flex-col md:flex-row items-center gap-4 relative">
          <button onClick={onClose} className="absolute top-2 right-2 text-gray-300 hover:text-red-600 transition-colors">
             <XCircle className="h-5 w-5" />
@@ -192,6 +207,7 @@ export function AttendanceJustificationView({ alumno, onClose, profesorId }: Att
             </div>
             <div className="flex items-center justify-center md:justify-start gap-3 text-[9px] font-bold text-gray-500 uppercase">
                <span>Semana del {format(weekStart, 'dd/MM')} al {format(weekEnd, 'dd/MM')}</span>
+               <Badge className="bg-blue-50 text-blue-700 border-none font-bold text-[8px]">{alumno.cursoAlumno}</Badge>
             </div>
          </div>
       </div>
@@ -204,7 +220,6 @@ export function AttendanceJustificationView({ alumno, onClose, profesorId }: Att
          <Button className="bg-[#fb8500] hover:bg-[#e07600] text-white text-[9px] font-bold uppercase h-7 px-4 shadow-sm rounded-full">Justificar por motivo</Button>
       </div>
 
-      {/* TABLA DE ASISTENCIA SEMANAL COMPACTA */}
       <div className="bg-white border rounded-xl shadow-sm overflow-hidden overflow-x-auto">
           <table className="w-full border-collapse text-[9px]">
              <thead>
@@ -259,60 +274,64 @@ export function AttendanceJustificationView({ alumno, onClose, profesorId }: Att
                 </tr>
              </thead>
              <tbody>
-                {uniqueSubjects.map((subject) => (
-                  <tr key={subject} className="hover:bg-gray-50/30 transition-colors h-14">
-                     <td className="border-b border-r p-2 text-[9px] font-bold text-gray-500 uppercase bg-gray-50/20">
-                        {subject}
-                     </td>
-                     {activeDays.map((dayNombre) => {
-                        const diaIndex = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"].indexOf(dayNombre);
-                        const targetDate = format(addDays(weekStart, diaIndex), 'yyyy-MM-dd');
-                        const session = studentSchedules?.find(s => s.dia === dayNombre && s.asignatura === subject);
-                        
-                        if (!session) return <td key={dayNombre} className="border-b border-r last:border-r-0 bg-gray-100/5"></td>;
+                {uniqueSubjects.length === 0 ? (
+                  <tr><td colSpan={activeDays.length + 1} className="p-10 text-center italic text-gray-400">No hay clases asignadas para este alumno en el censo.</td></tr>
+                ) : (
+                  uniqueSubjects.map((subject) => (
+                    <tr key={subject} className="hover:bg-gray-50/30 transition-colors h-14">
+                       <td className="border-b border-r p-2 text-[9px] font-bold text-gray-500 uppercase bg-gray-50/20">
+                          {subject}
+                       </td>
+                       {activeDays.map((dayNombre) => {
+                          const diaIndex = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"].indexOf(dayNombre);
+                          const targetDate = format(addDays(weekStart, diaIndex), 'yyyy-MM-dd');
+                          const session = studentSchedules?.find(s => s.dia === dayNombre && s.asignatura === subject);
+                          
+                          if (!session) return <td key={dayNombre} className="border-b border-r last:border-r-0 bg-gray-100/5"></td>;
 
-                        const attendance = attendances?.find(a => a.claseId === session.id && a.fecha === targetDate);
-                        const isInj = attendance?.tipo === 'I';
-                        const isJust = attendance?.tipo === 'J';
+                          const attendance = attendances?.find(a => a.claseId === session.id && a.fecha === targetDate);
+                          const isInj = attendance?.tipo === 'I';
+                          const isJust = attendance?.tipo === 'J';
 
-                        return (
-                          <td key={dayNombre} className="border-b border-r last:border-r-0 p-2 align-middle text-center">
-                             {isInj && (
-                               <div className="flex items-center justify-center gap-2 animate-in zoom-in-95 duration-200">
-                                  <span className="boton_rectangulo scale-75" data-type="I">Inj</span>
-                                  <div className="flex flex-col gap-0.5 items-start">
-                                     <button 
-                                      onClick={() => handleJustifyHour(session.id, targetDate)}
-                                      className="bg-white border border-gray-300 px-2 py-0.5 text-[8px] font-bold rounded hover:bg-blue-50 text-gray-600 transition-all uppercase"
-                                     >
-                                       Just
-                                     </button>
-                                     <button 
-                                      onClick={() => handleDeleteHour(session.id, targetDate)}
-                                      className="text-red-500 hover:text-red-700 text-[7px] font-bold uppercase underline"
-                                     >
-                                       Eliminar
-                                     </button>
-                                  </div>
-                               </div>
-                             )}
-                             
-                             {isJust && (
-                               <div className="flex items-center justify-center gap-2 animate-in fade-in duration-300">
-                                  <span className="boton_rectangulo scale-75" data-type="J">Just</span>
-                                  <button 
-                                   onClick={() => handleDeleteHour(session.id, targetDate)}
-                                   className="text-red-500 hover:text-red-700 text-[7px] font-bold uppercase underline"
-                                  >
-                                    Eliminar
-                                  </button>
-                               </div>
-                             )}
-                          </td>
-                        );
-                     })}
-                  </tr>
-                ))}
+                          return (
+                            <td key={dayNombre} className="border-b border-r last:border-r-0 p-2 align-middle text-center">
+                               {isInj && (
+                                 <div className="flex items-center justify-center gap-2 animate-in zoom-in-95 duration-200">
+                                    <span className="boton_rectangulo scale-75" data-type="I">Inj</span>
+                                    <div className="flex flex-col gap-0.5 items-start">
+                                       <button 
+                                        onClick={() => handleJustifyHour(session.id, targetDate)}
+                                        className="bg-white border border-gray-300 px-2 py-0.5 text-[8px] font-bold rounded hover:bg-blue-50 text-gray-600 transition-all uppercase"
+                                       >
+                                         Just
+                                       </button>
+                                       <button 
+                                        onClick={() => handleDeleteHour(session.id, targetDate)}
+                                        className="text-red-500 hover:text-red-700 text-[7px] font-bold uppercase underline"
+                                       >
+                                         Eliminar
+                                       </button>
+                                    </div>
+                                 </div>
+                               )}
+                               
+                               {isJust && (
+                                 <div className="flex items-center justify-center gap-2 animate-in fade-in duration-300">
+                                    <span className="boton_rectangulo scale-75" data-type="J">Just</span>
+                                    <button 
+                                     onClick={() => handleDeleteHour(session.id, targetDate)}
+                                     className="text-red-500 hover:text-red-700 text-[7px] font-bold uppercase underline"
+                                    >
+                                      Eliminar
+                                    </button>
+                                 </div>
+                               )}
+                            </td>
+                          );
+                       })}
+                    </tr>
+                  ))
+                )}
              </tbody>
           </table>
       </div>

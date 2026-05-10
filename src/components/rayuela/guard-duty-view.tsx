@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -77,12 +76,26 @@ export function GuardDutyView({ profesorId }: { profesorId: string }) {
     if (!db) return null;
     return collection(db, 'usuarios');
   }, [db]);
-
   const { data: allUsers } = useCollection(usersQuery);
+
+  const groupsQuery = useMemoFirebase(() => {
+    if (!db) return null;
+    return collection(db, 'gruposAlumnos');
+  }, [db]);
+  const { data: allGroups } = useCollection(groupsQuery);
 
   const getProfesorName = (id: string) => {
     const user = allUsers?.find(u => u.id === id);
     return user ? (user.nombrePersona || user.usuario) : id;
+  };
+
+  const getDynamicAlumnosCount = (cls: any) => {
+    if (!allUsers || !allGroups) return 0;
+    const group = allGroups.find(g => g.id === cls.grupoId);
+    if (group?.cursoVinculado) {
+      return allUsers.filter(u => u.cursoAlumno === group.cursoVinculado && u.rolesUsuario?.includes('EsAlumno')).length;
+    }
+    return cls.alumnosIds?.length || 0;
   };
 
   if (loadingMyDuty || !now) {
@@ -164,7 +177,7 @@ export function GuardDutyView({ profesorId }: { profesorId: string }) {
                 <div className="mt-6 pt-4 border-t border-gray-50 flex items-center justify-between">
                   <div className="flex items-center gap-1.5 text-xs font-bold text-blue-600">
                     <Users className="h-3.5 w-3.5" />
-                    {cls.alumnosIds?.length || 0} ALUMNOS
+                    {getDynamicAlumnosCount(cls)} ALUMNOS
                   </div>
                   <Button 
                     size="sm" 
