@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useMemo } from 'react';
@@ -48,7 +49,7 @@ import {
 
 /**
  * Vista de gestión de grupos personalizados para el profesor.
- * AHORA VINCULADOS POR CURSO PARA AUTOMATIZACIÓN.
+ * AHORA VINCULADOS POR CURSO PARA AUTOMATIZACIÓN Y POBLACIÓN DE ARRAY.
  */
 export function TeacherGroupsView({ profesorId }: { profesorId: string }) {
   const db = useFirestore();
@@ -56,6 +57,7 @@ export function TeacherGroupsView({ profesorId }: { profesorId: string }) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [formData, setFormData] = useState({ titulo: '', cursoVinculado: '' });
+  const [isSaving, setIsSaving] = useState(false);
 
   // 1. Obtener todos los alumnos del centro para extraer los cursos disponibles
   const allStudentsQuery = useMemoFirebase(() => {
@@ -95,23 +97,36 @@ export function TeacherGroupsView({ profesorId }: { profesorId: string }) {
       return;
     }
 
+    setIsSaving(true);
+
+    // NUEVO: Obtener los alumnos del curso en tiempo real para meterlos en el array
+    const q = query(
+      collection(db, 'usuarios'), 
+      where('cursoAlumno', '==', formData.cursoVinculado), 
+      where('rolesUsuario', 'array-contains', 'EsAlumno')
+    );
+    const snap = await getDocs(q);
+    const studentsIds = snap.docs.map(d => d.id);
+
     const dataToSave = {
       ...formData,
       profesorId,
+      alumnosIds: studentsIds, // ¡Los metemos en el array!
       updatedAt: new Date().toISOString()
     };
 
     if (editingGroupId) {
       updateDocumentNonBlocking(doc(db, 'gruposAlumnos', editingGroupId), dataToSave);
-      toast({ title: "Grupo Actualizado", description: "Los cambios se aplicarán dinámicamente al horario." });
+      toast({ title: "Grupo Actualizado", description: `Se han sincronizado ${studentsIds.length} alumnos en el array.` });
     } else {
       addDocumentNonBlocking(collection(db, 'gruposAlumnos'), {
         ...dataToSave,
         createdAt: new Date().toISOString()
       });
-      toast({ title: "Grupo Creado", description: `El grupo "${formData.titulo}" está vinculado a ${formData.cursoVinculado}.` });
+      toast({ title: "Grupo Creado", description: `El grupo "${formData.titulo}" tiene ${studentsIds.length} alumnos vinculados.` });
     }
 
+    setIsSaving(false);
     setIsDialogOpen(false);
   };
 
@@ -161,10 +176,10 @@ export function TeacherGroupsView({ profesorId }: { profesorId: string }) {
                       <GraduationCap className="h-8 w-8 mx-auto mb-1" />
                       <span className="text-lg font-black tracking-tight">{group.cursoVinculado}</span>
                    </div>
-                   <p className="text-[10px] text-gray-400 font-bold uppercase">Vinculación Automática Activa</p>
+                   <p className="text-[10px] text-gray-400 font-bold uppercase">Sincronización: {group.alumnosIds?.length || 0} Alumnos</p>
                 </div>
                 <div className="bg-gray-50 p-3 text-[9px] font-bold text-gray-400 uppercase text-center border-t flex items-center justify-center gap-2">
-                   <CheckCircle2 className="h-3 w-3 text-green-500" /> Sincronizado con Censo
+                   <CheckCircle2 className="h-3 w-3 text-green-500" /> Array 'alumnosIds' actualizado
                 </div>
              </div>
            ))}
@@ -178,7 +193,7 @@ export function TeacherGroupsView({ profesorId }: { profesorId: string }) {
                <Layout className="h-4 w-4" /> Vinculación de Grupo a Curso
              </DialogTitle>
              <DialogDescription className="text-white/80 text-[10px] font-bold uppercase">
-               El alumnado se actualizará automáticamente con el censo
+               El alumnado se meterá automáticamente en el array del grupo
              </DialogDescription>
           </DialogHeader>
 
@@ -209,15 +224,16 @@ export function TeacherGroupsView({ profesorId }: { profesorId: string }) {
 
              <div className="p-4 bg-blue-50 border border-blue-100 rounded-lg">
                 <p className="text-[10px] text-blue-800 font-bold leading-relaxed uppercase">
-                  Al vincular por curso, no necesita seleccionar alumnos. El sistema incluirá automáticamente a cualquier nuevo alumno matriculado en este curso.
+                  Al pulsar guardar, el sistema buscará a todos los alumnos de "{formData.cursoVinculado || '...'}" y los insertará en la lista de alumnos del grupo.
                 </p>
              </div>
           </div>
 
           <DialogFooter className="bg-gray-50 p-6 border-t gap-4 shrink-0">
              <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="text-[11px] font-bold uppercase h-10 px-8">Cancelar</Button>
-             <Button onClick={handleSaveGroup} className="bg-[#89a54e] hover:bg-[#728a41] text-white text-[11px] font-bold uppercase h-10 px-8 gap-2 shadow-md">
-               <Save className="h-4 w-4" /> Guardar Vinculación
+             <Button onClick={handleSaveGroup} disabled={isSaving} className="bg-[#89a54e] hover:bg-[#728a41] text-white text-[11px] font-bold uppercase h-10 px-8 gap-2 shadow-md">
+               {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+               Guardar y Sincronizar
              </Button>
           </DialogFooter>
         </DialogContent>

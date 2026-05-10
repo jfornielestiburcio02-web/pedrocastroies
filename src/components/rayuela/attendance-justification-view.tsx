@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useMemo } from 'react';
@@ -48,11 +49,11 @@ export function AttendanceJustificationView({ alumno, onClose, profesorId }: Att
   }, [db]);
   const { data: allSchedules, isLoading: loadingSchedule } = useCollection(schedulesQuery);
 
-  // 3. Filtrar horarios que pertenecen al alumno (por ID estático o por Curso Vinculado al grupo)
+  // 3. Filtrar horarios que pertenecen al alumno (por ID estático O por vinculación de curso al grupo)
   const studentSchedules = useMemo(() => {
     if (!allSchedules || !allGroups || !alumno) return [];
     
-    // IDs de grupos que corresponden al curso del alumno
+    // IDs de grupos que corresponden al curso del alumno (Sincro dinámica)
     const courseGroupIds = allGroups
       .filter(g => g.cursoVinculado === alumno.cursoAlumno)
       .map(g => g.id);
